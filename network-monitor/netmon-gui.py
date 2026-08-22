@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.3"
+VERSION = "1.4"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -401,10 +401,14 @@ class TrafficMonitor(object):
                           ctypes.POINTER(_TcpRow * n)).contents
         for i in range(n):
             r = arr[i]
+            if r.state != 5:      # only ESTABLISHED (ESTATS not supported otherwise)
+                continue
             lport = ((r.local_port & 0xFF) << 8) | ((r.local_port >> 8) & 0xFF)
             rport = ((r.remote_port & 0xFF) << 8) | ((r.remote_port >> 8) & 0xFF)
             lip = socket.inet_ntoa(struct.pack("<I", r.local_addr & 0xFFFFFFFF))
             rip = socket.inet_ntoa(struct.pack("<I", r.remote_addr & 0xFFFFFFFF))
+            if lip.startswith("127.") or rip.startswith("127."):
+                continue          # loopback: ESTATS returns ERROR_NOT_SUPPORTED
             out.append(("%s:%d" % (lip, lport), "%s:%d" % (rip, rport), int(r.pid),
                         _TcpRow.from_buffer_copy(bytes(r))))
         return out
@@ -425,7 +429,6 @@ class TrafficMonitor(object):
             if self.diag["enable_rc"] is None:
                 self.diag["enable_rc"] = rc
             self.estats_err = self.estats_err or rc
-            self._fail += 1
             return False
         self._enabled.add(key)
         self.diag["enabled"] += 1
@@ -453,16 +456,25 @@ class TrafficMonitor(object):
         procs = get_processes()
         now = time.time()
         cur = {}
+        fails_this_poll = 0
         for local, remote, pid, row in rows:
             if pid <= 4:
                 continue
             key = (local, remote, pid)
             try:
                 if not self._enable(key, row):
+                    fails_this_poll += 1
                     continue
                 cur[key] = (self._read(row) + (pid,))
             except Exception:
-                self._fail += 1
+                fails_this_poll += 1
+        # healthy if at least one connection read OK; failed only when
+        # there were several candidates and ALL of them failed
+        if cur:
+            if not self.estats_ok:
+                self.estats_ok = True
+        elif fails_this_poll >= 3:
+            self._fail += 1
         interval = max(0.2, now - self._last_poll) if self._last_poll else 2.0
         self._last_poll = now
         per_pid = {}
@@ -1217,22 +1229,33 @@ def main():
         print("=" * 50)
         try:
             rows = TRAFFIC_M._rows()
-            print("TCP rows found: %d" % len(rows))
+            print("ESTABLISHED external TCP rows: %d" % len(rows))
+            if len(rows) == 0:
+                print("NOTE: no established external connections right now.")
+                print("      open a website, then run this test again.")
+                return
             ok = 0
-            for local, remote, pid, row in rows[:15]:
-                if pid <= 4:
-                    continue
+            shown_fail = 0
+            for local, remote, pid, row in rows[:20]:
                 if TRAFFIC_M._enable((local, remote, pid), row):
-                    bi, bo = TRAFFIC_M._read(row)
-                    print("  OK  %-22s pid=%-6d in=%d out=%d" % (remote, pid, bi, bo))
-                    ok += 1
-                    if ok >= 3:
-                        break
+                    try:
+                        bi, bo = TRAFFIC_M._read(row)
+                        print("  OK     %-22s pid=%-6d in=%d out=%d" % (remote, pid, bi, bo))
+                        ok += 1
+                    except Exception as e:
+                        print("  READ-F %-22s pid=%-6d %s" % (remote, pid, e))
+                        shown_fail += 1
+                else:
+                    print("  ENB-F  %-22s pid=%-6d rc=%d" %
+                          (remote, pid, TRAFFIC_M.diag["enable_rc"] or -1))
+                    shown_fail += 1
+                if ok >= 3 or shown_fail >= 8:
+                    break
             if ok == 0:
-                print("FAILED - enable_rc=%s read_rc=%s" %
-                      (TRAFFIC_M.diag["enable_rc"], TRAFFIC_M.diag["read_rc"]))
+                print("FAILED - every connection rejected (rc=%s). Paste this whole output." %
+                      TRAFFIC_M.diag["enable_rc"])
             else:
-                print("RESULT: per-app traffic counters WORK on this machine.")
+                print("RESULT: per-app traffic counters WORK on this machine. (%d ok)" % ok)
         except Exception as e:
             print("ERROR: %r" % e)
         return
