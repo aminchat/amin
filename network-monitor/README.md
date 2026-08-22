@@ -21,6 +21,35 @@
 >
 > بعد از دانلود، راهنمای اجرا در بخش ۳ را ببینید.
 
+### 🚀 اجرای مستقیم از خودِ گیتهاب (بدون دانلود دستی)
+
+ریپو **عمومی (public)** است، پس نیازی به لاگین نیست. کافی است یکی از این دستورها را در PowerShell کپی کنید (هر کدام یک خط کامل است):
+
+**دستور ۱ — دانلود خودکار + اجرا (پیشنهادی):**
+```powershell
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\netmon.ps1"; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" -OutFile $f; powershell -ExecutionPolicy Bypass -File $f -Geo
+```
+
+**دستور ۲ — نسخه بدون ذخیره فایل (نمای پیش‌فرض):**
+```powershell
+irm https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1 | iex
+```
+
+**اگر دستور ۱ و ۲ خطای اتصال دادند** (در ایران `raw.githubusercontent.com` گاهی فیلتر است) از یکی از اینها استفاده کنید:
+
+**دستور ۳ — دانلود از لینک زنده همین صفحه (پیشنمایش «دانلود فایلهای مانیتور شبکه»):**
+```powershell
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\netmon.ps1"; Invoke-WebRequest -Uri "https://8123-ivqnmdrmdkxszbd5igoo8.e2b.app/Network-Monitor.ps1" -OutFile $f; powershell -ExecutionPolicy Bypass -File $f -Geo
+```
+
+**دستور ۴ — دانلود کل شاخه بهصورت فشرده از codeload گیتهاب:**
+```powershell
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\amin.tar.gz"; Invoke-WebRequest -Uri "https://codeload.github.com/aminchat/amin/tar.gz/refs/heads/arena/01a0292a-amin" -OutFile $f; tar -xf $f -C "$env:TEMP"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\amin-arena-01a0292a-amin\network-monitor\Network-Monitor.ps1" -Geo
+```
+
+> تغییر `-Geo` در انتهای دستورها اختیاری است: حذفش کنید = بدون نمایش کشور مقصد؛ بهجایش `-Watch` بگذارید = داشبورد زنده.
+> اگر از داخل PowerShell ویندوز اجرا میکنید و خطای `running scripts is disabled` دیدید، اول `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` را بزنید و `Y` را تایپ کنید.
+
 ---
 
 این راهنما دو بخش دارد:
