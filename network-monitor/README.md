@@ -282,3 +282,22 @@ $f="$env:USERPROFILE\Desktop\netmon-gui.py"; Invoke-WebRequest -UseBasicParsing 
 - برنامه فقط روی `127.0.0.1` گوش می‌دهد؛ از اینترنت/شبکه قابل دسترسی نیست.
 - برای توقف: در پنجره‌ی پایتون `Ctrl+C` بزن.
 - قوانین بلاک با اسم `NetMonGUI-Block-*` در فایروال ساخته می‌شوند و بعد از بستن برنامه هم باقی می‌مانند؛ از همان صفحه قابل حذف‌اند.
+
+---
+
+## 🚀 اجرای ساده برای بارهای بعدی — فقط دابل‌کلیک
+
+فایل `Start-NetMon.bat` کنار `netmon-gui.py` روی دسکتاپ را **دابل‌کلیک** کن — تمام!
+
+این فایل خودش به‌ترتیب انجام می‌دهد:
+1. اگر `netmon-gui.py` نبود، خودش دانلودش می‌کند
+2. پایتون را خودش پیدا می‌کند (py → python → مسیرهای رایج → محیط مجازی PyCharm)
+3. دسترسی Administrator می‌گیرد (پنجره‌ی UAC — فقط Yes بزن) تا بلاک/پایان‌دادن کار کند
+4. برنامه را اجرا می‌کند و کروم باز می‌شود
+
+دانلودش (یک بار):
+```powershell
+Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Start-NetMon.bat" -OutFile "$env:USERPROFILE\Desktop\Start-NetMon.bat"
+```
+
+نکته: پنجره‌ی سیاه‌ی NetMon را باز نگه دار (همان سرور است)؛ بستنش = توقف مانیتور.
