@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.7"
+VERSION = "1.8"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -456,6 +456,34 @@ class TrafficMonitor(object):
         self._enabled.add(key)
         self.diag["enabled"] += 1
         return True
+
+    def _probe(self, row):
+        """run a matrix of call variants on one connection; returns [(name, rc)]"""
+        out = []
+        F = _get_conn_estats
+        rw = _EstatsDataRw()
+        rw.enable = 1
+        rod = _EstatsDataRod()
+        rod64 = ctypes.create_string_buffer(64)
+        ros2 = ctypes.create_string_buffer(2)
+        ros4 = ctypes.create_string_buffer(4)
+        r = row
+        out.append(("A: data rw=NULL rod=16        ",
+                    F(ctypes.byref(r), 1, None, 0, 0, None, 0, 0,
+                      ctypes.byref(rod), 0, 16, 0)))
+        out.append(("B: data rw=1B rod=16          ",
+                    F(ctypes.byref(r), 1, ctypes.byref(rw), 0, 1, None, 0, 0,
+                      ctypes.byref(rod), 0, 16, 0)))
+        out.append(("C: data rw=1B ros=4B rod=16   ",
+                    F(ctypes.byref(r), 1, ctypes.byref(rw), 0, 1,
+                      ctypes.byref(ros4), 0, 4, ctypes.byref(rod), 0, 16, 0)))
+        out.append(("D: data rw=1B rod=64          ",
+                    F(ctypes.byref(r), 1, ctypes.byref(rw), 0, 1, None, 0, 0,
+                      ctypes.byref(rod64), 0, 64, 0)))
+        out.append(("E: synopts ros=2B             ",
+                    F(ctypes.byref(r), 0, None, 0, 0,
+                      ctypes.byref(ros2), 0, 2, None, 0, 0, 0)))
+        return out
 
     def _read(self, row):
         rod = _EstatsDataRod()
@@ -1248,10 +1276,15 @@ def main():
     DEMO = args.demo
 
     if args.diag:
-        print("=" * 50)
+        print("=" * 58)
         print("  NetMon ESTATS self-test")
         print("  admin : %s   platform: %s" % (is_admin(), sys.platform))
-        print("=" * 50)
+        try:
+            wv = sys.getwindowsversion()
+            print("  windows: %s (build %s)" % (wv.version, wv.build))
+        except Exception:
+            pass
+        print("=" * 58)
         try:
             rows = TRAFFIC_M._rows()
             print("ESTABLISHED external TCP rows: %d" % len(rows))
@@ -1260,8 +1293,15 @@ def main():
                 print("      open a website, then run this test again.")
                 return
             ok = 0
-            shown_fail = 0
+            matrix_done = False
             for local, remote, pid, row in rows[:20]:
+                if pid <= 4:
+                    continue
+                if not matrix_done:
+                    print("--- call-variant matrix on %s (pid %d) ---" % (remote, pid))
+                    for name, rc in TRAFFIC_M._probe(row):
+                        print("    %s rc=%s%s" % (name, rc, "  <-- WORKS" if rc == 0 else ""))
+                    matrix_done = True
                 if TRAFFIC_M._enable((local, remote, pid), row):
                     try:
                         bi, bo = TRAFFIC_M._read(row)
@@ -1269,16 +1309,13 @@ def main():
                         ok += 1
                     except Exception as e:
                         print("  READ-F %-22s pid=%-6d %s" % (remote, pid, e))
-                        shown_fail += 1
                 else:
                     print("  ENB-F  %-22s pid=%-6d rc=%d" %
                           (remote, pid, TRAFFIC_M.diag["enable_rc"] or -1))
-                    shown_fail += 1
-                if ok >= 3 or shown_fail >= 8:
+                if ok >= 3:
                     break
             if ok == 0:
-                print("FAILED - every connection rejected (rc=%s). Paste this whole output." %
-                      TRAFFIC_M.diag["enable_rc"])
+                print("FAILED - paste this WHOLE output (incl. the matrix above).")
             else:
                 print("RESULT: per-app traffic counters WORK on this machine. (%d ok)" % ok)
         except Exception as e:
