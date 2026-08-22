@@ -141,7 +141,13 @@ document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') refreshFromDrive();
 });
 
-if ('serviceWorker' in navigator && store.persisted) {
+const swHost = location.hostname;
+const allowSW =
+  swHost === 'localhost' ||
+  swHost === '127.0.0.1' ||
+  swHost.endsWith('.github.io') ||
+  swHost.endsWith('.e2b.app');
+if ('serviceWorker' in navigator && store.persisted && allowSW) {
   navigator.serviceWorker
     .register('sw.js')
     .then((reg) => {
