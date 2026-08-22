@@ -10,7 +10,7 @@ import {
 } from './state.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.1.1';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILENAME = 'capital-app-data.json';
 const DRIVE_FILE_KEY = 'capital_app_drive_file_id';
@@ -108,14 +108,6 @@ export function googleSignIn() {
     toast('در حال بارگذاری گوگل…');
     return;
   }
-  if (google.accounts.id && typeof google.accounts.id.prompt === 'function') {
-    google.accounts.id.prompt((notification) => {
-      if (notification && (notification.isNotDisplayed() || notification.isSkippedMoment())) {
-        requestDriveSignIn();
-      }
-    });
-    return;
-  }
   requestDriveSignIn();
 }
 
@@ -142,7 +134,7 @@ export function openProfileMenu() {
       esc(gUser.name) +
       '<br><span class="small muted">' +
       esc(gUser.email) +
-      '</span></div><button class="btn primary block" onclick="closeModal();loadFromDrive(function(){render();toast(\'دریافت از گوگل انجام شد ✓\');},true)">دریافت آخرین اطلاعات از گوگل</button><button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">خروج از حساب گوگل</button>'
+      '</span></div><button class="btn primary block" onclick="closeModal();pushToDrive(true)">الان در گوگل ذخیره کن</button><button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast(\'دریافت از گوگل انجام شد ✓\');},true)">دریافت از گوگل</button><button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">خروج از حساب گوگل</button>'
   );
 }
 
@@ -347,19 +339,14 @@ export function loadFromDrive(cb, interactive) {
 export function scheduleSync() {
   if (!gUser && !gToken) return;
   pendingLocalSave = true;
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(pushToDrive, 1500);
+  pushToDrive(true);
 }
 
-export function pushToDrive() {
+export function pushToDrive(interactive) {
   const finish = function () {
     pushInFlight = false;
   };
   const run = function () {
-    if (pullInFlight) {
-      syncTimer = setTimeout(pushToDrive, 800);
-      return;
-    }
     pushInFlight = true;
     const content = JSON.stringify(state);
     driveFindFile()
@@ -372,8 +359,7 @@ export function pushToDrive() {
         toast('در Google Drive ذخیره شد ✓');
       })
       .catch(function () {
-        toast('ذخیره در Google Drive ناموفق بود');
-        syncTimer = setTimeout(pushToDrive, 8000);
+        toast('ذخیره در گوگل نشد؛ یک‌بار دیگر ثبت را بزن');
       })
       .then(finish);
   };
@@ -382,10 +368,10 @@ export function pushToDrive() {
     requestAccessToken(function (ok) {
       if (ok) run();
       else {
-        toast('مجوز Google Drive داده نشد');
+        toast('برای ذخیره در گوگل دوباره ثبت را بزن');
         finish();
       }
-    }, false);
+    }, interactive !== false);
     return;
   }
   run();
