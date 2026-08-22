@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5"
+VERSION = "1.6"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -364,7 +364,9 @@ class _EstatsDataRw(ctypes.Structure):
 
 
 class _EstatsDataRod(ctypes.Structure):
-    _fields_ = [("bytes_in", ctypes.c_ulong), ("bytes_out", ctypes.c_ulong)]
+    # TCP_ESTATS_DATA_ROD_v0: DataBytesIn + DataBytesOut are ULONG64 (16 bytes)!
+    # passing an 8-byte buffer makes Windows return ERROR_INVALID_USER_BUFFER (1784)
+    _fields_ = [("bytes_in", ctypes.c_ulonglong), ("bytes_out", ctypes.c_ulonglong)]
 
 
 class TrafficMonitor(object):
@@ -427,6 +429,8 @@ class TrafficMonitor(object):
         rc = ctypes.windll.iphlpapi.SetPerTcpConnectionEStats(
             ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw), 0,
             ctypes.sizeof(rw), 0)
+        if rc == 1168:            # ERROR_NOT_FOUND: conn already closed (normal churn)
+            return False
         if rc != 0:
             if self.diag["enable_rc"] is None:
                 self.diag["enable_rc"] = rc
@@ -445,6 +449,8 @@ class TrafficMonitor(object):
             ctypes.byref(rw), 0, ctypes.sizeof(rw),   # Rw  (check EnableCollection)
             None, 0, 0,                               # Ros (out, optional)
             ctypes.byref(rod), 0, ctypes.sizeof(rod))
+        if rc == 1168:            # ERROR_NOT_FOUND: conn already closed (normal churn)
+            raise OSError("connection closed (1168)")
         if rc != 0:
             if self.diag["read_rc"] is None:
                 self.diag["read_rc"] = rc
