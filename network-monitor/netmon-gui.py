@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.0"
+VERSION = "1.2"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -376,7 +376,9 @@ class TrafficMonitor(object):
         self.system = {"dl_rate": 0.0, "ul_rate": 0.0, "dl_total": 0, "ul_total": 0}
         self.estats_ok = IS_WINDOWS
         self.estats_err = 0
+        self.diag = {"rows": 0, "enabled": 0, "enable_rc": None, "read_rc": None}
         self._enabled = set()
+        self._tries = {}
         self._fail = 0
         self._last_poll = 0.0
         self._ad_prev = None      # (ts, rx, tx) adapter totals
@@ -410,29 +412,43 @@ class TrafficMonitor(object):
     def _enable(self, key, row):
         if key in self._enabled:
             return True
+        t = self._tries.get(key, 0)
+        if t >= 3:
+            return False
+        self._tries[key] = t + 1
         rw = _EstatsDataRw()
         rw.enable = 1
+        # NOTE: 5 parameters (Row, Type, Rw, RwVersion, RwSize)
         rc = ctypes.windll.iphlpapi.SetPerTcpConnectionEstats(
-            ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw))
-        self._enabled.add(key)
+            ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw), 0, ctypes.sizeof(rw))
         if rc != 0:
-            if self.estats_err == 0:
-                self.estats_err = rc
+            if self.diag["enable_rc"] is None:
+                self.diag["enable_rc"] = rc
+            self.estats_err = self.estats_err or rc
+            self._fail += 1
             return False
+        self._enabled.add(key)
+        self.diag["enabled"] += 1
         return True
 
     def _read(self, row):
         rod = _EstatsDataRod()
+        # NOTE: 11 parameters (Row, Type, Rw+v+s, Ros+v+s, Rod+v+s)
         rc = ctypes.windll.iphlpapi.GetPerTcpConnectionEstats(
-            ctypes.byref(row), ESTATS_DATA, None, 0, 0,
+            ctypes.byref(row), ESTATS_DATA,
+            None, 0, 0,              # Rw  (out, optional)
+            None, 0, 0,              # Ros (out, optional)
             ctypes.byref(rod), 0, ctypes.sizeof(rod))
         if rc != 0:
+            if self.diag["read_rc"] is None:
+                self.diag["read_rc"] = rc
             raise OSError("GetPerTcpConnectionEstats rc=%d" % rc)
         return int(rod.bytes_in), int(rod.bytes_out)
 
     # ---- polling ----
     def poll_conns(self):
         rows = self._rows()
+        self.diag["rows"] = len(rows)
         procs = get_processes()
         now = time.time()
         cur = {}
@@ -537,8 +553,10 @@ class TrafficMonitor(object):
             self.poll_conns()
         except Exception:
             self._fail += 1
-        if self._fail >= 3:
+        if self._fail >= 3 and self.estats_ok:
             self.estats_ok = False
+            print("[traffic] per-app counters FAILED - rows=%(rows)s enable_rc=%(enable_rc)s read_rc=%(read_rc)s"
+                  % self.diag)
         try:
             self.poll_adapters()
         except Exception:
@@ -936,6 +954,9 @@ async function fetchTraffic(){
         (j.estats_err === 5
           ? '<br>یعنی: برنامه بدون دسترسی Administrator اجرا شده. آن را با <b>Start-NetMon.bat</b> اجرا کن (یا پاورشل را Run as administrator باز کن) — پنجره‌ی آبی UAC باید بیاید و Yes بزنی.'
           : '<br>این برنامه را ببند، دوباره با Start-NetMon.bat اجرا کن و اگر باز همین خطا بود، اسکرین‌شات این پیام را بفرست.') +
+        '<br><span class="mono">(diag: rows=' + (j.diag ? j.diag.rows : '?') + ', enabled=' + (j.diag ? j.diag.enabled : '?') +
+        ', enable_rc=' + (j.diag && j.diag.enable_rc != null ? j.diag.enable_rc : '-') +
+        ', read_rc=' + (j.diag && j.diag.read_rc != null ? j.diag.read_rc : '-') + ')</span>' +
         '<br>(سرعت دانلود/آپلود کل سیستم که بالای صفحه است، بدون ادمین هم کار می‌کند.)';
     } else {
       tip.style.cssText = '';
@@ -1061,9 +1082,11 @@ class Handler(BaseHTTPRequestHandler):
                 system = dict(TRAFFIC_M.system)
                 estats_ok = TRAFFIC_M.estats_ok
                 estats_err = TRAFFIC_M.estats_err
+                diag = dict(TRAFFIC_M.diag)
             apps.sort(key=lambda x: -x["dl"])
             self.send_json({"ok": True, "estats_ok": estats_ok,
-                            "estats_err": estats_err, "apps": apps, "system": system})
+                            "estats_err": estats_err, "diag": diag,
+                            "apps": apps, "system": system})
             return
 
         if path == "/api/rules":
@@ -1182,8 +1205,36 @@ def main():
     ap.add_argument("--port", type=int, default=8124, help="port (default 8124)")
     ap.add_argument("--demo", action="store_true", help="demo mode with sample data (no real data)")
     ap.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    ap.add_argument("--diag", action="store_true", help="run ESTATS self-test and exit")
     args = ap.parse_args()
     DEMO = args.demo
+
+    if args.diag:
+        print("=" * 50)
+        print("  NetMon ESTATS self-test")
+        print("  admin : %s   platform: %s" % (is_admin(), sys.platform))
+        print("=" * 50)
+        try:
+            rows = TRAFFIC_M._rows()
+            print("TCP rows found: %d" % len(rows))
+            ok = 0
+            for local, remote, pid, row in rows[:15]:
+                if pid <= 4:
+                    continue
+                if TRAFFIC_M._enable((local, remote, pid), row):
+                    bi, bo = TRAFFIC_M._read(row)
+                    print("  OK  %-22s pid=%-6d in=%d out=%d" % (remote, pid, bi, bo))
+                    ok += 1
+                    if ok >= 3:
+                        break
+            if ok == 0:
+                print("FAILED - enable_rc=%s read_rc=%s" %
+                      (TRAFFIC_M.diag["enable_rc"], TRAFFIC_M.diag["read_rc"]))
+            else:
+                print("RESULT: per-app traffic counters WORK on this machine.")
+        except Exception as e:
+            print("ERROR: %r" % e)
+        return
 
     host = args.host
     port = args.port if host != "127.0.0.1" else pick_port(args.port)
