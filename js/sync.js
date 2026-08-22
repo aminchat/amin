@@ -10,10 +10,11 @@ import {
 } from './state.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
-export const APP_VERSION = '1.1.1';
+export const APP_VERSION = '1.1.2';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILENAME = 'capital-app-data.json';
 const DRIVE_FILE_KEY = 'capital_app_drive_file_id';
+const TOKEN_KEY = 'capital_app_g_token';
 
 export let gUser = null;
 let gToken = null;
@@ -33,6 +34,27 @@ function decodeJWT(tok) {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
+function tokenAlive() {
+  return !!(gToken && gToken.token && gToken.exp > Date.now() + 5000);
+}
+
+function rememberToken(tok) {
+  gToken = tok;
+  store.set(TOKEN_KEY, tok ? JSON.stringify(tok) : '');
+}
+
+function loadSavedToken() {
+  try {
+    const raw = store.get(TOKEN_KEY);
+    if (!raw) return;
+    const t = JSON.parse(raw);
+    if (t && t.token && t.exp > Date.now() + 5000) gToken = t;
+    else store.set(TOKEN_KEY, '');
+  } catch (e) {
+    store.set(TOKEN_KEY, '');
+  }
+}
+
 function setSignedIn(u) {
   gUser = u;
   store.set('g_user', JSON.stringify(u));
@@ -41,7 +63,7 @@ function setSignedIn(u) {
 
 function clearSignedIn() {
   gUser = null;
-  gToken = null;
+  rememberToken(null);
   store.set('g_user', '');
   store.set('g_signed', '0');
 }
@@ -72,7 +94,7 @@ export function requestAccessToken(cb, interactive) {
     done(false);
     return;
   }
-  if (gToken && gToken.exp > Date.now() + 60000) {
+  if (tokenAlive() && gToken.exp > Date.now() + 60000) {
     done(true);
     return;
   }
@@ -92,10 +114,10 @@ export function requestAccessToken(cb, interactive) {
     tokenRequesting = false;
     const ok = !!(resp && !resp.error && resp.access_token);
     if (ok) {
-      gToken = {
+      rememberToken({
         token: resp.access_token,
         exp: Date.now() + (resp.expires_in || 3600) * 1000,
-      };
+      });
     }
     const waiters = tokenWaiters.splice(0);
     waiters.forEach((fn) => fn(ok));
@@ -157,7 +179,7 @@ function driveFetch(url, opts) {
   opts.headers.Authorization = 'Bearer ' + gToken.token;
   return fetch(url, opts).then(function (r) {
     if (r.status === 401) {
-      gToken = null;
+      rememberToken(null);
       return new Promise(function (res) {
         requestAccessToken(function (ok) {
           if (!ok) {
@@ -241,13 +263,20 @@ function driveCreate(content) {
 }
 
 function driveUpdate(id, content) {
-  return driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + id + '?uploadType=media', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: content,
-  }).then(function (r) {
-    if (!r.ok) throw new Error('Drive upload ' + r.status);
-    return r;
+  const fd = new FormData();
+  fd.append(
+    'metadata',
+    new Blob([JSON.stringify({ name: DRIVE_FILENAME, mimeType: 'application/json' })], {
+      type: 'application/json',
+    })
+  );
+  fd.append('file', new Blob([content], { type: 'application/json' }));
+  return driveFetch(
+    'https://www.googleapis.com/upload/drive/v3/files/' + id + '?uploadType=multipart&fields=id,name',
+    { method: 'PATCH', body: fd }
+  ).then(function (r) {
+    if (r.ok) return r;
+    return driveCreate(content);
   });
 }
 
@@ -323,7 +352,7 @@ export function loadFromDrive(cb, interactive) {
       });
   };
 
-  if (!gToken) {
+  if (!tokenAlive()) {
     requestAccessToken(function (ok) {
       if (ok) run();
       else {
@@ -364,7 +393,7 @@ export function pushToDrive(interactive) {
       .then(finish);
   };
 
-  if (!gToken) {
+  if (!tokenAlive()) {
     requestAccessToken(function (ok) {
       if (ok) run();
       else {
@@ -390,7 +419,11 @@ export function renderSyncCard() {
       '<div><div style="color:var(--text);font-size:12px;font-weight:600">' +
       esc(gUser.name) +
       '</div>' +
-      '<div style="color:var(--green);font-size:10px">همگام‌سازی خودکار فعال ✓ · نسخه ' +
+      '<div style="color:' +
+      (tokenAlive() ? 'var(--green)' : 'var(--orange)') +
+      ';font-size:10px">' +
+      (tokenAlive() ? 'همگام‌سازی فعال ✓' : 'برای ادامه همگام‌سازی یک‌بار بزن') +
+      ' · نسخه ' +
       APP_VERSION +
       '</div></div></button>'
     );
@@ -428,9 +461,5 @@ export function refreshFromDrive() {
   const done = function () {
     render();
   };
-  if (gToken) loadFromDrive(done);
-  else
-    requestAccessToken(function (ok) {
-      if (ok) loadFromDrive(done);
-    }, false);
+  if (tokenAlive()) loadFromDrive(done);
 }
