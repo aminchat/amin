@@ -931,10 +931,15 @@ async function fetchTraffic(){
       '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px">هنوز ترافیکی ثبت نشده — کمی صبر کنید...</td></tr>';
     const tip = document.getElementById('traffic-tip');
     if (!j.estats_ok){
-      tip.innerHTML = '⚠ شمارش حجم <b>هر برنامه</b> فعال نشد (به اجرای برنامه با Administrator نیاز دارد). ' +
-        'سرعت و مجموع کل سیستم از کارت شبکه خوانده می‌شود و بدون ادمین هم کار می‌کند.';
+      tip.style.cssText = 'background:#3d1c1c;border:1px solid var(--danger);color:#ff9d97;border-radius:8px;padding:12px 14px;font-size:13px;line-height:2';
+      tip.innerHTML = '⛔ شمارش حجم <b>هر برنامه</b> فعال نیست — کد خطای ویندوز: <b>' + (j.estats_err || '?') + '</b>' +
+        (j.estats_err === 5
+          ? '<br>یعنی: برنامه بدون دسترسی Administrator اجرا شده. آن را با <b>Start-NetMon.bat</b> اجرا کن (یا پاورشل را Run as administrator باز کن) — پنجره‌ی آبی UAC باید بیاید و Yes بزنی.'
+          : '<br>این برنامه را ببند، دوباره با Start-NetMon.bat اجرا کن و اگر باز همین خطا بود، اسکرین‌شات این پیام را بفرست.') +
+        '<br>(سرعت دانلود/آپلود کل سیستم که بالای صفحه است، بدون ادمین هم کار می‌کند.)';
     } else {
-      tip.textContent = 'شمارش از لحظه‌ی شروع مانیتور و برای اتصال‌های TCP انجام می‌شود. برای دیدن حجم‌ها اجازه بده چند ثانیه داده جمع شود.';
+      tip.style.cssText = '';
+      tip.textContent = 'شمارش از لحظه‌ی شروع مانیتور و برای اتصال‌های TCP انجام می‌شود. برای دیدن حجم‌ها اجازه بده چند ثانیه داده جمع شود — یک دانلود یا ویدیو باز کن تا عدد بیاید.';
     }
   }catch(e){ /* ignore */ }
 }
