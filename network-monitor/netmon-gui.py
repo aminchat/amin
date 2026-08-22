@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.2"
+VERSION = "1.3"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -418,8 +418,8 @@ class TrafficMonitor(object):
         self._tries[key] = t + 1
         rw = _EstatsDataRw()
         rw.enable = 1
-        # NOTE: 5 parameters (Row, Type, Rw, RwVersion, RwSize)
-        rc = ctypes.windll.iphlpapi.SetPerTcpConnectionEstats(
+        # NOTE: exported symbol is SetPerTcpConnectionEStats (capital S!)
+        rc = ctypes.windll.iphlpapi.SetPerTcpConnectionEStats(
             ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw), 0, ctypes.sizeof(rw))
         if rc != 0:
             if self.diag["enable_rc"] is None:
@@ -433,8 +433,9 @@ class TrafficMonitor(object):
 
     def _read(self, row):
         rod = _EstatsDataRod()
-        # NOTE: 11 parameters (Row, Type, Rw+v+s, Ros+v+s, Rod+v+s)
-        rc = ctypes.windll.iphlpapi.GetPerTcpConnectionEstats(
+        # NOTE: exported symbol is GetPerTcpConnectionEStats (capital S!)
+        # 11 parameters: Row, Type, Rw+v+s, Ros+v+s, Rod+v+s
+        rc = ctypes.windll.iphlpapi.GetPerTcpConnectionEStats(
             ctypes.byref(row), ESTATS_DATA,
             None, 0, 0,              # Rw  (out, optional)
             None, 0, 0,              # Ros (out, optional)
