@@ -1,25 +1,16 @@
-﻿﻿<#
-===================================================================================
-  Network-Monitor.ps1  |  مانیتورینگ شبکه ویندوز
-===================================================================================
-  این اسکریپت نشون می‌ده:
-    - هر برنامه (پروسس) به کدام آدرس/سرور متصل است
-    - حجم و سرعت مصرفی هر کارت شبکه
-    - پرترافیک‌ترین برنامه‌ها
-    - (اختیاری) کشور مقصد اتصال‌ها و دامنه سرورها
-
-  اجرا:
-    powershell -ExecutionPolicy Bypass -File .\Network-Monitor.ps1
-    یا بعد از یک‌بار:
-    Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-    .\Network-Monitor.ps1
-
-  نکته: برای دیدن اتصال‌های ALL پروسه‌ها (مثل سرویس‌های ویندوز)،
-        این اسکریپت را «به‌عنوان Administrator» اجرا کنید.
-
-  نیازمندی: ویندوز 10/11 یا ویندوز سرور 2012+ (PowerShell داخلی کافی است)
-===================================================================================
-#>
+﻿# ==========================================================
+#  Network-Monitor.ps1  |  Windows network monitor
+#  Shows:
+#    - which process connects to which server
+#    - per-adapter speed and total traffic
+#    - top traffic apps
+#    - optional: destination country + hostname
+#
+#  Run:
+#    powershell -ExecutionPolicy Bypass -File .\Network-Monitor.ps1
+#  Tip: run as Administrator to see ALL connections
+#  Requires: Windows 10/11 / Server 2012+ (built-in PowerShell)
+# ==========================================================
 
 [CmdletBinding()]
 param(

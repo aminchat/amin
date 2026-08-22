@@ -30,6 +30,12 @@
 [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\netmon.ps1"; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" -OutFile $f; powershell -ExecutionPolicy Bypass -File $f -Geo
 ```
 
+**دستور ۱ب — نسخه با curl.exe (کاملاً بایتبهبایت، مطمئنترین برای رمزگذاری):**
+```powershell
+curl.exe -L -o "%TEMP%\netmon.ps1" "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" ; powershell -ExecutionPolicy Bypass -File "%TEMP%\netmon.ps1" -Geo
+```
+> `curl.exe` در ویندوز ۱۰/۱۱ از قبل موجود است و فایل را دقیقاً همانطور که هست ذخیره میکند (برخلاف Invoke-WebRequest که گاهی رمزگذاری را تغییر میدهد).
+
 **دستور ۲ — نسخه بدون ذخیره فایل (نمای پیش‌فرض):**
 ```powershell
 irm https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1 | iex
@@ -136,6 +142,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 | `Cannot bind parameter 'OwningProcess'` و خطاهای مشابه | اسکریپت را خطبهخط در کنسول تایپ کردهاید | همانطور که بالاتر گفتم: دانلود کنید، تایپ نکنید |
 | هیچ اتصالی نشان داده نمیشود | بدون Administrator اجرا شده یا اینترنت قطع است | با «Run as administrator» اجرا کنید |
 | `Invoke-RestMethod` در `-Geo` خطا داد | دسترسی به ip-api.com نیست | `-Geo` را حذف کنید؛ بقیه امکانات کار میکند |
+| `Missing expression after unary operator '-'` یا `Unexpected token` موقع اجرای فایل دانلودشده | نسخه قدیمی فایل دارای BOM دوتایی بود (مشکل خود فایل، نه سیستم شما) | دوباره همان دستور را اجرا کنید تا **نسخه اصلاحشده** دانلود شود؛ اگر باز هم خطا داد از دستور ۱ب (curl.exe) استفاده کنید |
 
 > اگر خطای دیگری گرفتید، **عین متن خطا** را برای من بفرستید تا دقیق بگویم مشکل چیست.
 
