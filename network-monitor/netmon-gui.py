@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.4"
+VERSION = "1.5"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -422,9 +422,11 @@ class TrafficMonitor(object):
         self._tries[key] = t + 1
         rw = _EstatsDataRw()
         rw.enable = 1
-        # NOTE: exported symbol is SetPerTcpConnectionEStats (capital S!)
+        # NOTE: 6 parameters (Row, Type, Rw, RwVersion, RwSize, Offset=0)
+        # MSDN: "ERROR_NOT_SUPPORTED is returned if RwVersion or Offset is not 0"
         rc = ctypes.windll.iphlpapi.SetPerTcpConnectionEStats(
-            ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw), 0, ctypes.sizeof(rw))
+            ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw), 0,
+            ctypes.sizeof(rw), 0)
         if rc != 0:
             if self.diag["enable_rc"] is None:
                 self.diag["enable_rc"] = rc
@@ -436,17 +438,19 @@ class TrafficMonitor(object):
 
     def _read(self, row):
         rod = _EstatsDataRod()
-        # NOTE: exported symbol is GetPerTcpConnectionEStats (capital S!)
-        # 11 parameters: Row, Type, Rw+v+s, Ros+v+s, Rod+v+s
+        rw = _EstatsDataRw()
+        # NOTE: 11 parameters: Row, Type, Rw+v+s, Ros+v+s, Rod+v+s
         rc = ctypes.windll.iphlpapi.GetPerTcpConnectionEStats(
             ctypes.byref(row), ESTATS_DATA,
-            None, 0, 0,              # Rw  (out, optional)
-            None, 0, 0,              # Ros (out, optional)
+            ctypes.byref(rw), 0, ctypes.sizeof(rw),   # Rw  (check EnableCollection)
+            None, 0, 0,                               # Ros (out, optional)
             ctypes.byref(rod), 0, ctypes.sizeof(rod))
         if rc != 0:
             if self.diag["read_rc"] is None:
                 self.diag["read_rc"] = rc
-            raise OSError("GetPerTcpConnectionEstats rc=%d" % rc)
+            raise OSError("GetPerTcpConnectionEStats rc=%d" % rc)
+        if not rw.enable:
+            raise OSError("estats collection not enabled on this connection")
         return int(rod.bytes_in), int(rod.bytes_out)
 
     # ---- polling ----
