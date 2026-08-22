@@ -12,9 +12,12 @@
 #
 
 import argparse
+import ctypes
 import json
 import os
 import re
+import socket
+import struct
 import subprocess
 import sys
 import threading
@@ -27,6 +30,8 @@ VERSION = "1.0"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
+
+DEMO = False  # set by --demo
 
 # ---------------- caches / locks ----------------
 
@@ -97,7 +102,10 @@ def relaunch_elevated():
         return False
     try:
         import ctypes
-        params = '"{}" "{}"'.format(sys.executable, os.path.abspath(__file__))
+        if getattr(sys, "frozen", False):          # standalone exe (PyInstaller)
+            params = '"{}"'.format(sys.executable)
+        else:
+            params = '"{}" "{}"'.format(sys.executable, os.path.abspath(__file__))
         ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, 1)
         return int(ret) > 32
     except Exception:
@@ -336,6 +344,219 @@ def kill_process(pid):
     return ok, "killed" if ok else out.strip() or "failed"
 
 
+# ---------------- per-app traffic (TCP byte counters) ----------------
+# Uses the Windows IP Helper API (GetPerTcpConnectionEstats) to read
+# cumulative sent/received bytes of every TCP connection, then attributes
+# the deltas to the owning process. Needs Administrator rights.
+
+TCP_TABLE_OWNER_PID_ALL = 5
+ESTATS_DATA = 1
+
+
+class _TcpRow(ctypes.Structure):
+    _fields_ = [("state", ctypes.c_ulong), ("local_addr", ctypes.c_ulong),
+                ("local_port", ctypes.c_ulong), ("remote_addr", ctypes.c_ulong),
+                ("remote_port", ctypes.c_ulong), ("pid", ctypes.c_ulong)]
+
+
+class _EstatsDataRw(ctypes.Structure):
+    _fields_ = [("enable", ctypes.c_ubyte)]
+
+
+class _EstatsDataRod(ctypes.Structure):
+    _fields_ = [("bytes_in", ctypes.c_ulong), ("bytes_out", ctypes.c_ulong)]
+
+
+class TrafficMonitor(object):
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.prev = {}            # conn key -> (bytes_in, bytes_out) last reading
+        self.apps = {}            # pid -> {"name","dl","ul","dl_rate","ul_rate"}
+        self.system = {"dl_rate": 0.0, "ul_rate": 0.0, "dl_total": 0, "ul_total": 0}
+        self.estats_ok = IS_WINDOWS
+        self.estats_err = 0
+        self._enabled = set()
+        self._fail = 0
+        self._last_poll = 0.0
+        self._ad_prev = None      # (ts, rx, tx) adapter totals
+        self._demo_last = 0.0
+
+    # ---- low level (Windows IP Helper) ----
+    def _rows(self):
+        iph = ctypes.windll.iphlpapi
+        size = ctypes.c_ulong(0)
+        iph.GetExtendedTcpTable(None, ctypes.byref(size), 0, 2, TCP_TABLE_OWNER_PID_ALL, 0)
+        buf = ctypes.create_string_buffer(max(size.value, 4))
+        rc = iph.GetExtendedTcpTable(buf, ctypes.byref(size), 0, 2, TCP_TABLE_OWNER_PID_ALL, 0)
+        if rc != 0:
+            raise OSError("GetExtendedTcpTable rc=%d" % rc)
+        n = ctypes.cast(buf, ctypes.POINTER(ctypes.c_ulong)).contents.value
+        out = []
+        if n <= 0 or n > 5000:
+            return out
+        arr = ctypes.cast(ctypes.addressof(buf) + 4,
+                          ctypes.POINTER(_TcpRow * n)).contents
+        for i in range(n):
+            r = arr[i]
+            lport = ((r.local_port & 0xFF) << 8) | ((r.local_port >> 8) & 0xFF)
+            rport = ((r.remote_port & 0xFF) << 8) | ((r.remote_port >> 8) & 0xFF)
+            lip = socket.inet_ntoa(struct.pack("<I", r.local_addr & 0xFFFFFFFF))
+            rip = socket.inet_ntoa(struct.pack("<I", r.remote_addr & 0xFFFFFFFF))
+            out.append(("%s:%d" % (lip, lport), "%s:%d" % (rip, rport), int(r.pid),
+                        _TcpRow.from_buffer_copy(bytes(r))))
+        return out
+
+    def _enable(self, key, row):
+        if key in self._enabled:
+            return True
+        rw = _EstatsDataRw()
+        rw.enable = 1
+        rc = ctypes.windll.iphlpapi.SetPerTcpConnectionEstats(
+            ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw))
+        self._enabled.add(key)
+        if rc != 0:
+            if self.estats_err == 0:
+                self.estats_err = rc
+            return False
+        return True
+
+    def _read(self, row):
+        rod = _EstatsDataRod()
+        rc = ctypes.windll.iphlpapi.GetPerTcpConnectionEstats(
+            ctypes.byref(row), ESTATS_DATA, None, 0, 0,
+            ctypes.byref(rod), 0, ctypes.sizeof(rod))
+        if rc != 0:
+            raise OSError("GetPerTcpConnectionEstats rc=%d" % rc)
+        return int(rod.bytes_in), int(rod.bytes_out)
+
+    # ---- polling ----
+    def poll_conns(self):
+        rows = self._rows()
+        procs = get_processes()
+        now = time.time()
+        cur = {}
+        for local, remote, pid, row in rows:
+            if pid <= 4:
+                continue
+            key = (local, remote, pid)
+            try:
+                if not self._enable(key, row):
+                    continue
+                cur[key] = (self._read(row) + (pid,))
+            except Exception:
+                self._fail += 1
+        interval = max(0.2, now - self._last_poll) if self._last_poll else 2.0
+        self._last_poll = now
+        per_pid = {}
+        with self.lock:
+            for key, val in cur.items():
+                bi, bo, pid = val
+                prev = self.prev.get(key)
+                if prev is None:              # first time seen -> baseline only
+                    self.prev[key] = (bi, bo)
+                    continue
+                dib = max(0, bi - prev[0])
+                dob = max(0, bo - prev[1])
+                self.prev[key] = (bi, bo)
+                d = per_pid.setdefault(pid, [0, 0])
+                d[0] += dib
+                d[1] += dob
+            self.prev = {k: v for k, v in self.prev.items() if k in cur}
+            for pid, (dib, dob) in per_pid.items():
+                a = self.apps.setdefault(pid, {"name": "", "dl": 0, "ul": 0,
+                                               "dl_rate": 0.0, "ul_rate": 0.0})
+                a["dl"] += dib
+                a["ul"] += dob
+                a["dl_rate"] = dib / interval
+                a["ul_rate"] = dob / interval
+                p = procs.get(pid)
+                if p:
+                    a["name"] = p["name"]
+                elif not a["name"]:
+                    a["name"] = "PID %d" % pid
+
+    def poll_adapters(self):
+        """system-wide rates from NIC statistics (works without admin)."""
+        data = ps_json("Get-NetAdapterStatistics | Select-Object ReceivedBytes,SentBytes | "
+                       "ConvertTo-Json -Compress")
+        if data is None:
+            return
+        rows = data if isinstance(data, list) else [data]
+        rx = sum(int(r.get("ReceivedBytes") or 0) for r in rows if isinstance(r, dict))
+        tx = sum(int(r.get("SentBytes") or 0) for r in rows if isinstance(r, dict))
+        now = time.time()
+        with self.lock:
+            if self._ad_prev:
+                dt = max(0.2, now - self._ad_prev[0])
+                self.system["dl_rate"] = max(0.0, (rx - self._ad_prev[1]) / dt)
+                self.system["ul_rate"] = max(0.0, (tx - self._ad_prev[2]) / dt)
+            self._ad_prev = (now, rx, tx)
+            self.system["dl_total"] = rx
+            self.system["ul_total"] = tx
+
+    def poll_demo(self):
+        import random
+        now = time.time()
+        dt = (now - self._demo_last) if self._demo_last else 2.0
+        self._demo_last = now
+        rates = [(15436, "chrome", 250 * 1024), (8288, "telegram", 60 * 1024),
+                 (9460, "steam", 30 * 1024)]
+        with _demo_lock:
+            blocked = any(r["name"].endswith("OneDrive.exe") for r in _demo_state["rules"])
+            killed = list(_demo_state["killed"])
+        if not blocked:
+            rates.append((9764, "OneDrive", 500 * 1024))
+        with self.lock:
+            for pid, name, rate in rates:
+                if pid in killed:
+                    continue
+                a = self.apps.setdefault(pid, {"name": name, "dl": 0, "ul": 0,
+                                               "dl_rate": 0.0, "ul_rate": 0.0})
+                dib = int(rate * dt * (0.7 + random.random() * 0.6))
+                dob = int(rate * 0.08 * dt)
+                a["dl"] += dib
+                a["ul"] += dob
+                a["dl_rate"] = dib / dt
+                a["ul_rate"] = dob / dt
+            self.system = {
+                "dl_rate": sum(a["dl_rate"] for a in self.apps.values()),
+                "ul_rate": sum(a["ul_rate"] for a in self.apps.values()),
+                "dl_total": sum(a["dl"] for a in self.apps.values()),
+                "ul_total": sum(a["ul"] for a in self.apps.values()),
+            }
+
+    def poll(self):
+        if DEMO:
+            self.estats_ok = True
+            self.poll_demo()
+            return
+        if not IS_WINDOWS:
+            return
+        try:
+            self.poll_conns()
+        except Exception:
+            self._fail += 1
+        if self._fail >= 3:
+            self.estats_ok = False
+        try:
+            self.poll_adapters()
+        except Exception:
+            pass
+
+
+TRAFFIC_M = TrafficMonitor()
+
+
+def traffic_loop():
+    while True:
+        try:
+            TRAFFIC_M.poll()
+        except Exception:
+            pass
+        time.sleep(2)
+
+
 # ---------------- demo mode (sample data) ----------------
 
 def demo_connections():
@@ -461,6 +682,8 @@ tr:hover td{background:#1c2330}
   <div class="card"><div class="num" id="c-apps">0</div><div class="lbl">برنامه‌ی متصل</div></div>
   <div class="card"><div class="num" id="c-blocked">0</div><div class="lbl">برنامه‌ی بلاک‌شده</div></div>
   <div class="card"><div class="num" id="c-geo">-</div><div class="lbl">وضعیت تشخیص کشور</div></div>
+  <div class="card"><div class="num" id="c-dl" style="color:var(--accent)">-</div><div class="lbl" id="c-dl-lbl">دانلود کل سیستم</div></div>
+  <div class="card"><div class="num" id="c-ul" style="color:var(--info)">-</div><div class="lbl" id="c-ul-lbl">آپلود کل سیستم</div></div>
 </div>
 
 <div class="controls">
@@ -474,6 +697,20 @@ tr:hover td{background:#1c2330}
 <div class="panel">
   <h2>🖥 بیشترین اتصال به تفکیک برنامه</h2>
   <div id="tops" style="padding:8px 14px 12px"></div>
+</div>
+
+<div class="panel">
+  <h2>📊 مصرف اینترنت هر برنامه — از لحظه‌ی شروع مانیتور</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr>
+      <th>برنامه</th><th>⬇ دانلود</th><th>⬆ آپلود</th>
+      <th>سرعت دانلود</th><th>سرعت آپلود</th><th>عمل</th>
+    </tr></thead>
+    <tbody id="trows"></tbody>
+  </table>
+  </div>
+  <div class="tip" id="traffic-tip">شمارش از لحظه‌ی شروع مانیتور و برای اتصال‌های TCP انجام می‌شود.</div>
 </div>
 
 <div class="panel">
@@ -660,13 +897,46 @@ async function unblock(name){
 }
 
 async function killApp(pid){
-  const c = findConn(pid); if (!c) return;
-  if (!confirm('پروسه‌ی «' + c.name + '» (PID ' + pid + ') بسته شود؟')) return;
+  const c = findConn(pid);
+  const nm = c ? c.name : ('PID ' + pid);
+  if (!confirm('پروسه‌ی «' + nm + '» (PID ' + pid + ') بسته شود؟')) return;
   try{
     await api('/api/kill', {pid: pid});
     toast('✓ بسته شد', 'ok');
     setTimeout(loadConns, 700);
   }catch(e){ toast('خطا: ' + e.message, 'err'); }
+}
+
+const fmtB = b => { b = Number(b) || 0; const u = ['B','KB','MB','GB','TB']; let i = 0;
+  while (b >= 1024 && i < u.length - 1){ b /= 1024; i++; }
+  return (i ? b.toFixed(1) : Math.round(b)) + ' ' + u[i]; };
+const fmtR = b => fmtB(b) + '/s';
+
+async function fetchTraffic(){
+  try{
+    const j = await api('/api/traffic');
+    document.getElementById('c-dl').textContent = fmtR(j.system.dl_rate);
+    document.getElementById('c-dl-lbl').textContent = 'دانلود کل — مجموع ' + fmtB(j.system.dl_total);
+    document.getElementById('c-ul').textContent = fmtR(j.system.ul_rate);
+    document.getElementById('c-ul-lbl').textContent = 'آپلود کل — مجموع ' + fmtB(j.system.ul_total);
+    const rows = (j.apps || []).map(a =>
+      '<tr><td><span class="proc">' + esc(a.name) + '</span> <span class="pid">PID ' + a.pid + '</span></td>' +
+      '<td style="color:var(--accent)"><b>' + fmtB(a.dl) + '</b></td>' +
+      '<td style="color:var(--info)">' + fmtB(a.ul) + '</td>' +
+      '<td class="mono">' + fmtR(a.dl_rate) + '</td>' +
+      '<td class="mono">' + fmtR(a.ul_rate) + '</td>' +
+      '<td>' + (a.pid > 4 ? '<button class="small" onclick="killApp(' + a.pid + ')">✖ پایان</button>' : '-') + '</td></tr>'
+    ).join('');
+    document.getElementById('trows').innerHTML = rows ||
+      '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px">هنوز ترافیکی ثبت نشده — کمی صبر کنید...</td></tr>';
+    const tip = document.getElementById('traffic-tip');
+    if (!j.estats_ok){
+      tip.innerHTML = '⚠ شمارش حجم <b>هر برنامه</b> فعال نشد (به اجرای برنامه با Administrator نیاز دارد). ' +
+        'سرعت و مجموع کل سیستم از کارت شبکه خوانده می‌شود و بدون ادمین هم کار می‌کند.';
+    } else {
+      tip.textContent = 'شمارش از لحظه‌ی شروع مانیتور و برای اتصال‌های TCP انجام می‌شود. برای دیدن حجم‌ها اجازه بده چند ثانیه داده جمع شود.';
+    }
+  }catch(e){ /* ignore */ }
 }
 
 async function elevate(){
@@ -680,9 +950,11 @@ function loadAll(force){
 }
 
 loadAll();
+fetchTraffic();
 TIMER = setInterval(() => {
   if (document.getElementById('auto').checked && !document.hidden) loadConns();
 }, 4000);
+setInterval(() => { if (!document.hidden) fetchTraffic(); }, 2500);
 setInterval(loadRules, 15000);
 setInterval(loadStatus, 30000);
 </script>
@@ -774,6 +1046,19 @@ class Handler(BaseHTTPRequestHandler):
                 if DEMO:
                     c["geo"] = geo_get(c["rip"]) or ""
             self.send_json({"ok": True, "items": items, "geo_ok": geo_ok})
+            return
+
+        if path == "/api/traffic":
+            with TRAFFIC_M.lock:
+                apps = [{"pid": pid, "name": a["name"], "dl": a["dl"], "ul": a["ul"],
+                         "dl_rate": round(a["dl_rate"], 1), "ul_rate": round(a["ul_rate"], 1)}
+                        for pid, a in TRAFFIC_M.apps.items()]
+                system = dict(TRAFFIC_M.system)
+                estats_ok = TRAFFIC_M.estats_ok
+                estats_err = TRAFFIC_M.estats_err
+            apps.sort(key=lambda x: -x["dl"])
+            self.send_json({"ok": True, "estats_ok": estats_ok,
+                            "estats_err": estats_err, "apps": apps, "system": system})
             return
 
         if path == "/api/rules":
@@ -899,6 +1184,7 @@ def main():
     port = args.port if host != "127.0.0.1" else pick_port(args.port)
 
     Handler.DEMO = DEMO
+    threading.Thread(target=traffic_loop, daemon=True).start()
     httpd = ThreadingHTTPServer((host, port), Handler)
     httpd.bind_host = host
     url = "http://127.0.0.1:%d" % port if host == "127.0.0.1" else "http://%s:%d" % (host, port)
