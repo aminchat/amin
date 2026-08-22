@@ -10,7 +10,7 @@ import {
 } from './state.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
-export const APP_VERSION = '1.1.3';
+export const APP_VERSION = '1.1.4';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILENAME = 'capital-app-data.json';
 const DRIVE_FILE_KEY = 'capital_app_drive_file_id';
@@ -320,7 +320,7 @@ function decideSync(local, remote) {
   return { action: 'noop', next: local };
 }
 
-export function loadFromDrive(cb, interactive) {
+export function loadFromDrive(cb, interactive, quiet) {
   cb = cb || function () {};
   if (pushInFlight || pendingLocalSave) {
     cb();
@@ -337,7 +337,7 @@ export function loadFromDrive(cb, interactive) {
         if (!f) {
           return driveCreate(JSON.stringify(state)).then(function () {
             pendingLocalSave = false;
-            toast('اطلاعات در Google Drive ذخیره شد ✓');
+            if (!quiet) toast('اطلاعات در Google Drive ذخیره شد ✓');
           });
         }
         return driveRead(f.id).then(function (text) {
@@ -361,7 +361,7 @@ export function loadFromDrive(cb, interactive) {
         lastPullAt = Date.now();
       })
       .catch(function () {
-        toast('خطا در دریافت از درایو؛ دوباره مجوز را تأیید کن');
+        if (!quiet) toast('خطا در دریافت از درایو؛ دوباره مجوز را تأیید کن');
       })
       .then(function () {
         pullInFlight = false;
@@ -373,7 +373,7 @@ export function loadFromDrive(cb, interactive) {
     requestAccessToken(function (ok) {
       if (ok) run();
       else {
-        toast('مجوز Google Drive داده نشد');
+        if (!quiet) toast('مجوز Google Drive داده نشد');
         cb();
       }
     }, !!interactive);
@@ -479,4 +479,25 @@ export function refreshFromDrive() {
     render();
   };
   if (tokenAlive()) loadFromDrive(done);
+}
+
+let pageSyncTimer = null;
+export function syncOnPageChange() {
+  if (!gUser || !tokenAlive()) return;
+  if (pushInFlight || pullInFlight) return;
+  clearTimeout(pageSyncTimer);
+  pageSyncTimer = setTimeout(function () {
+    if (!tokenAlive()) return;
+    if (pendingLocalSave) {
+      pushToDrive(false);
+      return;
+    }
+    loadFromDrive(
+      function () {
+        render();
+      },
+      false,
+      true
+    );
+  }, 350);
 }

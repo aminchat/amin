@@ -12,6 +12,7 @@ import {
   pushToDrive,
   refreshFromDrive,
   scheduleSync,
+  syncOnPageChange,
 } from './sync.js';
 import {
   delAccount,
@@ -67,6 +68,7 @@ function switchTab(id) {
   document.getElementById('tab-' + id).classList.add('active');
   buildNav();
   render();
+  syncOnPageChange();
 }
 
 function findTx(id) {
