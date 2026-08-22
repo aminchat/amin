@@ -1,4 +1,4 @@
-﻿# ==========================================================
+# ==========================================================
 #  Network-Monitor.ps1  |  Windows network monitor
 #  Shows:
 #    - which process connects to which server
@@ -14,27 +14,23 @@
 
 [CmdletBinding()]
 param(
-    [switch]$Connections,      # لیست اتصال‌های زنده (عمل پیش‌فرض)
-    [switch]$Top,              # پرترافیک‌ترین پروسه‌ها بر اساس تعداد اتصال
-    [switch]$Interfaces,       # سرعت و حجم کل هر کارت شبکه
-    [switch]$Watch,            # داشبورد زنده (هر $Refresh ثانیه رفرش می‌شود)
-    [int]$Refresh = 3,         # فاصله رفرش داشبورد زنده (ثانیه)
-    [switch]$Geo,              # کشور مقصد اتصال‌ها (نیاز به اینترنت دارد)
-    [switch]$ResolveHosts,     # تبدیل IP مقصد به دامنه (مثلاً cdn.telegram.org)
-    [switch]$IncludeLocal,     # نمایش اتصال‌های localhost/لوکال هم
-    [string]$Process = '',     # فقط اتصال‌های یک برنامه (مثلاً chrome)
-    [int]$TopN = 15,           # تعداد ردیف‌ها در نمای Top
-    [int]$MaxRows = 80         # حداکثر ردیف در لیست اتصال‌ها
+    [switch]$Connections,      # list live connections (default action)
+    [switch]$Top,              # top processes by connection count
+    [switch]$Interfaces,       # per-adapter speed and total traffic
+    [switch]$Watch,            # live dashboard (refreshes every $Refresh s)
+    [int]$Refresh = 3,         # dashboard refresh interval (seconds)
+    [switch]$Geo,              # show destination country (needs internet)
+    [switch]$ResolveHosts,     # resolve remote IP to hostname
+    [switch]$IncludeLocal,     # also show localhost/private connections
+    [string]$Process = '',     # filter: only connections of this process (e.g. chrome)
+    [int]$TopN = 15,           # rows in Top view
+    [int]$MaxRows = 80         # max rows in connection list
 )
 
-# --- پشتیبانی از حروف فارسی در کنسول ---
-try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-$OutputEncoding = [System.Text.Encoding]::UTF8
+$script:geoCache  = @{}   # country cache (avoids hammering ip-api.com)
+$script:hostCache = @{}   # hostname cache
 
-$script:geoCache  = @{}   # کش کشورها (تا به ip-api فشار نیاید)
-$script:hostCache = @{}   # کش دامنه‌ها
-
-# آیا admin هستیم؟
+# --- elevated? ---
 $isAdmin = $false
 try {
     $win = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -43,13 +39,14 @@ try {
 } catch {}
 
 if (-not $isAdmin) {
-    Write-Host 'توجه: بدون Administrator بعضی از اتصال‌های سرویس‌ها/برنامه‌های دیگر دیده نمی‌شود.' -ForegroundColor Yellow
+    Write-Host 'Note: not elevated. Connections of services/other users are hidden.' -ForegroundColor Yellow
+    Write-Host 'Run as Administrator to see everything.' -ForegroundColor Yellow
 }
 
-# ---------- توابع کمکی ----------
+# ---------- helpers ----------
 
 function Test-PrivateIP {
-    # true اگر IP خصوصی/لوکال باشد (loopback, 10.x, 172.16-31, 192.168, ...)
+    # true if the IP is private/local (loopback, 10.x, 172.16-31, 192.168, ...)
     param([string]$ip)
     $a = $null
     if (-not [System.Net.IPAddress]::TryParse($ip, [ref]$a)) { return $true }
@@ -73,7 +70,7 @@ function Test-PrivateIP {
 }
 
 function Format-Size {
-    # تبدیل بایت به واحد خوانا
+    # human readable bytes
     param([double]$bytes)
     if ($bytes -ge 1GB)  { '{0:N2} GB' -f ($bytes / 1GB) }
     elseif ($bytes -ge 1MB) { '{0:N2} MB' -f ($bytes / 1MB) }
@@ -82,7 +79,7 @@ function Format-Size {
 }
 
 function Get-ServiceName {
-    # حدس سرویس بر اساس پورت مقصد
+    # guess service from destination port
     param([int]$port)
     if ($port -ge 27015 -and $port -le 27050) { return 'Steam' }
     $map = @{
@@ -96,7 +93,7 @@ function Get-ServiceName {
 }
 
 function Resolve-HostName {
-    # تبدیل IP به دامنه (با کش)
+    # reverse DNS with cache
     param([string]$ip)
     if ($script:hostCache.ContainsKey($ip)) { return $script:hostCache[$ip] }
     if (Test-PrivateIP $ip) { $script:hostCache[$ip] = $ip; return $ip }
@@ -111,14 +108,14 @@ function Resolve-HostName {
 }
 
 function Get-GeoInfo {
-    # کشور/شهر/ISP آدرس‌های مقصد — با API رایگان ip-api.com (بدون کلید)
+    # country/city/ISP of destination IPs via free ip-api.com (no key)
     param([string[]]$ips)
     $public = @($ips | Where-Object { -not (Test-PrivateIP $_) } | Select-Object -Unique)
     if ($public.Count -eq 0) { return }
     $todo = @($public | Where-Object { -not $script:geoCache.ContainsKey($_) })
     if ($todo.Count -eq 0) { return }
 
-    Write-Host ('در حال دریافت کشور مقصد برای {0} آدرس ...' -f $todo.Count) -ForegroundColor DarkGray
+    Write-Host ('Looking up country for {0} address(es) ...' -f $todo.Count) -ForegroundColor DarkGray
     for ($i = 0; $i -lt $todo.Count; $i += 100) {
         $last = [Math]::Min($i + 99, $todo.Count - 1)
         $chunk = @($todo[$i..$last])
@@ -140,7 +137,7 @@ function Get-GeoInfo {
 }
 
 function Get-Connections {
-    # جمع‌آوری اتصال‌های شبکه همراه با نام پروسه
+    # collect network connections with owning process name
     $states = @('Established','TimeWait','CloseWait','FinWait1','FinWait2','SynSent','SynReceived')
     $conns = @(Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $_.State -in $states })
 
@@ -151,7 +148,7 @@ function Get-Connections {
     foreach ($c in $conns) {
         $remote = "$($c.RemoteAddress)"
 
-        # حذف اتصال‌های لوکال مگر اینکه -IncludeLocal داده شده باشد
+        # skip local/private unless -IncludeLocal
         if (-not $IncludeLocal -and (Test-PrivateIP $remote)) { continue }
 
         $pidId = $c.OwningProcess
@@ -175,9 +172,9 @@ function Get-Connections {
 }
 
 function Get-InterfaceStats {
-    # سرعت و حجم کل هر کارت شبکه (نمونه‌گیری ۱ ثانیه‌ای)
+    # per-adapter current speed + cumulative traffic (1-second sample)
     $s1 = @(Get-NetAdapterStatistics -ErrorAction SilentlyContinue)
-    if ($s1.Count -eq 0) { Write-Host 'کارت شبکه‌ای پیدا نشد (احتمالاً باید Administrator باشید).' -ForegroundColor Yellow; return }
+    if ($s1.Count -eq 0) { Write-Host 'No adapters found (maybe need Administrator).' -ForegroundColor Yellow; return }
     Start-Sleep -Seconds 1
     $s2 = @(Get-NetAdapterStatistics -ErrorAction SilentlyContinue)
 
@@ -192,12 +189,12 @@ function Get-InterfaceStats {
         if ($down -lt 0) { $down = 0 }
         if ($up -lt 0)   { $up = 0 }
         [pscustomobject][ordered]@{
-            Name         = $x.Name
-            Description  = $x.InterfaceDescription
-            '↓ دانلود'   = (Format-Size $down) + '/s'
-            '↑ آپلود'    = (Format-Size $up) + '/s'
-            '↓ کل'       = Format-Size $x.ReceivedBytes
-            '↑ کل'       = Format-Size $x.SentBytes
+            Name        = $x.Name
+            Description = $x.InterfaceDescription
+            'Download'  = (Format-Size $down) + '/s'
+            'Upload'    = (Format-Size $up) + '/s'
+            'Total DL'  = Format-Size $x.ReceivedBytes
+            'Total UL'  = Format-Size $x.SentBytes
         }
     }
 }
@@ -206,11 +203,11 @@ function Show-TopProcesses {
     param([object[]]$conns)
     $groups = @($conns | Group-Object Process | Sort-Object Count -Descending | Select-Object -First $TopN)
     $rows = foreach ($g in $groups) {
-        $hosts = @($g.Group | ForEach-Object { $_.RemoteIP } | Select-Object -Unique).Count
+        $servers = @($g.Group | ForEach-Object { $_.RemoteIP } | Select-Object -Unique).Count
         [pscustomobject][ordered]@{
-            Process    = $g.Name
-            اتصال      = $g.Count
-            'سرورهای مقصد' = $hosts
+            Process        = $g.Name
+            Connections    = $g.Count
+            'Remote hosts' = $servers
         }
     }
     $rows | Format-Table -AutoSize
@@ -219,33 +216,33 @@ function Show-TopProcesses {
 function Show-Dashboard {
     Clear-Host
     $time = Get-Date -Format 'HH:mm:ss'
-    Write-Host ('═══════════ داشبورد شبکه — {0} ═══════════' -f $time) -ForegroundColor Green
-    Write-Host 'برای خروج: Ctrl+C' -ForegroundColor DarkGray
+    Write-Host ("===== NETWORK DASHBOARD  ($time) =====") -ForegroundColor Green
+    Write-Host 'Press Ctrl+C to exit' -ForegroundColor DarkGray
 
-    Write-Host '' 
-    Write-Host '── کارت‌های شبکه ──' -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host '-- Adapters --' -ForegroundColor Cyan
     $ifs = @(Get-InterfaceStats)
     if ($ifs) { $ifs | Format-Table -AutoSize }
 
-    Write-Host '── پرترافیک‌ترین برنامه‌ها (بر اساس تعداد اتصال) ──' -ForegroundColor Cyan
+    Write-Host '-- Top processes (by connection count) --' -ForegroundColor Cyan
     $conns = @(Get-Connections)
     if ($conns.Count -eq 0) {
-        Write-Host 'اتصالی پیدا نشد.' -ForegroundColor Yellow
+        Write-Host 'No connections found.' -ForegroundColor Yellow
     } else {
         Show-TopProcesses -conns $conns
         $procs = @($conns | Select-Object -ExpandProperty Process -Unique).Count
-        Write-Host ('جمع: {0} اتصال از {1} برنامه' -f $conns.Count, $procs) -ForegroundColor DarkGray
+        Write-Host ('Total: {0} connections from {1} processes' -f $conns.Count, $procs) -ForegroundColor DarkGray
     }
 }
 
 function Show-Connections {
     $conns = @(Get-Connections)
     if ($conns.Count -eq 0) {
-        Write-Host 'اتصال خارجی‌ای پیدا نشد. (برای دیدن همه اتصال‌ها از -IncludeLocal و اجرا با Administrator استفاده کنید)' -ForegroundColor Yellow
+        Write-Host 'No external connections found. (Use -IncludeLocal and run as Administrator to see all.)' -ForegroundColor Yellow
         return
     }
 
-    # کشور مقصد (اختیاری)
+    # destination country (optional)
     if ($Geo) {
         $uniqueIps = @($conns | ForEach-Object { $_.RemoteIP } | Select-Object -Unique)
         Get-GeoInfo -ips $uniqueIps
@@ -257,13 +254,13 @@ function Show-Connections {
         if ($ResolveHosts) { $remoteHost = Resolve-HostName -ip $c.RemoteIP }
         if ($Geo -and $script:geoCache.ContainsKey($c.RemoteIP)) { $country = $script:geoCache[$c.RemoteIP] }
         $item = [ordered]@{
-            Process    = $c.Process
-            PID        = $c.PID
-            RemoteIP   = $c.RemoteIP
-            Port       = $c.RemotePort
-            Service    = $c.Service
-            State      = $c.State
-            LocalPort  = $c.LocalPort
+            Process   = $c.Process
+            PID       = $c.PID
+            RemoteIP  = $c.RemoteIP
+            Port      = $c.RemotePort
+            Service   = $c.Service
+            State     = $c.State
+            LocalPort = $c.LocalPort
         }
         if ($ResolveHosts) { $item['RemoteHost'] = $remoteHost }
         if ($Geo)          { $item['Country']   = $country }
@@ -273,8 +270,8 @@ function Show-Connections {
     $rows = @($rows | Sort-Object Process, RemoteIP | Select-Object -First $MaxRows)
     $rows | Format-Table -AutoSize
 
-    # پرتکرارترین سرورهای مقصد
-    Write-Host '── پرتکرارترین سرورهای مقصد ──' -ForegroundColor Cyan
+    # most frequent remote servers
+    Write-Host '-- Most frequent remote servers --' -ForegroundColor Cyan
     $conns | Group-Object RemoteIP | Sort-Object Count -Descending | Select-Object -First 10 |
         ForEach-Object {
             $remoteHost = ''
@@ -282,10 +279,10 @@ function Show-Connections {
             Write-Host ('  {0,4}  {1}{2}' -f $_.Count, $_.Name, $remoteHost) -ForegroundColor White
         }
     Write-Host ''
-    Write-Host ('جمع: {0} اتصال از {1} برنامه' -f $conns.Count, (@($conns | Select-Object -ExpandProperty Process -Unique).Count)) -ForegroundColor DarkGray
+    Write-Host ('Total: {0} connections from {1} processes' -f $conns.Count, (@($conns | Select-Object -ExpandProperty Process -Unique).Count)) -ForegroundColor DarkGray
 }
 
-# ---------- اجرای اصلی ----------
+# ---------- main ----------
 
 if ($Watch) {
     try {
@@ -300,30 +297,30 @@ if ($Watch) {
 }
 
 if ($Interfaces) {
-    Write-Host '── کارت‌های شبکه (سرعت لحظه‌ای + حجم کل) ──' -ForegroundColor Green
+    Write-Host '-- Network adapters (current speed + total traffic) --' -ForegroundColor Green
     Get-InterfaceStats | Format-Table -AutoSize
     Write-Host ''
-    Write-Host 'معنی ستون‌ها: ↓ دانلود = سرعت دریافت، ↑ آپلود = سرعت ارسال، ↓/↑ کل = حجم تجمعی از زمان روشن بودن سیستم' -ForegroundColor DarkGray
-    Write-Host 'نکته: اعداد با یک نمونه‌گیری ۱ ثانیه‌ای محاسبه می‌شوند؛ برای سرعت دقیق‌تر از -Watch استفاده کنید.' -ForegroundColor DarkGray
+    Write-Host 'Download = receive speed, Upload = send speed, Total DL/UL = cumulative since boot.' -ForegroundColor DarkGray
+    Write-Host 'Numbers are sampled over 1 second; use -Watch for smoother values.' -ForegroundColor DarkGray
     return
 }
 
 if ($Top) {
-    Write-Host '── پرترافیک‌ترین برنامه‌ها (بر اساس تعداد اتصال) ──' -ForegroundColor Green
+    Write-Host '-- Top processes (by connection count) --' -ForegroundColor Green
     $conns = @(Get-Connections)
     if ($conns.Count -eq 0) {
-        Write-Host 'اتصالی پیدا نشد.' -ForegroundColor Yellow
+        Write-Host 'No connections found.' -ForegroundColor Yellow
     } else {
         Show-TopProcesses -conns $conns
         Write-Host ''
-        Write-Host 'نکته: هرچه تعداد اتصال‌های یک برنامه بیشتر باشد احتمال دانلود/استریم بودنش بیشتر است؛' -ForegroundColor DarkGray
-        Write-Host 'برای سرعت لحظه‌ای واقعی هر برنامه از ابزارهایی مثل NetLimiter یا GlassWire استفاده کنید.' -ForegroundColor DarkGray
+        Write-Host 'Note: more connections usually means downloading/streaming.' -ForegroundColor DarkGray
+        Write-Host 'For exact per-app speed use NetLimiter or GlassWire.' -ForegroundColor DarkGray
     }
     return
 }
 
-# پیش‌فرض: لیست اتصال‌ها
-Write-Host '── اتصال‌های شبکه (از اینجا مشخص می‌شود چه برنامه‌ای به کجا وصل است) ──' -ForegroundColor Green
-Write-Host 'معنی ستون‌ها: RemoteIP = آدرس سرور مقصد، Port = پورت مقصد، Service = سرویس احتمالی (443 = HTTPS و ...)' -ForegroundColor DarkGray
-if ($Process) { Write-Host ('فیلتر: فقط برنامه‌هایی که شامل "' + $Process + '" هستند') -ForegroundColor DarkGray }
+# default: connection list
+Write-Host '-- Active connections (which app connects where) --' -ForegroundColor Green
+Write-Host 'Columns: RemoteIP = destination server, Port = destination port, Service = guessed service (443 = HTTPS, ...)' -ForegroundColor DarkGray
+if ($Process) { Write-Host ('Filter: only processes matching "' + $Process + '"') -ForegroundColor DarkGray }
 Show-Connections

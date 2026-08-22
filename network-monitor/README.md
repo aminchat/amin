@@ -123,6 +123,9 @@ Get-NetTCPConnection -OwningProcess (Get-Process chrome).Id
 همین پوشه حاوی فایل **`Network-Monitor.ps1`** است.
 
 ### اجرا
+
+> 💡 **خروجی اسکریپت به زبان انگلیسی است** — چون کنسول PowerShell ویندوز فارسی را درست نمایش نمیدهد، تمام متنها و ستونها را انگلیسی کردم. ستونها: `Process` (برنامه)، `RemoteIP` (سرور مقصد)، `Port` (پورت)، `Service` (سرویس)، `State` (وضعیت)، `Country` (کشور).
+
 ```powershell
 # روش ۱ (بدون تغییر تنظیمات):
 powershell -ExecutionPolicy Bypass -File .\Network-Monitor.ps1
@@ -138,7 +141,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 |---|---|---|
 | `running scripts is disabled on this system` | ویندوز بهطور پیشفرض اجرای اسکریپت را ممنوع کرده | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` و بعد `Y` |
 | `The term '...' is not recognized as the name of a cmdlet` | متن را تایپ/کپی کردهاید نه اجرای فایل | فایل را دانلود کنید (بخش بالای صفحه) و با `.\Network-Monitor.ps1` اجرا کنید |
-| متن فارسی به شکل `????` یا بههمریخته دیده میشود | کپی-پیست دستی رمزگذاری را خراب کرده | فایل اصلی را دانلود کنید؛ داخل آن UTF-8 با BOM است و خودش درست نمایش میدهد |
+| متن فارسی به شکل `????` یا بههمریخته دیده میشود | کنسول ویندوز فارسی را درست نمایش نمیدهد | **حل شد:** خروجی اسکریپت کاملاً انگلیسی است؛ دوباره دستور را اجرا کنید تا نسخه جدید دانلود شود |
 | `Cannot bind parameter 'OwningProcess'` و خطاهای مشابه | اسکریپت را خطبهخط در کنسول تایپ کردهاید | همانطور که بالاتر گفتم: دانلود کنید، تایپ نکنید |
 | هیچ اتصالی نشان داده نمیشود | بدون Administrator اجرا شده یا اینترنت قطع است | با «Run as administrator» اجرا کنید |
 | `Invoke-RestMethod` در `-Geo` خطا داد | دسترسی به ip-api.com نیست | `-Geo` را حذف کنید؛ بقیه امکانات کار میکند |
