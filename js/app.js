@@ -121,9 +121,15 @@ Object.assign(window, {
 });
 
 document.getElementById('fab').onclick = () => openTxForm();
-setTodayLabel();
-buildNav();
-render();
+try {
+  setTodayLabel();
+  buildNav();
+  render();
+} catch (err) {
+  console.error(err);
+  const home = document.getElementById('homeContent');
+  if (home) home.innerHTML = '<div class="card">برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.</div>';
+}
 
 if (typeof google !== 'undefined') {
   initGoogleOnLoad();
