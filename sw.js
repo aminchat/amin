@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v5';
+const CACHE = 'capital-app-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -43,33 +43,20 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (!sameOrigin(e.request.url)) return;
 
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request)
-        .then((resp) => {
-          if (resp && resp.ok) {
-            const copy = resp.clone();
-            caches.open(CACHE).then((c) => c.put('./index.html', copy));
-          }
-          return resp;
-        })
-        .catch(() => caches.match('./index.html'))
-    );
-    return;
-  }
-
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      const fetched = fetch(e.request)
-        .then((resp) => {
-          if (resp && resp.ok) {
-            const copy = resp.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copy));
-          }
-          return resp;
-        })
-        .catch(() => cached);
-      return cached || fetched;
-    })
+    fetch(e.request)
+      .then((resp) => {
+        if (resp && resp.ok) {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => {
+            if (e.request.mode === 'navigate') c.put('./index.html', copy);
+            else c.put(e.request, copy);
+          });
+        }
+        return resp;
+      })
+      .catch(() =>
+        e.request.mode === 'navigate' ? caches.match('./index.html') : caches.match(e.request)
+      )
   );
 });

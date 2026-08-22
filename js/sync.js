@@ -10,7 +10,7 @@ import {
 } from './state.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
-export const APP_VERSION = '1.1.2';
+export const APP_VERSION = '1.1.3';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILENAME = 'capital-app-data.json';
 const DRIVE_FILE_KEY = 'capital_app_drive_file_id';
@@ -40,16 +40,33 @@ function tokenAlive() {
 
 function rememberToken(tok) {
   gToken = tok;
-  store.set(TOKEN_KEY, tok ? JSON.stringify(tok) : '');
+  const raw = tok ? JSON.stringify(tok) : '';
+  store.set(TOKEN_KEY, raw);
+  try {
+    if (raw) sessionStorage.setItem(TOKEN_KEY, raw);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch (e) {}
 }
 
 function loadSavedToken() {
   try {
-    const raw = store.get(TOKEN_KEY);
+    let raw = store.get(TOKEN_KEY);
+    if (!raw) {
+      try {
+        raw = sessionStorage.getItem(TOKEN_KEY);
+      } catch (e) {}
+    }
     if (!raw) return;
     const t = JSON.parse(raw);
-    if (t && t.token && t.exp > Date.now() + 5000) gToken = t;
-    else store.set(TOKEN_KEY, '');
+    if (t && t.token && t.exp > Date.now() + 5000) {
+      gToken = t;
+      store.set(TOKEN_KEY, raw);
+    } else {
+      store.set(TOKEN_KEY, '');
+      try {
+        sessionStorage.removeItem(TOKEN_KEY);
+      } catch (e) {}
+    }
   } catch (e) {
     store.set(TOKEN_KEY, '');
   }
@@ -443,17 +460,17 @@ export function initGoogleOnLoad() {
       gUser = JSON.parse(u);
     } catch (e) {}
   }
+  loadSavedToken();
   google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredential });
-  if (store.get('g_signed') === '1') {
-    requestAccessToken(function (ok) {
-      if (ok)
-        loadFromDrive(function () {
-          render();
-        });
-    }, false);
+  if (store.get('g_signed') === '1' && tokenAlive()) {
+    loadFromDrive(function () {
+      render();
+    });
   }
   render();
 }
+
+loadSavedToken();
 
 export function refreshFromDrive() {
   if (!gUser || pullInFlight || pushInFlight || pendingLocalSave) return;
