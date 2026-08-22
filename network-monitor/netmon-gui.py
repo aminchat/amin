@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.6"
+VERSION = "1.7"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -352,6 +352,25 @@ def kill_process(pid):
 TCP_TABLE_OWNER_PID_ALL = 5
 ESTATS_DATA = 1
 
+# --- explicit function prototypes (safe on x64: extra trailing args are
+#     ignored, missing args are NOT - the callee would read stack garbage) ---
+if IS_WINDOWS:
+    _iph = ctypes.windll.iphlpapi
+    # ULONG SetPerTcpConnectionEStats(Row, Type, Rw, RwVer, RwSize, Offset)
+    _set_conn_estats = ctypes.WINFUNCTYPE(
+        ctypes.c_ulong,
+        ctypes.c_void_p, ctypes.c_int,
+        ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong,
+        ctypes.c_ulong)(("SetPerTcpConnectionEStats", _iph))
+    # ULONG GetPerTcpConnectionEStats(Row, Type, Rw,v,s, Ros,v,s, Rod,v,s [, Offset])
+    _get_conn_estats = ctypes.WINFUNCTYPE(
+        ctypes.c_ulong,
+        ctypes.c_void_p, ctypes.c_int,
+        ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong,
+        ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong,
+        ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong,
+        ctypes.c_ulong)(("GetPerTcpConnectionEStats", _iph))
+
 
 class _TcpRow(ctypes.Structure):
     _fields_ = [("state", ctypes.c_ulong), ("local_addr", ctypes.c_ulong),
@@ -424,11 +443,9 @@ class TrafficMonitor(object):
         self._tries[key] = t + 1
         rw = _EstatsDataRw()
         rw.enable = 1
-        # NOTE: 6 parameters (Row, Type, Rw, RwVersion, RwSize, Offset=0)
-        # MSDN: "ERROR_NOT_SUPPORTED is returned if RwVersion or Offset is not 0"
-        rc = ctypes.windll.iphlpapi.SetPerTcpConnectionEStats(
-            ctypes.byref(row), ESTATS_DATA, ctypes.byref(rw), 0,
-            ctypes.sizeof(rw), 0)
+        # 6 params: Row, Type, Rw, RwVersion, RwSize, Offset=0
+        rc = _set_conn_estats(ctypes.byref(row), ESTATS_DATA,
+                              ctypes.byref(rw), 0, ctypes.sizeof(rw), 0)
         if rc == 1168:            # ERROR_NOT_FOUND: conn already closed (normal churn)
             return False
         if rc != 0:
@@ -442,21 +459,19 @@ class TrafficMonitor(object):
 
     def _read(self, row):
         rod = _EstatsDataRod()
-        rw = _EstatsDataRw()
-        # NOTE: 11 parameters: Row, Type, Rw+v+s, Ros+v+s, Rod+v+s
-        rc = ctypes.windll.iphlpapi.GetPerTcpConnectionEStats(
+        # 12 params: Row, Type, Rw=NULL,0,0, Ros=NULL,0,0, Rod=ptr,0,16, Offset=0
+        rc = _get_conn_estats(
             ctypes.byref(row), ESTATS_DATA,
-            ctypes.byref(rw), 0, ctypes.sizeof(rw),   # Rw  (check EnableCollection)
-            None, 0, 0,                               # Ros (out, optional)
-            ctypes.byref(rod), 0, ctypes.sizeof(rod))
+            None, 0, 0,            # Rw  (not requested)
+            None, 0, 0,            # Ros (not requested)
+            ctypes.byref(rod), 0, ctypes.sizeof(rod),
+            0)                     # Offset (trailing - ignored if unused, x64-safe)
         if rc == 1168:            # ERROR_NOT_FOUND: conn already closed (normal churn)
             raise OSError("connection closed (1168)")
         if rc != 0:
             if self.diag["read_rc"] is None:
                 self.diag["read_rc"] = rc
             raise OSError("GetPerTcpConnectionEStats rc=%d" % rc)
-        if not rw.enable:
-            raise OSError("estats collection not enabled on this connection")
         return int(rod.bytes_in), int(rod.bytes_out)
 
     # ---- polling ----
