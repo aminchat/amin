@@ -26,7 +26,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.8"
+VERSION = "2.0"
 RULE_PREFIX = "NetMonGUI-Block-"
 
 IS_WINDOWS = (sys.platform == "win32")
@@ -388,6 +388,17 @@ class _EstatsDataRod(ctypes.Structure):
     _fields_ = [("bytes_in", ctypes.c_ulonglong), ("bytes_out", ctypes.c_ulonglong)]
 
 
+class _IO_COUNTERS(ctypes.Structure):
+    # GetProcessIoCounters: OtherTransferCount ~= network traffic (+ some IPC)
+    _fields_ = [("read_ops", ctypes.c_ulonglong), ("write_ops", ctypes.c_ulonglong),
+                ("other_ops", ctypes.c_ulonglong), ("read_xfer", ctypes.c_ulonglong),
+                ("write_xfer", ctypes.c_ulonglong), ("other_xfer", ctypes.c_ulonglong)]
+
+
+if IS_WINDOWS:
+    _kernel32 = ctypes.windll.kernel32
+
+
 class TrafficMonitor(object):
 
     def __init__(self):
@@ -404,6 +415,11 @@ class TrafficMonitor(object):
         self._last_poll = 0.0
         self._ad_prev = None      # (ts, rx, tx) adapter totals
         self._demo_last = 0.0
+        # fallback estimator (IO Other counters) state
+        self.io_prev = {}        # pid -> (ts, other_xfer)
+        self.io_keep = {}        # pid -> last seen ts (keep totals ~60s)
+        self._io_ok = False
+        self._estats_off = False
 
     # ---- low level (Windows IP Helper) ----
     def _rows(self):
@@ -503,6 +519,54 @@ class TrafficMonitor(object):
         return int(rod.bytes_in), int(rod.bytes_out)
 
     # ---- polling ----
+    def poll_io_estimate(self):
+        """fallback per-app estimate: deltas of per-process 'Other' I/O transfer
+        bytes (sockets count as Other I/O; some IPC is included too)."""
+        if not IS_WINDOWS:
+            return
+        rows = self._rows()
+        now = time.time()
+        live = set(pid for _, _, pid, _ in rows)
+        pids = set(live)
+        for pid, ts in list(self.io_keep.items()):
+            if now - ts < 60 and pid not in pids:
+                pids.add(pid)
+        procs = get_processes()
+        io = _IO_COUNTERS()
+        for pid in pids:
+            if pid <= 4:
+                continue
+            h = _kernel32.OpenProcess(0x1000, 0, pid)   # PROCESS_QUERY_LIMITED_INFORMATION
+            if not h:
+                continue
+            try:
+                if not _kernel32.GetProcessIoCounters(h, ctypes.byref(io)):
+                    continue
+            finally:
+                _kernel32.CloseHandle(h)
+            ox = int(io.other_xfer)
+            if pid in live:
+                self.io_keep[pid] = now
+            with self.lock:
+                prev = self.io_prev.get(pid)
+                self.io_prev[pid] = (now, ox)
+                if prev is None:
+                    continue
+                dt = max(0.2, now - prev[0])
+                d = max(0, ox - prev[1])
+                a = self.apps.setdefault(pid, {"name": "", "dl": 0, "ul": 0,
+                                               "dl_rate": 0.0, "ul_rate": 0.0, "est": True})
+                a["est"] = True
+                a["dl"] += d
+                a["dl_rate"] = d / dt
+                a["ul_rate"] = 0.0
+                p = procs.get(pid)
+                if p:
+                    a["name"] = p["name"]
+                elif not a["name"]:
+                    a["name"] = "PID %d" % pid
+                self._io_ok = True
+
     def poll_conns(self):
         rows = self._rows()
         self.diag["rows"] = len(rows)
@@ -615,14 +679,21 @@ class TrafficMonitor(object):
             return
         if not IS_WINDOWS:
             return
-        try:
-            self.poll_conns()
-        except Exception:
-            self._fail += 1
-        if self._fail >= 3 and self.estats_ok:
-            self.estats_ok = False
-            print("[traffic] per-app counters FAILED - rows=%(rows)s enable_rc=%(enable_rc)s read_rc=%(read_rc)s"
-                  % self.diag)
+        if not self._estats_off:
+            try:
+                self.poll_conns()
+            except Exception:
+                self._fail += 1
+            if self._fail >= 3 and not self.estats_ok:
+                self.estats_ok = False
+                self._estats_off = True
+                print("[traffic] exact per-app counters unavailable on this system "
+                      "- switching to estimated mode")
+        if self._estats_off or not self.estats_ok:
+            try:
+                self.poll_io_estimate()
+            except Exception:
+                pass
         try:
             self.poll_adapters()
         except Exception:
@@ -784,7 +855,7 @@ tr:hover td{background:#1c2330}
 </div>
 
 <div class="panel">
-  <h2>📊 مصرف اینترنت هر برنامه — از لحظه‌ی شروع مانیتور</h2>
+  <h2 id="traffic-title">📊 مصرف اینترنت هر برنامه — از لحظه‌ی شروع مانیتور</h2>
   <div class="scroll">
   <table>
     <thead><tr>
@@ -1004,17 +1075,29 @@ async function fetchTraffic(){
     document.getElementById('c-ul').textContent = fmtR(j.system.ul_rate);
     document.getElementById('c-ul-lbl').textContent = 'آپلود کل — مجموع ' + fmtB(j.system.ul_total);
     const rows = (j.apps || []).map(a =>
-      '<tr><td><span class="proc">' + esc(a.name) + '</span> <span class="pid">PID ' + a.pid + '</span></td>' +
+      '<tr><td><span class="proc">' + esc(a.name) + '</span>' +
+        (a.est ? ' <span style="color:var(--warn);font-size:11px">(تخمینی)</span>' : '') +
+        ' <span class="pid">PID ' + a.pid + '</span></td>' +
       '<td style="color:var(--accent)"><b>' + fmtB(a.dl) + '</b></td>' +
-      '<td style="color:var(--info)">' + fmtB(a.ul) + '</td>' +
+      '<td style="color:var(--info)">' + (a.est ? '—' : fmtB(a.ul)) + '</td>' +
       '<td class="mono">' + fmtR(a.dl_rate) + '</td>' +
-      '<td class="mono">' + fmtR(a.ul_rate) + '</td>' +
+      '<td class="mono">' + (a.est ? '—' : fmtR(a.ul_rate)) + '</td>' +
       '<td>' + (a.pid > 4 ? '<button class="small" onclick="killApp(' + a.pid + ')">✖ پایان</button>' : '-') + '</td></tr>'
     ).join('');
     document.getElementById('trows').innerHTML = rows ||
-      '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px">هنوز ترافیکی ثبت نشده — کمی صبر کنید...</td></tr>';
+      '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px">هنوز ترافیکی ثبت نشده — کمی صبر کنید و یک چیزی دانلود/باز کنید...</td></tr>';
     const tip = document.getElementById('traffic-tip');
-    if (!j.estats_ok){
+    const title = document.getElementById('traffic-title');
+    if (j.mode === 'estimate'){
+      title.textContent = '📊 مصرف اینترنت هر برنامه — حالت تخمینی';
+      tip.style.cssText = 'background:#3d2e00;border:1px solid var(--warn);color:#e3b341;border-radius:8px;padding:12px 14px;font-size:13px;line-height:2';
+      tip.innerHTML = 'این نسخه‌ی ویندوز شمارش دقیق هر برنامه را نمی‌دهد، پس اعداد بالا <b>تخمینی</b> هستند ' +
+        '(شبکه + کمی ارتباط داخلی برنامه‌ها). برای تشخیص «چه برنامه‌ای دانلود می‌کند» کاملاً کافی است.' +
+        '<br>مقایسه با گزارش رسمی خود ویندوز: ' +
+        "<button class=\"small\" onclick=\"openTool('taskmgr')\">Task Manager (App history)</button> " +
+        "<button class=\"small\" onclick=\"openTool('datausage')\">Settings → Data usage</button>";
+    } else if (!j.estats_ok){
+      title.textContent = '📊 مصرف اینترنت هر برنامه';
       tip.style.cssText = 'background:#3d1c1c;border:1px solid var(--danger);color:#ff9d97;border-radius:8px;padding:12px 14px;font-size:13px;line-height:2';
       tip.innerHTML = '⛔ شمارش حجم <b>هر برنامه</b> فعال نیست — کد خطای ویندوز: <b>' + (j.estats_err || '?') + '</b>' +
         (j.estats_err === 5
@@ -1025,10 +1108,15 @@ async function fetchTraffic(){
         ', read_rc=' + (j.diag && j.diag.read_rc != null ? j.diag.read_rc : '-') + ')</span>' +
         '<br>(سرعت دانلود/آپلود کل سیستم که بالای صفحه است، بدون ادمین هم کار می‌کند.)';
     } else {
+      title.textContent = '📊 مصرف اینترنت هر برنامه — از لحظه‌ی شروع مانیتور';
       tip.style.cssText = '';
       tip.textContent = 'شمارش از لحظه‌ی شروع مانیتور و برای اتصال‌های TCP انجام می‌شود. برای دیدن حجم‌ها اجازه بده چند ثانیه داده جمع شود — یک دانلود یا ویدیو باز کن تا عدد بیاید.';
     }
   }catch(e){ /* ignore */ }
+}
+
+async function openTool(what){
+  try{ await api('/api/open', {what: what}); }catch(e){ toast('خطا: ' + e.message, 'err'); }
 }
 
 async function elevate(){
@@ -1143,14 +1231,18 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/traffic":
             with TRAFFIC_M.lock:
                 apps = [{"pid": pid, "name": a["name"], "dl": a["dl"], "ul": a["ul"],
-                         "dl_rate": round(a["dl_rate"], 1), "ul_rate": round(a["ul_rate"], 1)}
+                         "dl_rate": round(a["dl_rate"], 1), "ul_rate": round(a["ul_rate"], 1),
+                         "est": bool(a.get("est"))}
                         for pid, a in TRAFFIC_M.apps.items()]
                 system = dict(TRAFFIC_M.system)
                 estats_ok = TRAFFIC_M.estats_ok
                 estats_err = TRAFFIC_M.estats_err
                 diag = dict(TRAFFIC_M.diag)
+                io_ok = TRAFFIC_M._io_ok
+            mode = "estats" if (estats_ok and apps and not any(a["est"] for a in apps)) else \
+                   ("estimate" if (io_ok or any(a["est"] for a in apps)) else "none")
             apps.sort(key=lambda x: -x["dl"])
-            self.send_json({"ok": True, "estats_ok": estats_ok,
+            self.send_json({"ok": True, "estats_ok": estats_ok, "mode": mode,
                             "estats_err": estats_err, "diag": diag,
                             "apps": apps, "system": system})
             return
@@ -1244,6 +1336,21 @@ class Handler(BaseHTTPRequestHandler):
                            200 if ok else 500)
             if ok:
                 threading.Timer(1.5, lambda: os._exit(0)).start()
+            return
+
+        if path == "/api/open":
+            what = str(body.get("what") or "")
+            if what == "taskmgr":
+                subprocess.Popen(["taskmgr"])
+                self.send_json({"ok": True})
+            elif what == "datausage":
+                subprocess.Popen(["cmd", "/c", "start", "ms-settings:datausage"])
+                self.send_json({"ok": True})
+            elif what == "resmon":
+                subprocess.Popen(["resmon"])
+                self.send_json({"ok": True})
+            else:
+                self.send_json({"ok": False, "msg": "unknown"}, 400)
             return
 
         self.send_json({"ok": False, "msg": "not found"}, 404)
