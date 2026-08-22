@@ -12,7 +12,7 @@
 > ### راه ۲ — دانلود با خودِ پاورشل (اگر اینترنت GitHub وصل شد)
 > در PowerShell بنویسید:
 > ```powershell
-> Invoke-WebRequest -Uri "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" -OutFile "$env:USERPROFILE\Desktop\Network-Monitor.ps1"
+> Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" -OutFile "$env:USERPROFILE\Desktop\Network-Monitor.ps1"
 > ```
 > (اگر خواستید راهنمای README هم دانلود شود، همان را با نام `README.md` در انتهای دستور تکرار کنید.)
 >
@@ -27,12 +27,12 @@
 
 **دستور ۱ — دانلود خودکار + اجرا (پیشنهادی):**
 ```powershell
-[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\netmon.ps1"; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" -OutFile $f; powershell -ExecutionPolicy Bypass -File $f -Geo
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\netmon-en.ps1"; Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" -OutFile $f; powershell -ExecutionPolicy Bypass -File $f -Geo
 ```
 
 **دستور ۱ب — نسخه با curl.exe (کاملاً بایتبهبایت، مطمئنترین برای رمزگذاری):**
 ```powershell
-curl.exe -L -o "%TEMP%\netmon.ps1" "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" ; powershell -ExecutionPolicy Bypass -File "%TEMP%\netmon.ps1" -Geo
+curl.exe -L -o "%TEMP%\netmon-en.ps1" "https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-monitor/Network-Monitor.ps1" ; powershell -ExecutionPolicy Bypass -File "%TEMP%\netmon-en.ps1" -Geo
 ```
 > `curl.exe` در ویندوز ۱۰/۱۱ از قبل موجود است و فایل را دقیقاً همانطور که هست ذخیره میکند (برخلاف Invoke-WebRequest که گاهی رمزگذاری را تغییر میدهد).
 
@@ -45,12 +45,12 @@ irm https://raw.githubusercontent.com/aminchat/amin/arena/01a0292a-amin/network-
 
 **دستور ۳ — دانلود از لینک زنده همین صفحه (پیشنمایش «دانلود فایلهای مانیتور شبکه»):**
 ```powershell
-[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\netmon.ps1"; Invoke-WebRequest -Uri "https://8123-ivqnmdrmdkxszbd5igoo8.e2b.app/Network-Monitor.ps1" -OutFile $f; powershell -ExecutionPolicy Bypass -File $f -Geo
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\netmon-en.ps1"; Invoke-WebRequest -UseBasicParsing -Uri "https://8123-ivqnmdrmdkxszbd5igoo8.e2b.app/Network-Monitor.ps1" -OutFile $f; powershell -ExecutionPolicy Bypass -File $f -Geo
 ```
 
 **دستور ۴ — دانلود کل شاخه بهصورت فشرده از codeload گیتهاب:**
 ```powershell
-[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\amin.tar.gz"; Invoke-WebRequest -Uri "https://codeload.github.com/aminchat/amin/tar.gz/refs/heads/arena/01a0292a-amin" -OutFile $f; tar -xf $f -C "$env:TEMP"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\amin-arena-01a0292a-amin\network-monitor\Network-Monitor.ps1" -Geo
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $f="$env:TEMP\amin.tar.gz"; Invoke-WebRequest -UseBasicParsing -Uri "https://codeload.github.com/aminchat/amin/tar.gz/refs/heads/arena/01a0292a-amin" -OutFile $f; tar -xf $f -C "$env:TEMP"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\amin-arena-01a0292a-amin\network-monitor\Network-Monitor.ps1" -Geo
 ```
 
 > تغییر `-Geo` در انتهای دستورها اختیاری است: حذفش کنید = بدون نمایش کشور مقصد؛ بهجایش `-Watch` بگذارید = داشبورد زنده.
@@ -202,3 +202,8 @@ Resolve-DnsName 8.8.8.8          # نام معکوس
 2. **`netstat -bno`** با Admin = همان اطلاعات به صورت متنی.
 3. برای دقیقترین سرعت هر برنامه: **NetLimiter** یا **GlassWire**.
 4. اسکریپت `Network-Monitor.ps1` همین پوشه = همه اینها در یک ابزار ساده، با امکان نمایش **کشور مقصد** و **دامنه سرور**.
+
+## Changelog
+
+- v3 (2026-08-22): Fixed process names showing as "PID 1234" (int/uint type bug - real names now shown). Added HTTPS fallback (ipwho.is) when ip-api.com is blocked, so the Country column works on more networks. Output 100% English/ASCII.
+- اگر هنوز خروجی فارسی دیدید یعنی نسخه قدیمی از TEMP اجرا شده — دستور بالا را دوباره اجرا کنید (اسم فایل جدید: netmon-en.ps1).

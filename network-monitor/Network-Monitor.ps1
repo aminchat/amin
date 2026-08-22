@@ -107,6 +107,21 @@ function Resolve-HostName {
     return $script:hostCache[$ip]
 }
 
+function Resolve-GeoFallback {
+    # fallback geo source over HTTPS (ip-api.com uses plain HTTP and is often blocked)
+    param([string[]]$ips)
+    $fails = 0
+    foreach ($ip in $ips) {
+        if ($fails -ge 3) { break }   # network clearly blocks it - stop early
+        try {
+            $r = Invoke-RestMethod -Uri "https://ipwho.is/$ip" -TimeoutSec 5
+            if ($r.success -and $r.ip) {
+                $script:geoCache[$r.ip] = "$($r.city), $($r.country)"
+            } else { $fails++ }
+        } catch { $fails++ }
+    }
+}
+
 function Get-GeoInfo {
     # country/city/ISP of destination IPs via free ip-api.com (no key)
     param([string[]]$ips)
@@ -120,12 +135,14 @@ function Get-GeoInfo {
         $last = [Math]::Min($i + 99, $todo.Count - 1)
         $chunk = @($todo[$i..$last])
         $body = @($chunk | ForEach-Object { @{ query = $_ } }) | ConvertTo-Json -Depth 3
+        $anyOk = $false
         try {
             $resp = @(Invoke-RestMethod -Uri 'http://ip-api.com/batch?fields=status,message,query,country,city,isp' `
-                                       -Method Post -Body $body -ContentType 'application/json' -TimeoutSec 10)
+                                       -Method Post -Body $body -ContentType 'application/json' -TimeoutSec 8)
             foreach ($r in $resp) {
                 if ($r.status -eq 'success' -and $r.query) {
                     $script:geoCache[$r.query] = "$($r.city), $($r.country)"
+                    $anyOk = $true
                 } else {
                     $script:geoCache[$r.query] = '?'
                 }
@@ -133,6 +150,13 @@ function Get-GeoInfo {
         } catch {
             foreach ($ip in $chunk) { $script:geoCache[$ip] = '?' }
         }
+        if (-not $anyOk) {
+            Write-Host '  primary geo source unreachable, trying HTTPS fallback ...' -ForegroundColor DarkGray
+            Resolve-GeoFallback -ips $chunk
+        }
+    }
+    if (@($script:geoCache.Values | Where-Object { $_ -eq '?' }).Count -gt 0) {
+        Write-Host '  Note: geo lookup failed for some IPs (network blocked it). They show as "?".' -ForegroundColor DarkGray
     }
 }
 
@@ -151,7 +175,9 @@ function Get-Connections {
         # skip local/private unless -IncludeLocal
         if (-not $IncludeLocal -and (Test-PrivateIP $remote)) { continue }
 
-        $pidId = $c.OwningProcess
+        # NOTE: OwningProcess is uint32 but hashtable keys (Get-Process Id) are int32;
+        # without the [int] cast the lookup always fails and names show as "PID 1234".
+        $pidId = [int]$c.OwningProcess
         if ($procMap.ContainsKey($pidId)) { $pname = $procMap[$pidId] }
         elseif ($pidId -eq 0) { $pname = 'System' }
         else { $pname = "PID $pidId" }
