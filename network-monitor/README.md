@@ -207,3 +207,43 @@ Resolve-DnsName 8.8.8.8          # نام معکوس
 
 - v3 (2026-08-22): Fixed process names showing as "PID 1234" (int/uint type bug - real names now shown). Added HTTPS fallback (ipwho.is) when ip-api.com is blocked, so the Country column works on more networks. Output 100% English/ASCII.
 - اگر هنوز خروجی فارسی دیدید یعنی نسخه قدیمی از TEMP اجرا شده — دستور بالا را دوباره اجرا کنید (اسم فایل جدید: netmon-en.ps1).
+
+## مدیریت برنامه‌ها (بلاک کردن / محدود کردن)
+
+### ۱) اول پیدا کن چه برنامه‌ای است
+- اسکریپت را با `-Geo` اجرا کن → ستون **Process** نام برنامه را نشان می‌دهد.
+- با `-Path` هم مسیر فایل exe هر برنامه را نشان می‌دهد (برای ساخت قانون فایروال لازم است):
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\netmon-en.ps1" -Geo -Path -Process chrome
+```
+- ابزار داخلی ویندوز: در Run تایپ کن `resmon` → تب **Network** → مصرف لحظه‌ای هر برنامه + پورت‌ها
+- از روی PID در Task Manager: تب **Details** → ستون PID؛ یا در PowerShell:
+```powershell
+(Get-Process -Id 15436).Path
+```
+
+### ۲) بلاک کردن کامل اینترنتِ یک برنامه (فایروال ویندوز — رایگان و داخلی)
+مسیر exe را از خروجی `-Path` بردار و بگذار در این دستور:
+```powershell
+netsh advfirewall firewall add rule name="Block Telegram" dir=out program="C:\Telegram\Telegram.exe" action=block
+```
+- برداشتن بلاک:
+```powershell
+netsh advfirewall firewall delete rule name="Block Telegram"
+```
+- محیط گرافیکی: در Run تایپ کن `wf.msc` → **Outbound Rules** → New Rule → Program
+- ⚠️ **هشدار:** `svchost.exe` و `System` را بلاک نکن؛ اینترنت کل ویندوز قطع می‌شود.
+
+### ۳) محدود کردن سرعت دانلود (نه بلاک کامل)
+- **NetLimiter** — بهترین گزینه؛ برای هر برنامه سقف سرعت عددی تعیین می‌کند (دانلود/آپلود جدا).
+- **GlassWire** — نمودار مصرف هر برنامه + امکان بلاک.
+- QoS داخلی ویندوز: `gpedit.msc` → Windows Settings → Policy-based QoS (فقط ترافیک خروجی TCP).
+
+### ۴) مصرف‌های پنهان خود ویندوز را ببند
+- **Windows Update:** Settings → Windows Update → Advanced → Delivery Optimization → محدود یا خاموش کن.
+- اتصال را **Metered** کن: Settings → Network & Internet → Wi-Fi → Set as metered connection (آپدیت‌های خودکار را متوقف می‌کند).
+- **OneDrive:** Pause sync.
+- تله‌متری مایکروسافت (اختیاری):
+```powershell
+Stop-Service DiagTrack -Force; Set-Service DiagTrack -StartupType Disabled
+```

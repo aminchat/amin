@@ -166,7 +166,11 @@ function Get-Connections {
     $conns = @(Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $_.State -in $states })
 
     $procMap = @{}
-    Get-Process -ErrorAction SilentlyContinue | ForEach-Object { $procMap[$_.Id] = $_.ProcessName }
+    $pathMap = @{}
+    Get-Process -ErrorAction SilentlyContinue | ForEach-Object {
+        $procMap[$_.Id] = $_.ProcessName
+        $pathMap[$_.Id] = [string]$_.Path
+    }
 
     $out = @()
     foreach ($c in $conns) {
@@ -184,7 +188,7 @@ function Get-Connections {
 
         if ($Process -and ($pname -notlike "*$Process*")) { continue }
 
-        $out += [pscustomobject][ordered]@{
+        $item = [ordered]@{
             Process    = $pname
             PID        = $pidId
             RemoteIP   = $remote
@@ -193,6 +197,12 @@ function Get-Connections {
             State      = $c.State
             Service    = Get-ServiceName -port $c.RemotePort
         }
+        if ($Path) {
+            $exe = ''
+            if ($pathMap.ContainsKey($pidId)) { $exe = $pathMap[$pidId] }
+            $item['ExePath'] = $exe
+        }
+        $out += [pscustomobject]$item
     }
     return $out
 }
@@ -290,6 +300,7 @@ function Show-Connections {
         }
         if ($ResolveHosts) { $item['RemoteHost'] = $remoteHost }
         if ($Geo)          { $item['Country']   = $country }
+        if ($Path)         { $item['ExePath']   = $c.ExePath }
         [pscustomobject]$item
     }
 
@@ -350,3 +361,8 @@ Write-Host '-- Active connections (which app connects where) --' -ForegroundColo
 Write-Host 'Columns: RemoteIP = destination server, Port = destination port, Service = guessed service (443 = HTTPS, ...)' -ForegroundColor DarkGray
 if ($Process) { Write-Host ('Filter: only processes matching "' + $Process + '"') -ForegroundColor DarkGray }
 Show-Connections
+if (-not $Path) {
+    Write-Host ''
+    Write-Host 'Tip: run again with -Path to see the exe file of each process (needed to block it in Windows Firewall).' -ForegroundColor DarkGray
+    Write-Host '     Example:  powershell -File netmon-en.ps1 -Geo -Path -Process chrome' -ForegroundColor DarkGray
+}
