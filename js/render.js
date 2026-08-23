@@ -16,10 +16,33 @@ import {
   isTransfer,
   rateOf,
   state,
+  budgetOf,
+  catSpent,
+  catCeiling,
 } from './state.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
+
+function envelopeBars(mk) {
+  const budget = budgetOf(mk);
+  if (!budget) {
+    return '<div class="hint">اول بودجه این ماه را ثبت کن تا سقف هر پاکت مشخص شود.</div>';
+  }
+  return `<div class="tbar">${CATS.map((c) => {
+    const spent = catSpent(mk, c.id);
+    const ceil = catCeiling(mk, c.id);
+    const over = c.target === 0 ? spent > 0 : spent > ceil;
+    const width = ceil > 0 ? Math.min(100, Math.round((spent / ceil) * 100)) : spent > 0 ? 100 : 0;
+    const left = Math.max(0, ceil - spent);
+    const status = over ? 'از سقف رد شد' : 'مانده ' + fmt(left);
+    return `<div class="tr">
+      <div class="top"><span class="n">${c.emoji} ${c.label} · ${toFa(c.target)}٪</span>
+      <span class="p" style="${over ? 'color:var(--red)' : ''}">${fmt(spent)} از ${fmt(ceil)} · ${status}</span></div>
+      <div class="bar"><div style="width:${width}%;background:${over ? 'linear-gradient(90deg,#f59e0b,#ef4444)' : c.color}"></div></div>
+    </div>`;
+  }).join('')}</div>`;
+}
 
 export function renderHome() {
   const s = curStats();
@@ -57,6 +80,12 @@ export function renderHome() {
     </div>
     <div class="pbar"><div class="${pct >= 100 ? 'over' : ''}" style="width:${pct}%"></div></div>
     <div class="small muted" style="display:flex;justify-content:space-between"><span>${toFa(pct)}٪ از موجودی ماه خرج شده</span><span>${fmtT(s.spent)}</span></div>
+  </div>
+
+  <div class="card">
+    <h3>پاکت‌های این ماه</h3>
+    <div class="small muted" style="margin-bottom:12px">سقف هر پاکت از بودجه ${fmt(s.budget)} تومان حساب شده. رد شدن از سقف جلوی ثبت خرج را نمی‌گیرد.</div>
+    ${envelopeBars(mk)}
   </div>
 
   <div class="grid2">
@@ -196,27 +225,14 @@ export function renderReport() {
   </div>`;
 
   html += `<div class="card">
-    <h3>🎯 مقایسه با هدف (راهنما)</h3>
-    <div class="small muted" style="margin-bottom:12px">سهم واقعی هر دسته از خرج‌ها در برابر هدفِ تعیین‌شده (۶۰/۲۰/۱۵/۵).</div>
-    <div class="tbar">
-      ${CATS.filter((c) => c.id !== 'waste')
-        .map((c) => {
-          const v = txs
-            .filter((t) => t.type === 'out' && t.cat === c.id)
-            .reduce((s, t) => {
-              const a = accountById(t.accountId);
-              return s + t.amount * rateOf(a ? a.currency : 'تومان');
-            }, 0);
-          const pct = totalSpent > 0 ? Math.round((v / totalSpent) * 100) : 0;
-          const width = Math.min(100, pct);
-          return `<div class="tr">
-          <div class="top"><span class="n">${c.emoji} ${c.label}</span><span class="p">${toFa(pct)}٪ واقعی · هدف ${toFa(c.target)}٪</span></div>
-          <div class="bar"><div style="width:${width}%;background:${c.color}"></div></div>
-        </div>`;
-        })
-        .join('')}
-    </div>
-    <div class="hint">اگر سهم یک دسته از هدفش بیشتر شد یعنی از برنامه خارج شده‌ای. سهم «هدررفت» همیشه باید صفر باشد.</div>
+    <h3>سقف پاکت‌ها از بودجه</h3>
+    <div class="small muted" style="margin-bottom:12px">${
+      budget
+        ? 'سقف هر پاکت = سهم آن از بودجه ' + fmt(budget) + ' تومان (۶۰/۲۰/۱۵/۵).'
+        : 'برای دیدن سقف پاکت‌ها بودجه این ماه را ثبت کن.'
+    }</div>
+    ${envelopeBars(mk)}
+    <div class="hint">اگر از سقف یک پاکت رد شدی باز هم می‌توانی خرج ثبت کنی؛ فقط از برنامه خارج شده‌ای.</div>
   </div>`;
 
   html += `<div class="card">

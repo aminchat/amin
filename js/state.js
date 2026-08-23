@@ -119,6 +119,22 @@ export function spentIn(mk) {
     .reduce((s, t) => s + txAmountToman(t), 0);
 }
 
+export function budgetOf(mk) {
+  return (state.budgets[mk] && state.budgets[mk].amount) || 0;
+}
+
+export function catSpent(mk, catId) {
+  return state.transactions
+    .filter((t) => t.month === mk && t.type === 'out' && t.cat === catId)
+    .reduce((s, t) => s + txAmountToman(t), 0);
+}
+
+export function catCeiling(mk, catId) {
+  const cat = catById(catId);
+  const target = cat ? cat.target : 0;
+  return Math.round((budgetOf(mk) * target) / 100);
+}
+
 export function incomeIn(mk) {
   return state.transactions
     .filter((t) => t.month === mk && t.type === 'in')
