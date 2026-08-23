@@ -1,4 +1,4 @@
-import { esc, toast, uid, todayISO } from './utils.js';
+import { esc, fmt, toast, uid, todayISO } from './utils.js';
 import { jalaliNow, monthOfISO, MONTHS } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -7,8 +7,8 @@ import {
   CATS,
   CURRENCIES,
   accountById,
+  accountCurrent,
   isTransfer,
-  rateOf,
   save,
   state,
 } from './state.js';
@@ -17,6 +17,7 @@ let editingTxId = null;
 let editingAcctId = null;
 let editingInvId = null;
 let editingTransferPair = null;
+let transferStoredRates = {};
 
 export function openTxForm(tx) {
   if (tx && isTransfer(tx)) {
@@ -410,8 +411,8 @@ export function saveBudget() {
 export function openRateEdit(cur) {
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
-    <h2>نرخ ${esc(cur)}</h2>
-    <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند تومان است؟</p>
+    <h2>نرخ روز ${esc(cur)}</h2>
+    <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند تومان است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)</p>
     <div class="field"><label>تومان به ازای هر واحد</label>
       <input class="input" id="rVal" type="number" inputmode="decimal" min="0" value="${state.rates[cur] || ''}">
     </div>
@@ -458,15 +459,24 @@ export function openTransferForm(tx) {
   const toId = inn
     ? inn.accountId
     : state.accounts.find((a) => a.id !== fromId)?.id || state.accounts[1].id;
+  transferStoredRates = {};
+  if (out) {
+    const fa = accountById(out.accountId);
+    const ta = inn ? accountById(inn.accountId) : null;
+    if (fa && out.fromRate) transferStoredRates[fa.currency] = out.fromRate;
+    if (ta && out.toRate) transferStoredRates[ta.currency] = out.toRate;
+  }
   const opts = state.accounts
     .map((a) => `<option value="${a.id}">${esc(a.name)} · ${a.currency}</option>`)
     .join('');
   openModal(`<button class="x" onclick="closeModal()">✕</button>
     <h2>⇄ ${pair ? 'ویرایش انتقال' : 'انتقال بین حساب‌ها'}</h2>
     <div class="hint" style="margin-bottom:12px">این انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.</div>
-    <div class="field"><label>از حساب</label><select class="input" id="trFrom" onchange="updateTransferPreview()">${opts}</select></div>
-    <div class="field"><label>به حساب</label><select class="input" id="trTo" onchange="updateTransferPreview()">${opts}</select></div>
+    <div class="field"><label>از حساب</label><select class="input" id="trFrom" onchange="transferAccountsChanged()">${opts}</select></div>
+    <div class="field"><label>به حساب</label><select class="input" id="trTo" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>مبلغ از حساب مبدأ</label><input class="input" id="trAmount" type="number" inputmode="decimal" min="0" placeholder="مبلغ به واحد حساب مبدأ" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
+    <div id="trBalance" class="small muted" style="margin:-8px 0 12px"></div>
+    <div id="trRates"></div>
     <div id="trPreview" class="hint" style="margin-bottom:12px">مبلغ حساب مقصد بعد از تبدیل اینجا نمایش داده می‌شود.</div>
     <div class="field"><label>توضیح (اختیاری)</label><input class="input" id="trNote" placeholder="مثلاً انتقال به کارت خرید" value="${esc((out && out.note) || (inn && inn.note) || '')}"></div>
     <div class="field"><label>تاریخ</label><input class="input" id="trDate" type="date" value="${(out && out.dateISO) || (inn && inn.dateISO) || todayISO()}"></div>
@@ -475,7 +485,93 @@ export function openTransferForm(tx) {
   `);
   document.getElementById('trFrom').value = fromId;
   document.getElementById('trTo').value = toId;
+  renderTransferRates();
+  renderTransferBalance();
   updateTransferPreview();
+}
+
+// موجودی قابل برداشت از حساب مبدأ؛ هنگام ویرایش، مبلغ قبلیِ همین انتقال به موجودی برگردانده می‌شود
+function transferSourceAvailable(fromId) {
+  const acct = accountById(fromId);
+  if (!acct) return 0;
+  let bal = accountCurrent(acct);
+  if (editingTransferPair) {
+    const out = state.transactions.find(
+      (t) => t.pair === editingTransferPair && t.type === 'transferOut'
+    );
+    if (out && out.accountId === fromId) bal += out.amount || 0;
+  }
+  return bal;
+}
+
+function renderTransferBalance() {
+  const el = document.getElementById('trBalance');
+  const fromEl = document.getElementById('trFrom');
+  if (!el || !fromEl) return;
+  const acct = accountById(fromEl.value);
+  if (!acct) {
+    el.textContent = '';
+    return;
+  }
+  const avail = Math.max(0, transferSourceAvailable(acct.id));
+  el.innerHTML = `موجودی قابل برداشت از ${esc(acct.name)}: <b style="color:var(--text)">${fmt(avail)} ${esc(acct.currency)}</b>`;
+}
+
+function renderTransferRates() {
+  const wrap = document.getElementById('trRates');
+  const fromEl = document.getElementById('trFrom');
+  const toEl = document.getElementById('trTo');
+  if (!wrap || !fromEl || !toEl) return;
+  const from = accountById(fromEl.value);
+  const to = accountById(toEl.value);
+
+  // مقادیری که کاربر همین الان در فرم وارد کرده را بر اساس ارز نگه می‌داریم
+  const typed = {};
+  ['From', 'To'].forEach((w) => {
+    const el = document.getElementById('trRate' + w);
+    if (el && el.dataset.cur && el.value) typed[el.dataset.cur] = el.value;
+  });
+
+  const rateField = (which, acct) => {
+    const cur = acct.currency;
+    const val =
+      typed[cur] !== undefined
+        ? typed[cur]
+        : transferStoredRates[cur] !== undefined
+          ? transferStoredRates[cur]
+          : state.rates[cur] || '';
+    return `<div class="field"><label>نرخ ${esc(cur)} برای این انتقال (تومان به ازای هر واحد)</label>
+      <input class="input" id="trRate${which}" data-cur="${esc(cur)}" type="number" inputmode="decimal" min="0" placeholder="مثلاً 90000" value="${val}" oninput="updateTransferPreview()">
+    </div>`;
+  };
+
+  let html = '';
+  if (from && to && from.currency !== to.currency) {
+    if (from.currency !== 'تومان') html += rateField('From', from);
+    if (to.currency !== 'تومان') html += rateField('To', to);
+  }
+  if (html) {
+    html =
+      `<div class="hint" style="margin-bottom:12px">💱 این نرخ فقط برای همین انتقال استفاده می‌شود و روی نرخ روزِ محاسبه دارایی کل اثری ندارد.</div>` +
+      html;
+  }
+  wrap.innerHTML = html;
+}
+
+export function transferAccountsChanged() {
+  renderTransferRates();
+  renderTransferBalance();
+  updateTransferPreview();
+}
+
+function readTransferRates(from, to) {
+  const read = (which) => {
+    const el = document.getElementById('trRate' + which);
+    return parseFloat(el ? el.value : '') || 0;
+  };
+  const fromRate = from.currency === 'تومان' ? 1 : read('From');
+  const toRate = to.currency === 'تومان' ? 1 : read('To');
+  return { fromRate, toRate };
 }
 
 export function updateTransferPreview() {
@@ -491,19 +587,23 @@ export function updateTransferPreview() {
     box.textContent = 'مبلغ حساب مقصد بعد از تبدیل اینجا نمایش داده می‌شود.';
     return;
   }
-  const fromRate = rateOf(from.currency);
-  const toRate = rateOf(to.currency);
+  const avail = transferSourceAvailable(from.id);
+  if (amount > avail + 1e-9) {
+    box.innerHTML = `<span style="color:var(--red)">⚠️ مبلغ از موجودی حساب مبدأ بیشتر است. حداکثر برداشت: <b>${fmt(Math.max(0, avail))} ${esc(from.currency)}</b></span>`;
+    return;
+  }
+  if (from.currency === to.currency) {
+    box.innerHTML = `واریز به مقصد: <b>${amount.toLocaleString('en-US')} ${esc(to.currency)}</b> (بدون تبدیل)`;
+    return;
+  }
+  const { fromRate, toRate } = readTransferRates(from, to);
   if (!fromRate || !toRate) {
-    box.textContent = 'نرخ ارز مبدأ یا مقصد را در بخش حساب‌ها ثبت کن.';
+    box.textContent = 'نرخ تبدیل این انتقال را در فیلد بالا وارد کن.';
     return;
   }
   const toman = amount * fromRate;
   const dest = toman / toRate;
-  box.innerHTML = `ارزش انتقال: <b>${toman.toLocaleString('en-US')} تومان</b><br>واریز به مقصد: <b>${dest.toLocaleString('en-US')} ${esc(to.currency)}</b>${
-    from.currency !== 'تومان' || to.currency !== 'تومان'
-      ? `<br><span class="small muted">نرخ ${esc(from.currency)}: ${fromRate} تومان · نرخ ${esc(to.currency)}: ${toRate} تومان</span>`
-      : ''
-  }`;
+  box.innerHTML = `ارزش انتقال: <b>${toman.toLocaleString('en-US')} تومان</b><br>واریز به مقصد: <b>${dest.toLocaleString('en-US')} ${esc(to.currency)}</b><br><span class="small muted">نرخ این انتقال — ${esc(from.currency)}: ${fromRate.toLocaleString('en-US')} تومان · ${esc(to.currency)}: ${toRate.toLocaleString('en-US')} تومان</span>`;
 }
 
 export function saveTransfer() {
@@ -518,15 +618,26 @@ export function saveTransfer() {
     toast('مبلغ معتبر وارد کن');
     return;
   }
-  const fromAcct = accountById(from);
-  const toAcct = accountById(to);
-  const fromRate = rateOf(fromAcct.currency);
-  const toRate = rateOf(toAcct.currency);
-  if (!fromRate || !toRate) {
-    toast('نرخ ارز مبدأ یا مقصد را در بخش حساب‌ها ثبت کن');
+  const available = transferSourceAvailable(from);
+  if (amount > available + 1e-9) {
+    toast('مبلغ از موجودی حساب مبدأ بیشتر است؛ حداکثر ' + fmt(Math.max(0, available)));
     return;
   }
-  const destinationAmount = amount * fromRate / toRate;
+  const fromAcct = accountById(from);
+  const toAcct = accountById(to);
+  const sameCurrency = fromAcct.currency === toAcct.currency;
+  let fromRate = 1;
+  let toRate = 1;
+  if (!sameCurrency) {
+    const rates = readTransferRates(fromAcct, toAcct);
+    fromRate = rates.fromRate;
+    toRate = rates.toRate;
+    if (!fromRate || fromRate <= 0 || !toRate || toRate <= 0) {
+      toast('نرخ تبدیل این انتقال را وارد کن');
+      return;
+    }
+  }
+  const destinationAmount = sameCurrency ? amount : (amount * fromRate) / toRate;
   const dateISO = document.getElementById('trDate').value || todayISO();
   const month = monthOfISO(dateISO);
   const note = document.getElementById('trNote').value.trim();
@@ -543,7 +654,7 @@ export function saveTransfer() {
       inn = { id: uid(), pair: editingTransferPair, type: 'transferIn', cat: null };
       state.transactions.push(inn);
     }
-    Object.assign(out, { amount, accountId: from, note, dateISO, month, updatedAt: stamp, type: 'transferOut', cat: null });
+    Object.assign(out, { amount, accountId: from, note, dateISO, month, updatedAt: stamp, type: 'transferOut', cat: null, fromRate, toRate });
     Object.assign(inn, {
       amount: destinationAmount,
       accountId: to,
@@ -553,6 +664,8 @@ export function saveTransfer() {
       updatedAt: stamp,
       type: 'transferIn',
       cat: null,
+      fromRate,
+      toRate,
     });
     toast('انتقال ویرایش شد ✓');
   } else {
@@ -568,6 +681,8 @@ export function saveTransfer() {
       type: 'transferOut',
       cat: null,
       updatedAt: stamp,
+      fromRate,
+      toRate,
     });
     state.transactions.push({
       id: uid(),
@@ -580,6 +695,8 @@ export function saveTransfer() {
       type: 'transferIn',
       cat: null,
       updatedAt: stamp,
+      fromRate,
+      toRate,
     });
     toast('انتقال با موفقیت ثبت شد ✓');
   }

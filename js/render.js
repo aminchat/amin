@@ -349,8 +349,8 @@ export function renderAccounts() {
   }
 
   if (foreign.length) {
-    html += `<div class="card"><h3>💱 نرخ ارز (تومان به ازای هر واحد)</h3>
-      <div class="small muted" style="margin-bottom:8px">برای تبدیل حساب‌های ارزی به تومان، نرخ هر ارز را وارد کن.</div>
+    html += `<div class="card"><h3>💱 نرخ روز ارز (تومان به ازای هر واحد)</h3>
+      <div class="small muted" style="margin-bottom:8px">این نرخ فقط برای محاسبه ارزش تومانیِ حساب‌ها و دارایی کل استفاده می‌شود؛ نرخ هر انتقال بین حساب‌ها را هنگام ثبت همان انتقال جداگانه وارد می‌کنی.</div>
       ${foreign
         .map(
           (c) => `
