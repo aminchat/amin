@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v7';
+const CACHE = 'capital-app-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -31,6 +31,10 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
+});
+
 function sameOrigin(url) {
   try {
     return new URL(url).origin === self.location.origin;
@@ -44,7 +48,7 @@ self.addEventListener('fetch', (e) => {
   if (!sameOrigin(e.request.url)) return;
 
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-store' })
       .then((resp) => {
         if (resp && resp.ok) {
           const copy = resp.clone();

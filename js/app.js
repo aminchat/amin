@@ -157,18 +157,28 @@ const allowSW =
   swHost.endsWith('.github.io') ||
   swHost.endsWith('.e2b.app');
 if ('serviceWorker' in navigator && store.persisted && allowSW) {
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
   navigator.serviceWorker
-    .register('sw.js')
+    .register('sw.js', { updateViaCache: 'none' })
     .then((reg) => {
+      const kick = (w) => {
+        if (w) w.postMessage('skipWaiting');
+      };
+      if (reg.waiting) kick(reg.waiting);
       reg.update();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
       reg.addEventListener('updatefound', () => {
         const w = reg.installing;
         if (!w) return;
         w.addEventListener('statechange', () => {
-          if (w.state === 'installed' && navigator.serviceWorker.controller) {
-            toast('نسخه جدید برنامه آماده شد؛ در حال به‌روزرسانی…');
-            setTimeout(() => location.reload(), 1200);
-          }
+          if (w.state === 'installed') kick(w);
         });
       });
     })
