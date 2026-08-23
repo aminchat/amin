@@ -5,8 +5,22 @@ export function toFa(n) {
 }
 
 export function fmt(n) {
-  n = Math.round(Number(n) || 0);
-  const s = Math.abs(n).toLocaleString('en-US');
+  n = Number(n) || 0;
+  const abs = Math.abs(n);
+  let s;
+  if (abs >= 1000) {
+    // ارقام بزرگ (مثل تومان): بدون اعشار
+    s = Math.round(abs).toLocaleString('en-US');
+  } else if (abs >= 1) {
+    // ارقام متوسط (مثل دلار): حداکثر ۲ رقم اعشار
+    s = abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  } else if (abs > 0) {
+    // ارقام کوچک (مثل بیت‌کوین): تا ۸ رقم اعشار
+    s = abs.toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
+    if (parseFloat(s) === 0) s = '0';
+  } else {
+    s = '0';
+  }
   return (n < 0 ? '−' : '') + toFa(s);
 }
 

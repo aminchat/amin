@@ -356,7 +356,7 @@ export function renderAccounts() {
           (c) => `
         <div class="row" style="align-items:center;margin-bottom:8px">
           <b style="min-width:64px">${esc(c)}</b>
-          <input class="input" style="flex:1" id="rate_${c}" type="number" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="مثلاً 90000">
+          <input class="input" style="flex:1" id="rate_${c}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="مثلاً 90000">
           <button class="btn sm primary" onclick="saveRateFrom('${c}')">ذخیره</button>
         </div>`
         )

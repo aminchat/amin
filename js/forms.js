@@ -98,7 +98,7 @@ export function openTxForm(tx) {
       <button class="${type === 'in' ? 'on' : ''}" data-t="in" onclick="setTxType(this)">درآمد +</button>
     </div>
     <div class="field"><label id="txAmountLbl">مبلغ (${esc(amountCur)})</label>
-      <input class="input" id="txAmount" type="number" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : ''}">
+      <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : ''}">
     </div>
     <div class="field"><label>از کدام حساب؟</label>
       <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
@@ -250,7 +250,7 @@ export function openAccountForm(a) {
       <input class="input" id="aLast4" inputmode="numeric" maxlength="4" placeholder="1234" value="${a ? esc(a.last4 || '') : ''}">
     </div>
     <div class="field"><label>موجودی اولیه</label>
-      <input class="input" id="aInit" type="number" inputmode="decimal" placeholder="۰" value="${a ? a.initial : ''}">
+      <input class="input" id="aInit" type="number" step="any" inputmode="decimal" placeholder="۰" value="${a ? a.initial : ''}">
     </div>
     <button class="btn primary block" onclick="saveAccount()">${isEdit ? 'ذخیره' : 'افزودن حساب'}</button>
   `);
@@ -314,7 +314,7 @@ export function openInvestForm(inv) {
     </div>
     <div class="row">
       <div class="col field"><label>مقدار</label>
-        <input class="input" id="iQty" type="number" inputmode="decimal" min="0" placeholder="مثلاً ۵" value="${inv ? inv.qty : ''}">
+        <input class="input" id="iQty" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً ۵" value="${inv ? inv.qty : ''}">
       </div>
       <div class="col field"><label>واحد</label>
         <input class="input" id="iUnit" placeholder="گرم / متر / عدد" value="${inv ? esc(inv.unit || '') : ''}">
@@ -331,10 +331,10 @@ export function openInvestForm(inv) {
     </div>
     <div class="row">
       <div class="col field"><label>قیمت خرید (هر واحد)</label>
-        <input class="input" id="iBuy" type="number" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.buy : ''}">
+        <input class="input" id="iBuy" type="number" step="any" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.buy : ''}">
       </div>
       <div class="col field"><label>قیمت امروز (هر واحد)</label>
-        <input class="input" id="iPriceNow" type="number" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.cur : ''}">
+        <input class="input" id="iPriceNow" type="number" step="any" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.cur : ''}">
       </div>
     </div>
     <div class="hint">💡 این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در بخش تراکنش‌ها (دسته سرمایه‌گذاری) ثبت کن.</div>
@@ -394,7 +394,7 @@ export function editInvestPrice(id) {
     <h2>به‌روزرسانی قیمت</h2>
     <p class="muted small" style="margin-top:-6px">${esc(inv.name)} — ${inv.qty} ${esc(inv.unit || '')}</p>
     <div class="field"><label>قیمت امروز (هر ${esc(inv.unit || 'واحد')})</label>
-      <input class="input" id="pNew" type="number" inputmode="decimal" min="0" value="${inv.cur}">
+      <input class="input" id="pNew" type="number" step="any" inputmode="decimal" min="0" value="${inv.cur}">
     </div>
     <button class="btn primary block" onclick="savePrice('${id}')">ذخیره قیمت</button>
   `);
@@ -439,7 +439,7 @@ export function openBudgetForm(mk) {
       </div>
     </div>
     <div class="field"><label>مبلغ بودجه (تومان)</label>
-      <input class="input" id="bAmount" type="number" inputmode="decimal" min="0" placeholder="مثلاً 15000000" value="${b ? b.amount : ''}">
+      <input class="input" id="bAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 15000000" value="${b ? b.amount : ''}">
     </div>
     <button class="btn primary block" onclick="saveBudget()">${b ? 'ذخیره تغییرات' : 'ذخیره بودجه'}</button>
   `);
@@ -467,7 +467,7 @@ export function openRateEdit(cur) {
     <h2>نرخ روز ${esc(cur)}</h2>
     <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند تومان است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)</p>
     <div class="field"><label>تومان به ازای هر واحد</label>
-      <input class="input" id="rVal" type="number" inputmode="decimal" min="0" value="${state.rates[cur] || ''}">
+      <input class="input" id="rVal" type="number" step="any" inputmode="decimal" min="0" value="${state.rates[cur] || ''}">
     </div>
     <button class="btn primary block" onclick="saveRate('${cur}')">ذخیره نرخ</button>
   `);
@@ -527,7 +527,7 @@ export function openTransferForm(tx) {
     <div class="hint" style="margin-bottom:12px">این انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.</div>
     <div class="field"><label>از حساب</label><select class="input" id="trFrom" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>به حساب</label><select class="input" id="trTo" onchange="transferAccountsChanged()">${opts}</select></div>
-    <div class="field"><label>مبلغ از حساب مبدأ</label><input class="input" id="trAmount" type="number" inputmode="decimal" min="0" placeholder="مبلغ به واحد حساب مبدأ" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
+    <div class="field"><label>مبلغ از حساب مبدأ</label><input class="input" id="trAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مبلغ به واحد حساب مبدأ" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
     <div id="trBalance" class="small muted" style="margin:-8px 0 12px"></div>
     <div id="trRates"></div>
     <div id="trPreview" class="hint" style="margin-bottom:12px">مبلغ حساب مقصد بعد از تبدیل اینجا نمایش داده می‌شود.</div>
@@ -594,7 +594,7 @@ function renderTransferRates() {
           ? transferStoredRates[cur]
           : state.rates[cur] || '';
     return `<div class="field"><label>نرخ ${esc(cur)} برای این انتقال (تومان به ازای هر واحد)</label>
-      <input class="input" id="trRate${which}" data-cur="${esc(cur)}" type="number" inputmode="decimal" min="0" placeholder="مثلاً 90000" value="${val}" oninput="updateTransferPreview()">
+      <input class="input" id="trRate${which}" data-cur="${esc(cur)}" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 90000" value="${val}" oninput="updateTransferPreview()">
     </div>`;
   };
 
@@ -646,7 +646,7 @@ export function updateTransferPreview() {
     return;
   }
   if (from.currency === to.currency) {
-    box.innerHTML = `واریز به مقصد: <b>${amount.toLocaleString('en-US')} ${esc(to.currency)}</b> (بدون تبدیل)`;
+    box.innerHTML = `واریز به مقصد: <b>${fmt(amount)} ${esc(to.currency)}</b> (بدون تبدیل)`;
     return;
   }
   const { fromRate, toRate } = readTransferRates(from, to);
@@ -656,7 +656,7 @@ export function updateTransferPreview() {
   }
   const toman = amount * fromRate;
   const dest = toman / toRate;
-  box.innerHTML = `ارزش انتقال: <b>${toman.toLocaleString('en-US')} تومان</b><br>واریز به مقصد: <b>${dest.toLocaleString('en-US')} ${esc(to.currency)}</b><br><span class="small muted">نرخ این انتقال — ${esc(from.currency)}: ${fromRate.toLocaleString('en-US')} تومان · ${esc(to.currency)}: ${toRate.toLocaleString('en-US')} تومان</span>`;
+  box.innerHTML = `ارزش انتقال: <b>${fmt(toman)} تومان</b><br>واریز به مقصد: <b>${fmt(dest)} ${esc(to.currency)}</b><br><span class="small muted">نرخ این انتقال — ${esc(from.currency)}: ${fmt(fromRate)} تومان · ${esc(to.currency)}: ${fmt(toRate)} تومان</span>`;
 }
 
 export function saveTransfer() {
