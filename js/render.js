@@ -82,23 +82,6 @@ export function renderHome() {
     ${envelopeBars(mk)}
   </div>
 
-  <div class="grid2">
-    <div class="stat"><div class="lbl">درآمد این ماه</div><div class="val green">${fmt(s.income)}</div><div class="sub">تومان</div></div>
-    <div class="stat"><div class="lbl">هدررفت این ماه</div><div class="val red">${fmt(wasteThis)}</div><div class="sub">${wasteThis > 0 ? 'تومان — مراقب باش!' : 'هیچ ✓'}</div></div>
-  </div>
-
-  <div class="card">
-    <h3>💵 دارایی نقدی (حساب‌ها)</h3>
-    <div class="val accent" style="font-size:24px">${fmtT(cashTotal())}</div>
-    <div class="small muted" style="margin-top:4px">مجموع موجودی همه حساب‌ها با نرخ روز</div>
-  </div>
-
-  <div class="card">
-    <h3>📈 ارزش سرمایه‌گذاری</h3>
-    <div class="val orange" style="font-size:24px">${fmtT(investTotal())}</div>
-    <div class="small muted" style="margin-top:4px">${toFa(state.investments.length)} دارایی ثبت شده</div>
-  </div>
-
   <div class="card" style="background:linear-gradient(135deg,#14203a,#1a1230);border-color:#2a3b5e">
     <h3 style="color:#c7d6f5">💰 خالص دارایی</h3>
     <div class="val" style="font-size:28px;color:#fff">${fmtT(cashTotal() + investTotal())}</div>
@@ -340,36 +323,24 @@ export function renderAccounts() {
             ${isForeign ? `<div class="small muted">≈ ${fmtT(bal * rate)}</div>` : `<div class="small muted">تومان</div>`}
           </div>
         </div>
-        ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);border-col� کن.</div>
+        ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);border-color:rgba(245,158,11,.4)">⚠️ نرخ ${a.currency} ثبت نشده؛ در جمع کل حساب نمی‌شود.</div>` : ''}
+        <div class="row" style="margin-top:10px">
+          <button class="btn sm" onclick="openAccountForm(findAccount('${a.id}'))">✏️ ویرایش</button>
+          <button class="btn sm danger" onclick="delAccount('${a.id}')">🗑️</button>
+        </div>
+      </div>`;
+      })
+      .join('');
+  }
+
+  if (foreign.length) {
+    html += `<div class="card"><h3>💱 نرخ ارز (تومان به ازای هر واحد)</h3>
+      <div class="small muted" style="margin-bottom:8px">برای تبدیل حساب‌های ارزی به تومان، نرخ هر ارز را وارد کن.</div>
       ${foreign
         .map(
           (c) => `
         <div class="row" style="align-items:center;margin-bottom:8px">
           <b style="min-width:64px">${esc(c)}</b>
-          <input class="input" style="flex:1" id="rate_${c}" type="number" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="مثلاً 90000">
-          <button class="btn sm primary" onclick="saveRateFrom('${c}')">ذخیره</button>
-        </div>`
-        )
-        .join('')}
-    </div>`;
-  }
-
-  document.getElementById('accountsContent').innerHTML = html;
-}
-
-export function renderAll() {
-  renderHome();
-  renderTx();
-  renderReport();
-  renderInvest();
-  renderAccounts();
-}
-
-export function setTodayLabel() {
-  const [y, m, d] = jalaliNow();
-  document.getElementById('todayLbl').textContent = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
-}
-        <b style="min-width:64px">${esc(c)}</b>
           <input class="input" style="flex:1" id="rate_${c}" type="number" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="مثلاً 90000">
           <button class="btn sm primary" onclick="saveRateFrom('${c}')">ذخیره</button>
         </div>`
