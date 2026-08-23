@@ -50,12 +50,6 @@ export function renderHome() {
   const hasBudget = !!(state.budgets[mk] && state.budgets[mk].amount);
   const base = s.available > 0 ? s.available : s.budget;
   const pct = base > 0 ? Math.min(100, Math.round((s.spent / base) * 100)) : 0;
-  const wasteThis = state.transactions
-    .filter((t) => t.month === mk && t.cat === 'waste' && t.type === 'out')
-    .reduce((x, t) => {
-      const a = accountById(t.accountId);
-      return x + t.amount * rateOf(a ? a.currency : 'تومان');
-    }, 0);
   let html = '';
 
   html += renderSyncCard();
@@ -346,24 +340,36 @@ export function renderAccounts() {
             ${isForeign ? `<div class="small muted">≈ ${fmtT(bal * rate)}</div>` : `<div class="small muted">تومان</div>`}
           </div>
         </div>
-        ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);border-color:rgba(245,158,11,.4)">⚠️ نرخ ${a.currency} ثبت نشده؛ در جمع کل حساب نمی‌شود.</div>` : ''}
-        <div class="row" style="margin-top:10px">
-          <button class="btn sm" onclick="openAccountForm(findAccount('${a.id}'))">✏️ ویرایش</button>
-          <button class="btn sm danger" onclick="delAccount('${a.id}')">🗑️</button>
-        </div>
-      </div>`;
-      })
-      .join('');
-  }
-
-  if (foreign.length) {
-    html += `<div class="card"><h3>💱 نرخ ارز (تومان به ازای هر واحد)</h3>
-      <div class="small muted" style="margin-bottom:8px">برای تبدیل حساب‌های ارزی به تومان، نرخ هر ارز را وارد کن.</div>
+        ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);border-col� کن.</div>
       ${foreign
         .map(
           (c) => `
         <div class="row" style="align-items:center;margin-bottom:8px">
           <b style="min-width:64px">${esc(c)}</b>
+          <input class="input" style="flex:1" id="rate_${c}" type="number" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="مثلاً 90000">
+          <button class="btn sm primary" onclick="saveRateFrom('${c}')">ذخیره</button>
+        </div>`
+        )
+        .join('')}
+    </div>`;
+  }
+
+  document.getElementById('accountsContent').innerHTML = html;
+}
+
+export function renderAll() {
+  renderHome();
+  renderTx();
+  renderReport();
+  renderInvest();
+  renderAccounts();
+}
+
+export function setTodayLabel() {
+  const [y, m, d] = jalaliNow();
+  document.getElementById('todayLbl').textContent = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
+}
+        <b style="min-width:64px">${esc(c)}</b>
           <input class="input" style="flex:1" id="rate_${c}" type="number" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="مثلاً 90000">
           <button class="btn sm primary" onclick="saveRateFrom('${c}')">ذخیره</button>
         </div>`
