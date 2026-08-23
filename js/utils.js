@@ -13,7 +13,7 @@ export function fmt(n) {
     s = Math.round(abs).toLocaleString('en-US');
   } else if (abs >= 1) {
     // ارقام متوسط (مثل دلار): حداکثر ۲ رقم اعشار
-    s = abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    s = abs.toLocaleString('en-US', { maximumFractionDigits: 4 });
   } else if (abs > 0) {
     // ارقام کوچک (مثل بیت‌کوین): تا ۸ رقم اعشار
     s = abs.toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
