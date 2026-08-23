@@ -10,7 +10,7 @@ export function fmt(n) {
   let s;
   if (abs >= 1000) {
     // ارقام بزرگ (مثل تومان): بدون اعشار
-    s = Math.round(abs).toLocaleString('en-US');
+    s = abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
   } else if (abs >= 1) {
     // ارقام متوسط (مثل دلار): حداکثر ۲ رقم اعشار
     s = abs.toLocaleString('en-US', { maximumFractionDigits: 4 });
