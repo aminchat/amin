@@ -209,6 +209,42 @@ nav button.on{color:var(--accent)}
 .tbar .bar>div{height:100%;border-radius:99px}
 .tmark{position:relative}
 
+.pockets{display:flex;flex-direction:column;gap:8px}
+.pocket{
+  width:100%;
+  text-align:right;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px 13px;
+  color:inherit;
+  transition:border-color .2s,background .2s;
+}
+.pocket:active{transform:scale(.99)}
+.pocket.open{border-color:rgba(61,139,253,.4);background:#121a28}
+.pocket.over{border-color:rgba(239,68,68,.35)}
+.pocket.over.open{border-color:rgba(239,68,68,.55)}
+.pocket-head{display:flex;align-items:center;gap:10px}
+.pocket-ic{
+  width:36px;height:36px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.pocket-name{flex:1;font-weight:700;font-size:14px}
+.pocket-share{font-size:11px;color:var(--muted);font-weight:700}
+.pocket-chev{color:var(--muted);font-size:13px;transition:transform .22s}
+.pocket.open .pocket-chev{transform:rotate(180deg)}
+.pocket .bar{height:7px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:10px}
+.pocket .bar>div{height:100%;border-radius:99px;transition:width .35s}
+.pocket-detail{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;
+  max-height:0;overflow:hidden;opacity:0;margin-top:0;
+  transition:max-height .28s ease,opacity .2s ease,margin .2s ease;
+}
+.pocket.open .pocket-detail{max-height:88px;opacity:1;margin-top:12px}
+.pocket-stat{text-align:center}
+.pocket-stat .k{display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px}
+.pocket-stat .v{font-size:13px;font-weight:800}
+
 /* banner */
 .banner{
   background:linear-gradient(135deg,rgba(245,158,11,.14),rgba(239,68,68,.12));

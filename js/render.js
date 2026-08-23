@@ -29,19 +29,34 @@ function envelopeBars(mk) {
   if (!budget) {
     return '<div class="hint">اول بودجه این ماه را ثبت کن تا سقف هر پاکت مشخص شود.</div>';
   }
-  return `<div class="tbar">${CATS.map((c) => {
+  return `<div class="pockets">${CATS.map((c) => {
     const spent = catSpent(mk, c.id);
     const ceil = catCeiling(mk, c.id);
     const over = c.target === 0 ? spent > 0 : spent > ceil;
     const width = ceil > 0 ? Math.min(100, Math.round((spent / ceil) * 100)) : spent > 0 ? 100 : 0;
     const left = Math.max(0, ceil - spent);
-    const status = over ? 'از سقف رد شد' : 'مانده ' + fmt(left);
-    return `<div class="tr">
-      <div class="top"><span class="n">${c.emoji} ${c.label} · ${toFa(c.target)}٪</span>
-      <span class="p" style="${over ? 'color:var(--red)' : ''}">${fmt(spent)} از ${fmt(ceil)} · ${status}</span></div>
+    return `<button type="button" class="pocket ${over ? 'over' : ''}" onclick="togglePocket(this)">
+      <div class="pocket-head">
+        <span class="pocket-ic" style="background:${c.color}22">${c.emoji}</span>
+        <span class="pocket-name">${c.label}</span>
+        <span class="pocket-share">${toFa(c.target)}٪</span>
+        <span class="pocket-chev">▾</span>
+      </div>
       <div class="bar"><div style="width:${width}%;background:${over ? 'linear-gradient(90deg,#f59e0b,#ef4444)' : c.color}"></div></div>
-    </div>`;
+      <div class="pocket-detail">
+        <div class="pocket-stat"><span class="k">خرج‌شده</span><span class="v">${fmt(spent)}</span></div>
+        <div class="pocket-stat"><span class="k">سقف</span><span class="v">${fmt(ceil)}</span></div>
+        <div class="pocket-stat"><span class="k">${over ? 'تجاوز' : 'مانده'}</span><span class="v" style="color:${over ? 'var(--red)' : 'var(--green)'}">${over ? fmt(spent - ceil) : fmt(left)}</span></div>
+      </div>
+    </button>`;
   }).join('')}</div>`;
+}
+
+export function togglePocket(el) {
+  const wrap = el.closest('.pockets');
+  const wasOpen = el.classList.contains('open');
+  if (wrap) wrap.querySelectorAll('.pocket.open').forEach((p) => p.classList.remove('open'));
+  if (!wasOpen) el.classList.add('open');
 }
 
 export function renderHome() {
@@ -78,7 +93,7 @@ export function renderHome() {
 
   <div class="card">
     <h3>پاکت‌های این ماه</h3>
-    <div class="small muted" style="margin-bottom:12px">سقف هر پاکت از بودجه ${fmt(s.budget)} تومان حساب شده. رد شدن از سقف جلوی ثبت خرج را نمی‌گیرد.</div>
+    <div class="small muted" style="margin-bottom:12px">سقف از بودجه ${fmt(s.budget)} تومان. برای دیدن خرج و مانده، روی هر پاکت بزن.</div>
     ${envelopeBars(mk)}
   </div>
 

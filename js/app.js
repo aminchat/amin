@@ -2,7 +2,7 @@ import { store, toast } from './utils.js';
 import { closeModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
-import { renderAll, setTodayLabel, txShift, repShift } from './render.js';
+import { renderAll, setTodayLabel, txShift, repShift, togglePocket } from './render.js';
 import {
   googleSignIn,
   googleSignOut,
@@ -108,6 +108,7 @@ Object.assign(window, {
   saveTransfer,
   txShift,
   repShift,
+  togglePocket,
   googleSignIn,
   googleSignOut,
   openProfileMenu,
