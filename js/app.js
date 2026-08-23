@@ -36,6 +36,7 @@ import {
   setTxCat,
   setTxType,
   syncTxAmountLabel,
+  toggleCustomCurrency,
   transferAccountsChanged,
   updateTransferPreview,
 } from './forms.js';
@@ -105,6 +106,7 @@ Object.assign(window, {
   saveRate,
   saveRateFrom,
   openTransferForm,
+  toggleCustomCurrency,
   transferAccountsChanged,
   updateTransferPreview,
   saveTransfer,

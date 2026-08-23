@@ -5,13 +5,48 @@ import { render } from './view.js';
 import {
   ACCT_TYPES,
   CATS,
-  CURRENCIES,
   accountById,
   accountCurrent,
+  addCustomCurrency,
+  allCurrencies,
   isTransfer,
   save,
   state,
 } from './state.js';
+
+const CUSTOM_CUR = '__custom__';
+
+// گزینه‌های واحد پول + گزینه «سایر» برای افزودن دستی
+function currencyOptions(selected) {
+  return (
+    allCurrencies()
+      .map((c) => `<option value="${esc(c)}" ${c === selected ? 'selected' : ''}>${esc(c)}</option>`)
+      .join('') + `<option value="${CUSTOM_CUR}">➕ سایر (افزودن دستی…)</option>`
+  );
+}
+
+export function toggleCustomCurrency(prefix) {
+  const sel = document.getElementById(prefix + 'Cur');
+  const wrap = document.getElementById(prefix + 'CurCustomWrap');
+  if (!sel || !wrap) return;
+  wrap.style.display = sel.value === CUSTOM_CUR ? '' : 'none';
+  if (sel.value === CUSTOM_CUR) {
+    const inp = document.getElementById(prefix + 'CurCustom');
+    if (inp) inp.focus();
+  }
+}
+
+// خواندن واحد پول انتخاب‌شده؛ اگر دستی بود، به لیست واحدها هم اضافه می‌شود
+function readCurrencyChoice(prefix) {
+  const sel = document.getElementById(prefix + 'Cur');
+  if (!sel) return 'تومان';
+  if (sel.value !== CUSTOM_CUR) return sel.value;
+  const inp = document.getElementById(prefix + 'CurCustom');
+  const name = (inp ? inp.value : '').trim();
+  if (!name) return null;
+  addCustomCurrency(name);
+  return name;
+}
 
 let editingTxId = null;
 let editingAcctId = null;
@@ -203,9 +238,13 @@ export function openAccountForm(a) {
       </select>
     </div>
     <div class="field"><label>واحد پول</label>
-      <select class="input" id="aCur">
-        ${CURRENCIES.map((c) => `<option ${a && a.currency === c ? 'selected' : ''}>${c}</option>`).join('')}
+      <select class="input" id="aCur" onchange="toggleCustomCurrency('a')">
+        ${currencyOptions(a ? a.currency : 'تومان')}
       </select>
+    </div>
+    <div class="field" id="aCurCustomWrap" style="display:none"><label>نام واحد پول جدید</label>
+      <input class="input" id="aCurCustom" placeholder="مثلاً روبل، ین، بیت‌کوین">
+      <div class="small muted" style="margin-top:6px">این واحد به لیست اضافه می‌شود و دفعه بعد در گزینه‌ها هست.</div>
     </div>
     <div class="field"><label>۴ رقم آخر کارت (اختیاری)</label>
       <input class="input" id="aLast4" inputmode="numeric" maxlength="4" placeholder="1234" value="${a ? esc(a.last4 || '') : ''}">
@@ -223,10 +262,15 @@ export function saveAccount() {
     toast('نام حساب را بنویس');
     return;
   }
+  const currency = readCurrencyChoice('a');
+  if (!currency) {
+    toast('نام واحد پول را بنویس');
+    return;
+  }
   const data = {
     name,
     type: document.getElementById('aType').value,
-    currency: document.getElementById('aCur').value,
+    currency,
     last4: document.getElementById('aLast4').value.trim(),
     initial: parseFloat(document.getElementById('aInit').value) || 0,
     updatedAt: Date.now(),
@@ -277,9 +321,13 @@ export function openInvestForm(inv) {
       </div>
     </div>
     <div class="field"><label>واحد پول</label>
-      <select class="input" id="iCurrency">
-        ${CURRENCIES.map((c) => `<option ${inv && inv.currency === c ? 'selected' : ''}>${c}</option>`).join('')}
+      <select class="input" id="iCur" onchange="toggleCustomCurrency('i')">
+        ${currencyOptions(inv ? inv.currency : 'تومان')}
       </select>
+    </div>
+    <div class="field" id="iCurCustomWrap" style="display:none"><label>نام واحد پول جدید</label>
+      <input class="input" id="iCurCustom" placeholder="مثلاً روبل، ین، بیت‌کوین">
+      <div class="small muted" style="margin-top:6px">این واحد به لیست اضافه می‌شود و دفعه بعد در گزینه‌ها هست.</div>
     </div>
     <div class="row">
       <div class="col field"><label>قیمت خرید (هر واحد)</label>
@@ -306,11 +354,16 @@ export function saveInvest() {
     toast('مقدار را درست وارد کن');
     return;
   }
+  const currency = readCurrencyChoice('i');
+  if (!currency) {
+    toast('نام واحد پول را بنویس');
+    return;
+  }
   const data = {
     name,
     qty,
     unit: document.getElementById('iUnit').value.trim(),
-    currency: document.getElementById('iCurrency').value,
+    currency,
     buy: parseFloat(document.getElementById('iBuy').value) || 0,
     cur: parseFloat(document.getElementById('iPriceNow').value) || 0,
     updatedAt: Date.now(),

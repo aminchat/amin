@@ -22,6 +22,7 @@ export function defaultState() {
     investments: [],
     budgets: {},
     rates: {},
+    customCurrencies: [],
     updatedAt: 0,
     rev: 0,
   };
@@ -65,6 +66,21 @@ export function replaceState(next, { markDirty } = {}) {
 
 export function accountById(id) {
   return state.accounts.find((a) => a.id === id);
+}
+
+// همه واحدهای پول قابل انتخاب: پیش‌فرض‌ها + واحدهای دستی + هر واحدی که قبلاً استفاده شده
+export function allCurrencies() {
+  const set = new Set(CURRENCIES.filter((c) => c !== 'سایر'));
+  for (const c of state.customCurrencies || []) if (c) set.add(c);
+  for (const a of state.accounts) if (a.currency) set.add(a.currency);
+  for (const i of state.investments) if (i.currency) set.add(i.currency);
+  return [...set];
+}
+
+export function addCustomCurrency(name) {
+  if (!name) return;
+  if (!state.customCurrencies) state.customCurrencies = [];
+  if (!allCurrencies().includes(name)) state.customCurrencies.push(name);
 }
 
 export function rateOf(cur) {
@@ -209,6 +225,9 @@ export function mergeStates(local, remote) {
     investments: mergeById(local.investments, remote.investments),
     budgets: Object.assign({}, remote.budgets || {}, local.budgets || {}),
     rates: Object.assign({}, remote.rates || {}, local.rates || {}),
+    customCurrencies: [
+      ...new Set([...(remote.customCurrencies || []), ...(local.customCurrencies || [])]),
+    ],
     updatedAt: Math.max(local.updatedAt || 0, remote.updatedAt || 0),
     rev: Math.max(local.rev || 0, remote.rev || 0),
   };
