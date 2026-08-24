@@ -1,5 +1,5 @@
-import { esc, fmt, toast, uid, todayISO } from './utils.js';
-import { jalaliNow, monthOfISO, MONTHS } from './jalali.js';
+import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
+import { jalaliNow, monthOfISO, MONTHS, fmtDate } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import {
@@ -9,10 +9,23 @@ import {
   accountCurrent,
   addCustomCurrency,
   allCurrencies,
+  catById,
   isTransfer,
   save,
   state,
 } from './state.js';
+
+const LAST_ACCT_KEY = 'capital_last_account';
+
+function rememberAccount(id) {
+  if (id) store.set(LAST_ACCT_KEY, id);
+}
+
+function lastAccountId() {
+  const id = store.get(LAST_ACCT_KEY);
+  if (id && accountById(id)) return id;
+  return state.accounts[0] ? state.accounts[0].id : '';
+}
 
 const CUSTOM_CUR = '__custom__';
 
@@ -71,7 +84,7 @@ export function openTxForm(tx) {
     return;
   }
 
-  const selectedAccountId = tx ? tx.accountId : state.accounts[0].id;
+  const selectedAccountId = tx ? tx.accountId : lastAccountId();
   const selectedAccount = accountById(selectedAccountId);
   const amountCur = selectedAccount ? selectedAccount.currency : 'تومان';
   const acctOpts = state.accounts
@@ -176,6 +189,7 @@ export function saveTx() {
   const cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
   const reflect = type === 'out' && cat === 'waste' ? document.getElementById('txReflect').value.trim() : '';
   const stamp = Date.now();
+  rememberAccount(accountId);
   if (editingTxId) {
     const t = state.transactions.find((x) => x.id === editingTxId);
     if (!t || isTransfer(t)) {
@@ -283,6 +297,57 @@ export function saveAccount() {
   save();
   closeModal();
   render();
+}
+
+export function openAccountLedger(id) {
+  const a = accountById(id);
+  if (!a) return;
+  rememberAccount(id);
+  const bal = accountCurrent(a);
+  const txs = state.transactions
+    .filter((t) => t.accountId === id)
+    .sort((x, y) => (y.dateISO || '').localeCompare(x.dateISO || '') || (y.updatedAt || 0) - (x.updatedAt || 0));
+  const rows =
+    txs.length === 0
+      ? `<div class="empty" style="padding:22px 8px"><span class="em">💸</span>گردشی برای این حساب ثبت نشده.</div>`
+      : txs
+          .map((t) => {
+            const transfer = isTransfer(t);
+            const cat = t.type === 'out' ? catById(t.cat) : null;
+            const title = t.note
+              ? esc(t.note)
+              : transfer
+                ? 'انتقال بین حساب‌ها'
+                : t.type === 'in'
+                  ? 'درآمد'
+                  : cat
+                    ? cat.label
+                    : 'خرج';
+            const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
+            const amtClass = transfer ? 'transfer' : t.type;
+            return `<div class="item" onclick="openTxForm(findTx('${t.id}'))">
+              <div class="mid">
+                <div class="t1">${title}</div>
+                <div class="t2">${fmtDate(t.dateISO)}${transfer ? ' · انتقال' : cat ? ' · ' + cat.label : ''}</div>
+              </div>
+              <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
+            </div>`;
+          })
+          .join('');
+  openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>${esc(a.name)}</h2>
+    <div class="stat" style="background:var(--bg2);margin-bottom:12px">
+      <div class="lbl">موجودی</div>
+      <div class="val ${bal >= 0 ? 'green' : 'red'}">${fmt(bal)} ${esc(a.currency)}</div>
+      <div class="sub">${esc(a.type)}${a.last4 ? ' · •••• ' + a.last4 : ''}</div>
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn sm primary" style="flex:1" onclick="closeModal();openTxForm()">+ تراکنش</button>
+      <button class="btn sm" style="flex:1" onclick="openAccountForm(findAccount('${a.id}'))">✏️ ویرایش حساب</button>
+    </div>
+    <div style="max-height:48vh;overflow:auto">${rows}</div>
+  `);
 }
 
 export function delAccount(id) {

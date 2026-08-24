@@ -326,8 +326,8 @@ export function renderAccounts() {
         const bal = accountCurrent(a);
         const isForeign = a.currency !== 'تومان';
         const rate = rateOf(a.currency);
-        return `<div class="card" style="padding:14px">
-        <div class="row" style="align-items:center">
+        return `<div class="card acct-card" style="padding:14px">
+        <div class="row acct-main" style="align-items:center" onclick="openAccountLedger('${a.id}')">
           <div class="ic" style="background:rgba(61,139,253,.15)">💳</div>
           <div style="flex:1">
             <div class="t1" style="font-size:14px">${esc(a.name)} ${a.last4 ? `<span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
