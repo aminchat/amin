@@ -21,6 +21,7 @@ import {
   editInvestPrice,
   openAccountForm,
   openAccountLedger,
+  openPocketLedger,
   openBudgetForm,
   openInvestForm,
   openRateEdit,

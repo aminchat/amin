@@ -1,5 +1,5 @@
 import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
-import { jalaliNow, monthOfISO, MONTHS, fmtDate } from './jalali.js';
+import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import {
@@ -10,6 +10,8 @@ import {
   addCustomCurrency,
   allCurrencies,
   catById,
+  catCeiling,
+  catSpent,
   isTransfer,
   save,
   state,
@@ -67,7 +69,7 @@ let editingInvId = null;
 let editingTransferPair = null;
 let transferStoredRates = {};
 
-export function openTxForm(tx) {
+export function openTxForm(tx, opts) {
   if (tx && isTransfer(tx)) {
     openTransferForm(tx);
     return;
@@ -76,6 +78,7 @@ export function openTxForm(tx) {
   editingTxId = tx ? tx.id : null;
   const isEdit = !!tx;
   const type = tx ? tx.type : 'out';
+  const presetCat = !tx && opts && opts.cat ? opts.cat : null;
   if (state.accounts.length === 0) {
     openModal(`
       <h2>ابتدا یک حساب بساز</h2>
@@ -93,15 +96,16 @@ export function openTxForm(tx) {
         `<option value="${a.id}" ${a.id === selectedAccountId ? 'selected' : ''}>${esc(a.name)} · ${esc(a.currency)}</option>`
     )
     .join('');
+  const defaultCat = tx ? tx.cat : presetCat || 'need';
   const catChips = CATS.map(
     (c) => `
-    <button type="button" class="chip ${tx && tx.cat === c.id ? 'on' : !tx && c.id === 'need' ? 'on' : ''}" data-cat="${c.id}"
-      style="${(!tx && c.id === 'need') || (tx && tx.cat === c.id) ? 'background:' + c.color : ''}"
+    <button type="button" class="chip ${c.id === defaultCat ? 'on' : ''}" data-cat="${c.id}"
+      style="${c.id === defaultCat ? 'background:' + c.color : ''}"
       onclick="setTxCat(this)">
       <span class="dot"></span>${c.emoji} ${c.label}
     </button>`
   ).join('');
-  const showReflect = !!(tx && tx.cat === 'waste' && type === 'out');
+  const showReflect = !!(defaultCat === 'waste' && type === 'out');
 
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
@@ -346,6 +350,46 @@ export function openAccountLedger(id) {
       <button class="btn sm primary" style="flex:1" onclick="closeModal();openTxForm()">+ تراکنش</button>
       <button class="btn sm" style="flex:1" onclick="openAccountForm(findAccount('${a.id}'))">✏️ ویرایش حساب</button>
     </div>
+    <div style="max-height:48vh;overflow:auto">${rows}</div>
+  `);
+}
+
+export function openPocketLedger(catId, mk) {
+  const c = catById(catId);
+  if (!c) return;
+  mk = mk || curMonthKey();
+  const spent = catSpent(mk, catId);
+  const ceil = catCeiling(mk, catId);
+  const over = c.target === 0 ? spent > 0 : ceil > 0 && spent > ceil;
+  const left = Math.max(0, ceil - spent);
+  const txs = state.transactions
+    .filter((t) => t.month === mk && t.type === 'out' && t.cat === catId)
+    .sort((x, y) => (y.dateISO || '').localeCompare(x.dateISO || '') || (y.updatedAt || 0) - (x.updatedAt || 0));
+  const rows =
+    txs.length === 0
+      ? `<div class="empty" style="padding:22px 8px"><span class="em">${c.emoji}</span>خرجی در این پاکت برای ${monthLabel(mk)} ثبت نشده.</div>`
+      : txs
+          .map((t) => {
+            const a = accountById(t.accountId);
+            const title = t.note ? esc(t.note) : c.label;
+            return `<div class="item" onclick="openTxForm(findTx('${t.id}'))">
+              <div class="mid">
+                <div class="t1">${title}</div>
+                <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}</div>
+              </div>
+              <div class="amt out">−${fmt(t.amount)}</div>
+            </div>`;
+          })
+          .join('');
+  openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>${c.emoji} ${c.label}</h2>
+    <div class="stat" style="background:var(--bg2);margin-bottom:12px">
+      <div class="lbl">${monthLabel(mk)} · سهم ${c.target}٪</div>
+      <div class="val ${over ? 'red' : 'green'}">${fmt(spent)} تومان</div>
+      <div class="sub">${ceil ? 'سقف ' + fmt(ceil) + (over ? ' · از سقف رد شد' : ' · مانده ' + fmt(left)) : 'بودجه این ماه ثبت نشده'}</div>
+    </div>
+    <button class="btn sm primary block" style="margin-bottom:12px" onclick="openTxForm(null,{cat:'${c.id}'})">+ خرج در این پاکت</button>
     <div style="max-height:48vh;overflow:auto">${rows}</div>
   `);
 }
