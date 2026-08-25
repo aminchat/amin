@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v12';
+const CACHE = 'capital-app-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,8 @@ const ASSETS = [
   './js/sync.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (e) => {
