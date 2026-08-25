@@ -97,6 +97,7 @@ Object.assign(window, {
   syncTxAmountLabel,
   openAccountForm,
   openAccountLedger,
+  openPocketLedger,
   saveAccount,
   delAccount,
   openInvestForm,
