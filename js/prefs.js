@@ -152,6 +152,10 @@ export async function tryBiometric() {
 export function unlockApp() {
   const lock = document.getElementById('lockScreen');
   if (lock) lock.classList.remove('show');
+  document.documentElement.classList.remove('needs-lock');
+  document.body.classList.remove('locked');
+  const pin = document.getElementById('lockPin');
+  if (pin) pin.value = '';
 }
 
 export function lockApp() {
@@ -159,13 +163,22 @@ export function lockApp() {
   const lock = document.getElementById('lockScreen');
   const pin = document.getElementById('lockPin');
   if (pin) pin.value = '';
+  document.documentElement.classList.add('needs-lock');
+  document.body.classList.add('locked');
   if (lock) lock.classList.add('show');
   const bioBtn = document.getElementById('lockBio');
   if (bioBtn) bioBtn.style.display = hasBiometric() ? '' : 'none';
+  setTimeout(() => {
+    if (pin) pin.focus();
+  }, 80);
 }
 
 export async function submitLockPin() {
-  const pin = (document.getElementById('lockPin') || {}).value || '';
+  const pin = String((document.getElementById('lockPin') || {}).value || '').trim();
+  if (!pin) {
+    toast('اول رمز را بنویس');
+    return;
+  }
   if (await checkPin(pin)) unlockApp();
   else toast('رمز اشتباه است');
 }
@@ -232,7 +245,8 @@ export function initPrefs() {
   });
   if (hasPin()) {
     lockApp();
-    if (hasBiometric()) tryBiometric().then((ok) => { if (ok) unlockApp(); });
+  } else {
+    unlockApp();
   }
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {
