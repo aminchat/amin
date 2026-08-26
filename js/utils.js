@@ -4,7 +4,24 @@ export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
 }
 
+let hideMoney = false;
+try {
+  hideMoney = localStorage.getItem('capital_hide_money') === '1';
+} catch (e) {}
+
+export function isMoneyHidden() {
+  return hideMoney;
+}
+
+export function setMoneyHidden(on) {
+  hideMoney = !!on;
+  try {
+    localStorage.setItem('capital_hide_money', hideMoney ? '1' : '0');
+  } catch (e) {}
+}
+
 export function fmt(n) {
+  if (hideMoney) return '••••';
   n = Number(n) || 0;
   const abs = Math.abs(n);
   let s;
@@ -25,6 +42,7 @@ export function fmt(n) {
 }
 
 export function fmtT(n) {
+  if (hideMoney) return '••••';
   return fmt(n) + ' تومان';
 }
 

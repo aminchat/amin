@@ -15,6 +15,7 @@ import {
   investValue,
   isTransfer,
   rateOf,
+  sortTxs,
   state,
   budgetOf,
   catSpent,
@@ -96,9 +97,7 @@ export function renderHome() {
 }
 
 export function renderTx() {
-  const txs = state.transactions
-    .filter((t) => t.month === txMonth)
-    .sort((a, b) => (b.dateISO || '').localeCompare(a.dateISO || ''));
+  const txs = sortTxs(state.transactions.filter((t) => t.month === txMonth));
   let html = `<div class="mnav">
     <button onclick="txShift(-1)">‹</button>
     <div class="mttl">${monthLabel(txMonth)}<div class="small muted">${txMonth === curMonthKey() ? 'ماه جاری' : ''}</div></div>

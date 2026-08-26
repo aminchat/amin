@@ -129,6 +129,17 @@ export function investProfit(inv) {
   return investValue(inv) - (inv.qty || 0) * (inv.buy || 0);
 }
 
+export function sortTxs(txs) {
+  return txs.slice().sort((a, b) => {
+    const d = (b.dateISO || '').localeCompare(a.dateISO || '');
+    if (d) return d;
+    const ta = b.updatedAt || 0;
+    const tb = a.updatedAt || 0;
+    if (ta !== tb) return ta - tb;
+    return String(b.id || '').localeCompare(String(a.id || ''));
+  });
+}
+
 export function spentIn(mk) {
   return state.transactions
     .filter((t) => t.month === mk && t.type === 'out')

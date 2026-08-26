@@ -24,6 +24,10 @@
       <small id="todayLbl">—</small>
     </div>
   </div>
+  <div class="hdr-actions">
+    <button type="button" class="hdr-btn" id="btnPrivacy" title="مخفی کردن اعداد">👁</button>
+    <button type="button" class="hdr-btn" id="btnSettings" title="تنظیمات">⚙</button>
+  </div>
 </header>
 
 <main>
@@ -49,6 +53,17 @@
 
 <div class="overlay" id="overlay">
   <div class="sheet" id="sheet"></div>
+</div>
+
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="logo" style="margin:0 auto 14px">💰</div>
+    <h1>ورود به برنامه</h1>
+    <p>رمز را وارد کن</p>
+    <input class="input" id="lockPin" type="password" inputmode="numeric" maxlength="8" placeholder="رمز" style="text-align:center;letter-spacing:6px;margin-bottom:12px">
+    <button class="btn primary block" onclick="submitLockPin()">ورود</button>
+    <button class="btn block" id="lockBio" style="margin-top:8px;display:none" onclick="tryBiometric().then(ok=>{if(ok)unlockApp();else toast('اثر انگشت تأیید نشد')})">ورود با اثر انگشت</button>
+  </div>
 </div>
 
 <script>

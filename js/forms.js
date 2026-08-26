@@ -14,6 +14,7 @@ import {
   catSpent,
   isTransfer,
   save,
+  sortTxs,
   state,
 } from './state.js';
 
@@ -308,9 +309,7 @@ export function openAccountLedger(id) {
   if (!a) return;
   rememberAccount(id);
   const bal = accountCurrent(a);
-  const txs = state.transactions
-    .filter((t) => t.accountId === id)
-    .sort((x, y) => (y.dateISO || '').localeCompare(x.dateISO || '') || (y.updatedAt || 0) - (x.updatedAt || 0));
+  const txs = sortTxs(state.transactions.filter((t) => t.accountId === id));
   const rows =
     txs.length === 0
       ? `<div class="empty" style="padding:22px 8px"><span class="em">💸</span>گردشی برای این حساب ثبت نشده.</div>`
@@ -362,9 +361,9 @@ export function openPocketLedger(catId, mk) {
   const ceil = catCeiling(mk, catId);
   const over = c.target === 0 ? spent > 0 : ceil > 0 && spent > ceil;
   const left = Math.max(0, ceil - spent);
-  const txs = state.transactions
-    .filter((t) => t.month === mk && t.type === 'out' && t.cat === catId)
-    .sort((x, y) => (y.dateISO || '').localeCompare(x.dateISO || '') || (y.updatedAt || 0) - (x.updatedAt || 0));
+  const txs = sortTxs(
+    state.transactions.filter((t) => t.month === mk && t.type === 'out' && t.cat === catId)
+  );
   const rows =
     txs.length === 0
       ? `<div class="empty" style="padding:22px 8px"><span class="em">${c.emoji}</span>خرجی در این پاکت برای ${monthLabel(mk)} ثبت نشده.</div>`

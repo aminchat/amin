@@ -4,6 +4,18 @@ import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
 import { renderAll, setTodayLabel, txShift, repShift, togglePocket } from './render.js';
 import {
+  applyTheme,
+  changePinPrompt,
+  clearPin,
+  disableBiometric,
+  enableBiometric,
+  initPrefs,
+  openSettings,
+  submitLockPin,
+  tryBiometric,
+  unlockApp,
+} from './prefs.js';
+import {
   googleSignIn,
   googleSignOut,
   initGoogleOnLoad,
@@ -127,6 +139,15 @@ Object.assign(window, {
   findInvest,
   render,
   toast,
+  applyTheme,
+  openSettings,
+  changePinPrompt,
+  clearPin,
+  enableBiometric,
+  disableBiometric,
+  submitLockPin,
+  tryBiometric,
+  unlockApp,
 });
 
 document.getElementById('fab').onclick = () => openTxForm();
@@ -134,6 +155,7 @@ try {
   setTodayLabel();
   buildNav();
   render();
+  initPrefs();
 } catch (err) {
   console.error(err);
   const home = document.getElementById('homeContent');
