@@ -2,6 +2,7 @@ import { esc, fmt, fmtT, toFa, store } from './utils.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, MONTHS } from './jalali.js';
 import { pieSVG } from './forms.js';
 import { renderSyncCard } from './sync.js';
+import { debtHomeBanner, overdueCount, renderDebts } from './debts.js';
 import {
   CATS,
   accountById,
@@ -58,6 +59,7 @@ export function renderHome() {
   let html = '';
 
   html += renderSyncCard();
+  html += debtHomeBanner();
 
   if (!hasBudget) {
     html += `<div class="banner warn">⏰ <span>بودجه ${monthLabel(mk)} هنوز ثبت نشده است.</span>
@@ -361,9 +363,16 @@ export function renderAll() {
   renderReport();
   renderInvest();
   renderAccounts();
+  renderDebts();
+  const menuBtn = document.getElementById('btnMenu');
+  if (menuBtn) menuBtn.classList.toggle('has-alert', overdueCount() > 0);
 }
 
 export function setTodayLabel() {
   const [y, m, d] = jalaliNow();
-  document.getElementById('todayLbl').textContent = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
+  const txt = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
+  const today = document.getElementById('todayLbl');
+  const menu = document.getElementById('menuToday');
+  if (today) today.textContent = txt;
+  if (menu) menu.textContent = txt;
 }

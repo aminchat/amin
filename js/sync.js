@@ -302,6 +302,7 @@ function hasRemoteData(r) {
     (r.accounts && r.accounts.length) ||
     (r.transactions && r.transactions.length) ||
     (r.investments && r.investments.length) ||
+    (r.debts && r.debts.length) ||
     Object.keys(r.budgets || {}).length
   );
 }
