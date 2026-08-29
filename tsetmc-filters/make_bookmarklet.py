@@ -15,7 +15,7 @@ import json, io, os
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CODE = io.open(os.path.join(ROOT, "tsetmc-filters.js"), encoding="utf-8").read()
 
-COMMIT = "a83a4f17dba1597ee6c3a0dd84976e92e9c51249"
+COMMIT = "535e422da3c845db7bc309eed8b72518018cbb9a"
 BRANCH = "arena/01a04e69-amin"
 
 URLS = [
