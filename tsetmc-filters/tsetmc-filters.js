@@ -8,6 +8,7 @@
  *   - در localStorage خود سایت ذخیره می‌شوند (بعد از رفرش صفحه هم فعال‌اند)
  *   - در پنجره‌ی «فیلتر» خود سایت هم دیده می‌شوند
  *
+ * نسخه ۱.۲: تم ظاهری سایت (مدرن روشن/تیره + فونت وزیرمتن) — فقط CSS، بدون دست‌کاری موتور
  * نسخه ۱.۱: فیلترهای ویژه (پول هوشمند بر پایه‌ی داده‌ی حقیقی/حقوقی خود سایت:
  * mw.ClientType از ClientTypeAll.aspx) + پنل مدرن
  *
@@ -24,7 +25,7 @@
   }
   window.__tsetmcFiltersLoaded = true;
 
-  var VERSION = "1.1.0";
+  var VERSION = "1.2.0";
   var FILTER_NAME = "فیلترهای بوکمارکلت";
   var LS_KEY = "tsetmcFiltersPanel.v1";
 
@@ -52,7 +53,8 @@
     blacklist: "",          // "AAA,BBB"
     search: "",             // کلمه‌ی جستجو در نماد
     open: true,
-    basicsOpen: false       // بخش «فیلترهای پایه» جمع باشد
+    basicsOpen: false,      // بخش «فیلترهای پایه» جمع باشد
+    theme: "off"            // off | light | dark
   };
   function loadState() {
     try {
@@ -66,6 +68,7 @@
           state.search = s.search || "";
           state.open = s.open !== false;
           state.basicsOpen = s.basicsOpen === true;
+          if (s.theme === "light" || s.theme === "dark" || s.theme === "off") state.theme = s.theme;
         }
       }
     } catch (e) { /* وضعیت خراب -> پیش‌فرض */ }
@@ -321,6 +324,77 @@
     } catch (e) { return false; }
   }
 
+  // ===================== تم ظاهری سایت (فقط CSS) =====================
+  // هیچ چیز از موتور سایت تغییر نمی‌کند؛ فقط یک <style> و یک <link> فونت اضافه/حذف می‌شود.
+  // نکته‌ی مهم: قالب خود سایت برای .sr و .secSep از !important استفاده می‌کند و
+  // استایل قالب داخل body تزریق می‌شود (بعد از head)؛ بنابراین برای شکستن آن
+  // قواعد باید specificity بالاتر (#main .sr و #main .secSep) به کار ببریم.
+  var FONT_URL = "https://cdn.jsdelivr.net/npm/vazirmatn@33.0.3/Vazirmatn-font-face.css";
+  var FONT_CSS =
+    "body{font-family:Vazirmatn,Vazir,'IRANSans',Tahoma,sans-serif !important}" +
+    ".t0c,.t0head{font-size:11.5px !important}";
+  var THEMES = {
+    light: [
+      "/*tf:light*/",
+      "body{background:#eef2f7 !important}",
+      "#header{background:#ffffff !important;border-bottom:2px solid #e2e8f0 !important;box-shadow:0 1px 8px rgba(15,23,42,.08)}",
+      ".t0head{color:#334155 !important;font-weight:700}",
+      "div#main > div:nth-child(2n){background:#f1f5f9 !important}",
+      "#main > div:hover{background:#e0f2fe !important}",
+      "#main .sr{background:#dbeafe !important;border-radius:6px}",
+      "a.inst{color:#0369a1 !important;text-decoration:none}",
+      "#main span[style*='color:green']{color:#059669 !important}",
+      "#main span[style*='color:red']{color:#dc2626 !important}",
+      "#main .secSep{background:linear-gradient(90deg,#0ea5e9,#6366f1) !important;color:#fff !important;border-radius:8px !important;margin:3px 0 !important;font-size:12.5px !important}",
+      "#main::-webkit-scrollbar{width:10px}",
+      "#main::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}",
+      ".awesome{border-radius:8px !important}"
+    ].join(""),
+    dark: [
+      "/*tf:dark*/",
+      "body{background:#0f172a !important;color:#e2e8f0}",
+      "#header{background:#111826 !important;border-bottom:2px solid #1e293b !important;box-shadow:0 2px 10px rgba(0,0,0,.45)}",
+      ".t0head{color:#93c5fd !important;font-weight:700}",
+      "#display,#main,#header{color:#e2e8f0}",
+      ".t0c{color:#e2e8f0}",
+      "div#main > div:nth-child(2n){background:rgba(255,255,255,.045) !important}",
+      "#main > div:hover{background:rgba(96,165,250,.16) !important}",
+      "#main .sr{background:rgba(96,165,250,.28) !important;border-radius:6px}",
+      "a.inst{color:#7dd3fc !important;text-decoration:none}",
+      ".t0c2{background:rgba(34,197,94,.14) !important}",
+      ".t0c3{background:rgba(59,130,246,.14) !important}",
+      ".t0c4{background:rgba(244,63,94,.14) !important}",
+      ".ch1,.ch2,.ch3,.ch4,.ch5,.ch6,.ch7,.ch8{background:rgba(239,68,68,.28) !important}",
+      "#main span[style*='color:green']{color:#4ade80 !important}",
+      "#main span[style*='color:red']{color:#f87171 !important}",
+      "#main .secSep{background:linear-gradient(90deg,#0ea5e9,#6366f1) !important;color:#fff !important;border-radius:8px !important;margin:3px 0 !important;font-size:12.5px !important}",
+      "#main::-webkit-scrollbar{width:10px}",
+      "#main::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}",
+      ".awesome{border-radius:8px !important}"
+    ].join("")
+  };
+  function applyTheme() {
+    try {
+      var t = state.theme || "off";
+      var st = document.getElementById("tfThemeStyle");
+      var link = document.getElementById("tfFontLink");
+      if (t === "off" || !THEMES[t]) {
+        if (st && st.parentNode) st.parentNode.removeChild(st);
+        if (link && link.parentNode) link.parentNode.removeChild(link);
+        return;
+      }
+      if (!link) {
+        link = el("link", { id: "tfFontLink", rel: "stylesheet", href: FONT_URL });
+        document.head.appendChild(link);
+      }
+      if (!st) {
+        st = el("style", { id: "tfThemeStyle" });
+        document.head.appendChild(st);
+      }
+      st.textContent = FONT_CSS + THEMES[t];
+    } catch (e) { /* تم شکست بخورد؟ سایت بدون تم می‌ماند */ }
+  }
+
   // ===================== اعمال روی موتور سایت =====================
   var lastError = "";
 
@@ -469,6 +543,12 @@
     ".tf-brow input.tf-inp:focus{border-color:#60a5fa}",
     "#tfBasicsToggle{cursor:pointer;color:#7dd3fc;font-size:11px;font-weight:700;padding:2px 4px}",
     "#tfBasicsToggle:hover{text-decoration:underline}",
+    ".tf-theme{display:flex;gap:6px}",
+    ".tf-th{flex:1;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#e2e8f0;",
+    "border-radius:9px;padding:6px 4px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;",
+    "transition:background .15s,border-color .15s}",
+    ".tf-th:hover{background:rgba(255,255,255,.1)}",
+    ".tf-th.on{background:linear-gradient(120deg,#2563eb,#7c3aed);border-color:transparent;color:#fff}",
     "#tfBtns{display:flex;gap:6px;margin-top:2px}",
     "#tfBtns button{flex:1;border:0;border-radius:10px;padding:8px 4px;font-family:inherit;font-size:11.5px;",
     "font-weight:700;cursor:pointer;transition:filter .15s}",
@@ -565,6 +645,22 @@
         body.appendChild(card);
       })(SPECIALS[i]);
     }
+
+    // ---- بخش ظاهر سایت ----
+    body.appendChild(el("div", { class: "tf-sec" }, "<span>🎨 ظاهر سایت</span><span class='tf-line'></span>"));
+    var themeRow = el("div", { class: "tf-theme" });
+    var themeDefs = [["off", "پیش‌فرض سایت"], ["light", "☀️ مدرن روشن"], ["dark", "🌙 مدرن تیره"]];
+    for (var t = 0; t < themeDefs.length; t++) {
+      (function (tp) {
+        var b = el("button", { class: "tf-th" + ((state.theme || "off") === tp[0] ? " on" : "") }, tp[1]);
+        b.addEventListener("click", function () {
+          state.theme = tp[0];
+          saveState(); applyTheme(); rebuildPanel();
+        });
+        themeRow.appendChild(b);
+      })(themeDefs[t]);
+    }
+    body.appendChild(themeRow);
 
     // ---- بخش پایه (جمع‌شونده) ----
     var bt = el("div", { class: "tf-sec" }, "<span class='tf-line'></span>");
@@ -744,6 +840,7 @@
     try {
       if (typeof mw === "undefined" || !mw.AllRows || !mw.SelectFilter || !mw.Settings) return false;
       buildPanel();
+      applyTheme();
       startCountTimer();
       // اگر سایت الان فیلتر دیگری فعال دارد، به کاربر بگوییم
       if (mw.Settings.FilterNo !== -1) {
@@ -788,6 +885,13 @@
       saveState(); rebuildPanel(); return applyAll();
     },
     apply: applyAll,
+    setTheme: function (t) {
+      if (t !== "off" && t !== "light" && t !== "dark") t = "off";
+      state.theme = t;
+      saveState(); applyTheme(); rebuildPanel();
+      return state.theme;
+    },
+    theme: function () { return state.theme || "off"; },
     clear: function () { clearFromEngine(); setStatus("ok", "فیلتر برداشته شد"); updateCount(true); },
     combined: buildCombined,
     toggle: function () {

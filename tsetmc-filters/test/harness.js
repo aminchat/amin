@@ -287,6 +287,27 @@ setTimeout(function () {
   w.mw.Settings.LoadClientType = 0;
   w.__tsetmcFilters.clear();
 
+  console.log("\n=== ۱۳) تم ظاهری سایت (فونت و شمایل مدرن) ===");
+  check("تم: پیش‌فرض = بدون تم (استایلی تزریق نشده)", !doc.getElementById("tfThemeStyle") && !doc.getElementById("tfFontLink"));
+  w.__tsetmcFilters.setTheme("light");
+  const stL = doc.getElementById("tfThemeStyle");
+  const linkL = doc.getElementById("tfFontLink");
+  check("تم روشن: استایل تزریق شد و نشانگر tf:light دارد", !!stL && stL.textContent.indexOf("tf:light") !== -1);
+  check("تم روشن: لینک فونت وزیرمتن اضافه شد", !!linkL && /vazirmatn/.test(linkL.href), linkL && linkL.href);
+  check("تم روشن: سلکتورهای specificity-بالا برای شکستن !important قالب سایت دارد", stL.textContent.indexOf("#main .sr") !== -1 && stL.textContent.indexOf("#main .secSep") !== -1);
+  check("تم روشن: API وضعیت را برمی‌گرداند", w.__tsetmcFilters.theme() === "light");
+  const savedTheme = w.eval("JSON.parse(localStorage.getItem('tsetmcFiltersPanel.v1'))");
+  check("تم روشن: در localStorage ذخیره شد", savedTheme.theme === "light");
+  w.__tsetmcFilters.setTheme("dark");
+  const stD = doc.getElementById("tfThemeStyle");
+  check("تم تیره: استایل عوض شد (tf:dark)", !!stD && stD.textContent.indexOf("tf:dark") !== -1);
+  check("تم تیره: رنگ سبز/قرمز اعداد برای پس‌زمینه‌ی تیره اصلاح شد", stD.textContent.indexOf("[style*='color:green']") !== -1);
+  check("پنل: سه دکمه‌ی تم ساخته شد", doc.querySelectorAll("#tfPanel .tf-th").length === 3, "actual=" + doc.querySelectorAll("#tfPanel .tf-th").length);
+  check("پنل: دکمه‌ی تم فعال هایلایت شده", (doc.querySelector("#tfPanel .tf-th.on") || {}).textContent.indexOf("تیره") !== -1);
+  w.__tsetmcFilters.setTheme("off");
+  check("بازگشت به پیش‌فرض: استایل و لینک فونت حذف شدند (سایت دقیقاً مثل قبل)", !doc.getElementById("tfThemeStyle") && !doc.getElementById("tfFontLink"));
+  check("بازگشت به پیش‌فرض: localStorage هم به‌روز شد", w.eval("JSON.parse(localStorage.getItem('tsetmcFiltersPanel.v1'))").theme === "off");
+
   console.log("\n================== نتیجه: " + passed + " موفق / " + failed + " ناموفق ==================");
   process.exit(failed > 0 ? 1 : 0);
 }, 1200);
