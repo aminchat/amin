@@ -25,7 +25,7 @@
   }
   window.__tsetmcFiltersLoaded = true;
 
-  var VERSION = "1.2.0";
+  var VERSION = "1.2.1";
   var FILTER_NAME = "فیلترهای بوکمارکلت";
   var LS_KEY = "tsetmcFiltersPanel.v1";
 
@@ -337,15 +337,18 @@
     light: [
       "/*tf:light*/",
       "body{background:#eef2f7 !important}",
+      // خنثی‌کردن «همه‌ی» الگوهای زبرای قالب‌های سایت (2n و 3n و 3n+1 و…) قبل از زبرای خودمان
+      "#main>div{background:#f8fafc !important}",
       "#header{background:#ffffff !important;border-bottom:2px solid #e2e8f0 !important;box-shadow:0 1px 8px rgba(15,23,42,.08)}",
       ".t0head{color:#334155 !important;font-weight:700}",
       "div#main > div:nth-child(2n){background:#f1f5f9 !important}",
       "#main > div:hover{background:#e0f2fe !important}",
-      "#main .sr{background:#dbeafe !important;border-radius:6px}",
+      // کلاس تکراری = specificity بالاتر از قواعد زبرا، تا سطر انتخابی و جداکننده‌ی گروه‌ها همیشه برنده باشند
+      "#main .sr.sr{background:#dbeafe !important;border-radius:6px}",
       "a.inst{color:#0369a1 !important;text-decoration:none}",
       "#main span[style*='color:green']{color:#059669 !important}",
       "#main span[style*='color:red']{color:#dc2626 !important}",
-      "#main .secSep{background:linear-gradient(90deg,#0ea5e9,#6366f1) !important;color:#fff !important;border-radius:8px !important;margin:3px 0 !important;font-size:12.5px !important}",
+      "#main .secSep.secSep{background:linear-gradient(90deg,#0ea5e9,#6366f1) !important;color:#fff !important;border-radius:8px !important;margin:3px 0 !important;font-size:12.5px !important}",
       "#main::-webkit-scrollbar{width:10px}",
       "#main::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}",
       ".awesome{border-radius:8px !important}"
@@ -353,13 +356,16 @@
     dark: [
       "/*tf:dark*/",
       "body{background:#0f172a !important;color:#e2e8f0}",
+      // خنثی‌کردن «همه‌ی» الگوهای زبرای قالب‌های سایت (2n و 3n و 3n+1 و…) قبل از زبرای خودمان
+      "#main>div{background:transparent !important}",
       "#header{background:#111826 !important;border-bottom:2px solid #1e293b !important;box-shadow:0 2px 10px rgba(0,0,0,.45)}",
       ".t0head{color:#93c5fd !important;font-weight:700}",
       "#display,#main,#header{color:#e2e8f0}",
       ".t0c{color:#e2e8f0}",
       "div#main > div:nth-child(2n){background:rgba(255,255,255,.045) !important}",
       "#main > div:hover{background:rgba(96,165,250,.16) !important}",
-      "#main .sr{background:rgba(96,165,250,.28) !important;border-radius:6px}",
+      // کلاس تکراری = specificity بالاتر از قواعد زبرا، تا سطر انتخابی و جداکننده‌ی گروه‌ها همیشه برنده باشند
+      "#main .sr.sr{background:rgba(96,165,250,.28) !important;border-radius:6px}",
       "a.inst{color:#7dd3fc !important;text-decoration:none}",
       ".t0c2{background:rgba(34,197,94,.14) !important}",
       ".t0c3{background:rgba(59,130,246,.14) !important}",
@@ -367,7 +373,7 @@
       ".ch1,.ch2,.ch3,.ch4,.ch5,.ch6,.ch7,.ch8{background:rgba(239,68,68,.28) !important}",
       "#main span[style*='color:green']{color:#4ade80 !important}",
       "#main span[style*='color:red']{color:#f87171 !important}",
-      "#main .secSep{background:linear-gradient(90deg,#0ea5e9,#6366f1) !important;color:#fff !important;border-radius:8px !important;margin:3px 0 !important;font-size:12.5px !important}",
+      "#main .secSep.secSep{background:linear-gradient(90deg,#0ea5e9,#6366f1) !important;color:#fff !important;border-radius:8px !important;margin:3px 0 !important;font-size:12.5px !important}",
       "#main::-webkit-scrollbar{width:10px}",
       "#main::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}",
       ".awesome{border-radius:8px !important}"

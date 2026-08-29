@@ -295,6 +295,9 @@ setTimeout(function () {
   check("تم روشن: استایل تزریق شد و نشانگر tf:light دارد", !!stL && stL.textContent.indexOf("tf:light") !== -1);
   check("تم روشن: لینک فونت وزیرمتن اضافه شد", !!linkL && /vazirmatn/.test(linkL.href), linkL && linkL.href);
   check("تم روشن: سلکتورهای specificity-بالا برای شکستن !important قالب سایت دارد", stL.textContent.indexOf("#main .sr") !== -1 && stL.textContent.indexOf("#main .secSep") !== -1);
+  check("تم: الگوی زبرای همه‌ی قالب‌های سایت (2n و 3n و 3n+1) خنثی می‌شود (رنگ ثابت ردیف‌ها)", stL.textContent.indexOf("#main>div{background:") !== -1);
+  check("تم: جداکننده‌ی گروه‌ها با کلاس تکراری از قواعد زبرا قوی‌تر است", stL.textContent.indexOf("#main .secSep.secSep") !== -1);
+  check("تم: سطر انتخابی هم با کلاس تکراری از قواعد زبرا قوی‌تر است", stL.textContent.indexOf("#main .sr.sr") !== -1);
   check("تم روشن: API وضعیت را برمی‌گرداند", w.__tsetmcFilters.theme() === "light");
   const savedTheme = w.eval("JSON.parse(localStorage.getItem('tsetmcFiltersPanel.v1'))");
   check("تم روشن: در localStorage ذخیره شد", savedTheme.theme === "light");
