@@ -4,7 +4,7 @@
   "private": true,
   "description": "تست یکپارچه‌ی فیلترهای دیده‌بان بازار (با موتور واقعی سایت در jsdom)",
   "scripts": {
-    "test": "node harness.js"
+    "test": "node harness.js && node bookmarklet.test.js"
   },
   "devDependencies": {
     "jquery": "^4.0.0",
