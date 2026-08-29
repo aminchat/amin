@@ -27,16 +27,20 @@ https://old.tsetmc.com/Loader.aspx?ParTree=15131F#
 
 | فایل | اندازه | نحوه کار | برای چه کسی |
 |---|---|---|---|
-| **`bookmarklet.txt`** (اصلی) | ~۱.۸ هزار کاراکتر | کد را از **۵ آینه به‌نوبت** دانلود می‌کند: raw گیت‌هاب ← jsDelivr (cdn/fastly/gcore) ← Statically | همه مرورگرها (هرکدام از آینه‌ها که در شبکه‌ات باز باشد کار می‌کند) |
+| **`bookmarklet.txt`** (اصلی) | ~۲.۵ هزار کاراکتر (فقط ASCII) | کد را از **۵ آینه به‌نوبت** دانلود می‌کند: raw گیت‌هاب ← jsDelivr (cdn/fastly/gcore) ← Statically | همه مرورگرها (هرکدام از آینه‌ها که در شبکه‌ات باز باشد کار می‌کند) |
 | `bookmarklet-offline.txt` | ~۲۳ هزار کاراکتر | **کل کد داخل خود بوکمارکلت** است؛ بدون اینترنت هم کار می‌کند + آپدیت خودکار | مرورگرهایی که بوکمارکلت بلند را می‌پذیرند و به هیچ‌کدام از آینه‌ها دسترسی ندارند |
 
 > چرا چند آینه؟ در پراکسی‌های ویندوز/اندروید (مثل v2rayNG) معمولاً فقط `github.com` روی پراکسی می‌رود و `raw.githubusercontent.com` «دایرکت» می‌ماند و مسدود می‌شود. آینه‌های jsDelivr و Statically دامنه‌های جداگانه‌ای‌اند که احتمال باز بودن‌شان (مستقیم یا از طریق پراکسی) را بسیار بالا می‌برد. لوادر هر آینه را با تایم‌اوت ۸ ثانیه امتحان می‌کند و اگر پاسخش معتبر نبود (مثلاً صفحه‌ی خطای پراکسی) ردش می‌کند.
 
 **نصب:**
 
+**روش ۱ (پیشنهادی — بدون کپی‌پیست):** صفحه‌ی **[install.html](https://cdn.jsdelivr.net/gh/aminchat/amin@arena/01a04e69-amin/tsetmc-filters/install.html)** را در مرورگر باز کن، نوار بوکمارک‌ها را با `Ctrl+Shift+B` نشان بده و دکمه‌ی سبز «🎯 فیلترهای دیده‌بان بازار» را با ماوس بگیر و روی نوار بوکمارک‌ها رها کن. (اگر لینک jsDelivr باز نشد، نسخه‌ی [raw](https://raw.githubusercontent.com/aminchat/amin/arena/01a04e69-amin/tsetmc-filters/install.html) را در تب جدید باز کن — متن کد نشان می‌دهد؛ در آن صورت از روش ۲ استفاده کن.)
+
+**روش ۲ (کپی دستی):**
+
 1. در مرورگر یک بوکمارک جدید بساز (نوار ستاره‌ها → «ذخیره»)
 2. نامش را بگذار: `⚙ فیلتر TSETMC`
-3. آدرسش را با محتوای **[bookmarklet.txt](https://github.com/aminchat/amin/blob/arena/01a04e69-amin/tsetmc-filters/bookmarklet.txt)** عوض کن (کل فایل را کپی کن)
+3. آدرسش را با محتوای **[bookmarklet.txt](https://github.com/aminchat/amin/blob/arena/01a04e69-amin/tsetmc-filters/bookmarklet.txt)** عوض کن (کل فایل را کپی کن — از صفحه‌ی blob گیت‌هاب کپی کن، نه از چت)
 4. صفحه‌ی دیده‌بان بازار را باز کن و روی بوکمارک کلیک کن.
 
 > کلیک دوم روی بوکمارک، پنل را جمع/باز می‌کند (نه اینکه دوباره اجرا شود).
@@ -96,13 +100,14 @@ row.pl >= 5000 && row.tvol >= 2*row.bvol && yval=="300"
 ```
 tsetmc-filters/
 ├── tsetmc-filters.js      ← کد اصلی فیلترها
-├── bookmarklet.txt        ← بوکمارکلت کوتاه چندآینه‌ای (اصلی — در همه مرورگرها جا می‌شود)
+├── bookmarklet.txt        ← بوکمارکلت کوتاه چندآینه‌ای (اصلی — فقط ASCII، ایمن برای کپی‌پیست)
 ├── bookmarklet-offline.txt← بوکمارکلت بلند offline-first (جایگزین)
-├── make_bookmarklet.py    ← بازتولید هر دو نسخه بعد از تغییر (با COMMIT تازه)
+├── install.html           ← صفحه‌ی نصب: کشیدن دکمه به نوار بوکمارک‌ها (بدون کپی‌پیست)
+├── make_bookmarklet.py    ← بازتولید بوکمارکلت‌ها + install.html بعد از تغییر (با COMMIT تازه)
 ├── README.md
 └── test/
     ├── harness.js             ← تست یکپارچه‌ی فیلترها روی موتور واقعی سایت (32)
-    ├── bookmarklet-short.test.js ← تست لوادر کوتاه/چندآینه‌ای (8)
+    ├── bookmarklet-short.test.js ← تست لوادر کوتاه/چندآینه‌ای (11)
     ├── bookmarklet.test.js    ← تست لوادر offline-first (17)
     ├── fixtures/              ← کدهای واقعی موتور سایت (استخراج‌شده از صفحه) برای تست
     │   ├── engine_marketwatch.js
@@ -119,9 +124,15 @@ tsetmc-filters/
 cd test
 npm install
 node harness.js             # 32/32 — خود فیلترها
-node bookmarklet-short.test.js # 8/8 — لوادر کوتاه چندآینه‌ای (fallback/timeout/پاسخ نامعتبر)
+node bookmarklet-short.test.js # 11/11 — لوادر کوتاه چندآینه‌ای (fallback/timeout/پاسخ نامعتبر/ASCII-ایمنی)
 node bookmarklet.test.js    # 17/17 — لوادر offline-first
 ```
+
+## عیب‌یابی
+
+- **«Uncaught SyntaxError» بعد از کپی بوکمارکلت از چت:** برخی چت‌ها/بردها متنِ `d.style` را خودکار به لینک (`[d.style](http://d.style)`) تبدیل می‌کنند چون `.style` یک پسوند دامنه‌ی واقعی است؛ `http://` اضافه‌شده بقیه‌ی خط را به کامنت تبدیل می‌کند. از نسخه‌ی فعلی (فقط ASCII، بدون `.style` و بدون `//` خارج از رشته‌ها) یا از `install.html` استفاده کن؛ برای اطمینان از صفحه‌ی blob گیت‌هاب کپی کن.
+- **«blocked due to MIME type (text/plain) mismatch (X-Content-Type-Options: nosniff)»:** این خطا فقط وقتی رخ می‌دهد که کد با تگ `<script src=...>` بارگیری شود — سرورِ raw گیت‌هاب فایل را با `text/plain` می‌فرستد و مرورگر اجرای آن «به‌عنوان اسکریپت» را رد می‌کند. لوادر این پروژه از `fetch` + `eval` استفاده می‌کند و اصلاً مشمول این محدودیت نیست؛ این پیام یعنی یک نسخه‌ی قدیمی‌تر/الگوی script-tag اجرا شده است. (نکته: ظاهر شدن این خطا ثابت می‌کند دانلود از آن آینه در شبکه‌ات موفق بوده!)
+- **بنر قرمز «دانلود از همه آدرس‌ها شکست خورد»:** هیچ‌کدام از ۵ آینه در شبکه‌ات باز نبوده‌اند؛ در v2rayNG دامنه‌های `raw.githubusercontent.com`، `cdn.jsdelivr.net`، `fastly.jsdelivr.net`، `gcore.jsdelivr.net` و `cdn.statically.io` را روی پراکسی بگذار، یا نسخه‌ی offline را در کنسول اجرا کن.
 
 ## محدودیت‌ها و نکات
 
