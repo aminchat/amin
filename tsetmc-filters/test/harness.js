@@ -229,6 +229,64 @@ setTimeout(function () {
   try { w.eval(filtersCode); } catch (e) { threw = true; }
   check("بدون خطا اجرا شد (guard دوگانه)", !threw);
 
+  console.log("\n=== ۱۲) فیلترهای ویژه (پول هوشمند / جا مانده از بازار) ===");
+  // داده‌ی حقیقی/حقوقی مثل ClientTypeAll.aspx
+  w.mw.ClientType["101"] = { Buy_CountI: 2000, Buy_CountN: 50, Buy_I_Volume: 40000000, Buy_N_Volume: 5000000, Sell_CountI: 8000, Sell_CountN: 30, Sell_I_Volume: 10000000, Sell_N_Volume: 8000000 };
+  w.mw.ClientType["112"] = { Buy_CountI: 60000, Buy_CountN: 10, Buy_I_Volume: 30000000, Buy_N_Volume: 2000000, Sell_CountI: 20000, Sell_CountN: 5, Sell_I_Volume: 50000000, Sell_N_Volume: 1000000 };
+  w.mw.ClientType["110"] = { Buy_CountI: 40000, Buy_CountN: 40, Buy_I_Volume: 80000000, Buy_N_Volume: 30000000, Sell_CountI: 45000, Sell_CountN: 20, Sell_I_Volume: 85000000, Sell_N_Volume: 4000000 };
+  // سرصفحه‌ی سفارشات برای فشار خرید
+  w.mw.AllRows["103"].qd1 = "8000000"; w.mw.AllRows["103"].qo1 = "2000000"; // XIRAN مثبت
+  w.mw.AllRows["102"].qd1 = "5000000"; w.mw.AllRows["102"].qo1 = "1000000"; // SHAB منفی
+
+  // --- پول هوشمند (smartBuy) ---
+  w.__tsetmcFilters.enable("smartBuy");
+  const s1 = visibleL18();
+  check("پول هوشمند: فقط FBIC1 (سرانه خرید ۱۶× فروش، ۴۲٪ کل حجم) باقی ماند", s1.length === 1 && s1[0] === "FBIC1", "actual=" + s1);
+  check("پول هوشمند: داده‌ی حقیقی/حقوقی سایت خودکار روشن شد (LoadClientType=1)", w.mw.Settings.LoadClientType === 1);
+  check("پول هوشمند: عبارت فیلتر از mw.ClientType استفاده می‌کند", /mw\.ClientType\[row\.inscode\]/.test(w.mw.FilterCode || ""), w.mw.FilterCode);
+  w.__tsetmcFilters.disable("smartBuy");
+
+  // --- ورود حقوقی (legalIn) ---
+  w.__tsetmcFilters.enable("legalIn");
+  const s2 = visibleL18();
+  check("ورود حقوقی: فقط CHEAP (خالص حقوقی ۱۳٪ کل حجم) باقی ماند", s2.length === 1 && s2[0] === "CHEAP", "actual=" + s2);
+  w.__tsetmcFilters.disable("legalIn");
+
+  // --- جا مانده از بازار (laggard) ---
+  w.__tsetmcFilters.enable("laggard");
+  const s3 = visibleL18();
+  check("جا مانده: فقط CHEAP (P/E=4.2، هنوز ۰.۸٪) باقی ماند", s3.length === 1 && s3[0] === "CHEAP", "actual=" + s3);
+  w.__tsetmcFilters.disable("laggard");
+
+  // --- تجمع بی‌سروصدا (quietAcc با ضریب ۲) ---
+  w.__tsetmcFilters.enable("quietAcc", { k: 2 });
+  const s4 = visibleL18();
+  check("تجمع: CHEAP و تسه01 (حجم >= ۲× مبنا و درصد کم) باقی ماندند", s4.indexOf("CHEAP") !== -1 && s4.indexOf("تسه01") !== -1 && s4.length === 2, "actual=" + s4);
+  w.__tsetmcFilters.disable("quietAcc");
+
+  // --- فشار خرید سرصفحه (bidHeavy) ---
+  w.__tsetmcFilters.enable("bidHeavy");
+  const s5 = visibleL18();
+  check("فشار سرصفحه: فقط XIRAN (تقاضا ۴× عرضه و مثبت) — SHAB منفی حذف شد", s5.length === 1 && s5[0] === "XIRAN", "actual=" + s5);
+  w.__tsetmcFilters.disable("bidHeavy");
+
+  // --- هشدار توزیع (distress با ضریب ۲) ---
+  w.__tsetmcFilters.enable("distress", { k: 2 });
+  const s6 = visibleL18();
+  check("توزیع: فقط FABRD (حجم ۲.۵× مبنا با افت ۳.۱٪) باقی ماند", s6.length === 1 && s6[0] === "FABRD", "actual=" + s6);
+  w.__tsetmcFilters.disable("distress");
+
+  // --- پنل جدید: بخش‌ها و سوییچ‌ها ---
+  check("پنل: بخش «فیلترهای ویژه» وجود دارد", !!doc.querySelector("#tfPanel .tf-sec"));
+  check("پنل: ۶ کارت ویژه ساخته شد", doc.querySelectorAll("#tfPanel .tf-card").length === 6, "actual=" + doc.querySelectorAll("#tfPanel .tf-card").length);
+  check("پنل: فیلترهای پایه به‌صورت پیش‌فرض جمع‌اند", (doc.getElementById("tfBasics") || {}).style.display === "none");
+  check("پنل: استایل مدرن تزریق شد", !!doc.getElementById("tfStyle"));
+  check("API: لیست فیلترهای ویژه در دسترس است", w.__tsetmcFilters.specials.join(",") === "smartBuy,legalIn,laggard,quietAcc,bidHeavy,distress", w.__tsetmcFilters.specials.join(","));
+
+  // پاک‌سازی برای بخش‌های بعدی
+  w.mw.Settings.LoadClientType = 0;
+  w.__tsetmcFilters.clear();
+
   console.log("\n================== نتیجه: " + passed + " موفق / " + failed + " ناموفق ==================");
   process.exit(failed > 0 ? 1 : 0);
 }, 1200);
