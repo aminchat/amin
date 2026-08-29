@@ -16,7 +16,7 @@ const { JSDOM } = require("jsdom");
 const ROOT = path.join(__dirname, "..");
 const FIX = path.join(__dirname, "fixtures");
 const FILTERS_FILE = path.join(ROOT, "tsetmc-filters.js");
-const BM = fs.readFileSync(path.join(ROOT, "bookmarklet.txt"), "utf-8").replace(/^javascript:/, "");
+const BM = fs.readFileSync(path.join(ROOT, "bookmarklet-offline.txt"), "utf-8").replace(/^javascript:/, "");
 
 let engineCode = fs.readFileSync(path.join(FIX, "engine_marketwatch.js"), "utf-8").trim();
 engineCode = engineCode.replace(/^<script[^>]*>/, "").replace(/<\/script>\s*$/, "").trim();
