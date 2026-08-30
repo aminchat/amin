@@ -50,6 +50,10 @@ function sameOrigin(url) {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (!sameOrigin(e.request.url)) return;
+  try {
+    const path = new URL(e.request.url).pathname;
+    if (path.includes('/test/') || /\/test\/?$/.test(path)) return;
+  } catch (err) {}
 
   e.respondWith(
     fetch(e.request, { cache: 'no-store' })
