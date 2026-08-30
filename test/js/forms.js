@@ -1,4 +1,5 @@
 import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
+import { hasGeminiKey, readInvoiceImage } from './scan.js';
 import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -133,6 +134,10 @@ export function openTxForm(tx, opts) {
     <div class="seg" id="txModeSeg" style="margin-bottom:14px;${type === 'in' ? 'display:none' : ''}">
       <button class="${txMode === 'simple' ? 'on' : ''}" data-m="simple" onclick="setTxMode(this)">خرج ساده</button>
       <button class="${txMode === 'invoice' ? 'on' : ''}" data-m="invoice" onclick="setTxMode(this)">فاکتور</button>
+    </div>
+    <div id="txScanWrap" style="${type === 'in' ? 'display:none' : ''}">
+      <input id="invPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="onInvoicePhoto(this)">
+      <button type="button" class="btn block" style="margin-bottom:12px" onclick="startInvoicePhoto()">📸 خواندن فاکتور از عکس</button>
     </div>
     <div class="field"><label id="txAmountLbl">${txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ'} (${esc(amountCur)})</label>
       <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : ''}" oninput="onTxAmountInput()">
@@ -410,6 +415,54 @@ export function setLineCat(btn, lineId) {
   btn.classList.add('on');
   const found = CATS.find((c) => c.id === l.cat);
   if (found) btn.style.background = found.color;
+}
+
+export function startInvoicePhoto() {
+  if (!hasGeminiKey()) {
+    toast('اول در تنظیمات کلید عکس را بگذار');
+    return;
+  }
+  const inp = document.getElementById('invPhoto');
+  if (inp) inp.click();
+}
+
+export async function onInvoicePhoto(inp) {
+  const file = inp && inp.files && inp.files[0];
+  if (inp) inp.value = '';
+  if (!file) return;
+  toast('در حال خواندن عکس…');
+  try {
+    const data = await readInvoiceImage(file);
+    applyInvoiceScan(data);
+    toast('خوانده شد — قبل از ثبت چک کن');
+  } catch (e) {
+    if (e && e.message === 'NO_KEY') toast('اول در تنظیمات کلید عکس را بگذار');
+    else toast((e && e.message) || 'خواندن عکس نشد');
+  }
+}
+
+export function applyInvoiceScan(data) {
+  txMode = 'invoice';
+  draftLines = (data.lines || []).map((l) => ({
+    id: l.id || uid(),
+    name: l.name,
+    unitPrice: l.unitPrice,
+    qty: l.qty,
+    unit: l.unit || 'عدد',
+    amount: l.amount,
+    cat: l.cat || 'need',
+  }));
+  document.querySelectorAll('#txModeSeg button').forEach((b) => {
+    b.classList.toggle('on', b.dataset.m === 'invoice');
+  });
+  applyTxModeUi();
+  const amt = document.getElementById('txAmount');
+  if (amt && data.total) amt.value = String(data.total);
+  const note = document.getElementById('txNote');
+  if (note && data.store && !note.value) note.value = data.store;
+  const dateEl = document.getElementById('txDate');
+  if (dateEl && data.date) dateEl.value = data.date;
+  renderTxLines();
 }
 
 export function addRemainderLine() {

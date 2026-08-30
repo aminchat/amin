@@ -1,4 +1,7 @@
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION } from './utils.js';
+import { saveGeminiKey, clearGeminiKey } from './scan.js';
+
+export { saveGeminiKey, clearGeminiKey };
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
 
@@ -219,6 +222,18 @@ export function openSettings() {
           : ''
     }
     ${googleSettingsHtml()}
+    <div class="divider"></div>
+    <h3 style="margin:8px 0 10px">خواندن فاکتور از عکس</h3>
+    <p class="small muted">کلید Google AI Studio را این‌جا بگذار. به کسی نشان نده. عکس برای خواندن به گوگل فرستاده می‌شود.</p>
+    ${
+      store.get('capital_gemini_key')
+        ? `<div class="hint" style="margin:0 0 10px">کلید ذخیره شده است.</div>
+           <button class="btn block" onclick="clearGeminiKey()">حذف کلید</button>`
+        : `<div class="field"><label>کلید API</label>
+           <input class="input" id="geminiKey" type="password" autocomplete="off" placeholder="AIza...">
+           </div>
+           <button class="btn primary block" onclick="saveGeminiKey()">ذخیره کلید</button>`
+    }
     <div class="divider"></div>
     <p class="small muted" style="text-align:center;margin:4px 0 0">نسخه ${APP_VERSION}</p>
   `);
