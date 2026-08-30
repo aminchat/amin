@@ -1,4 +1,4 @@
-import { esc, store, toast, APP_VERSION } from './utils.js';
+import { esc, store, toast } from './utils.js';
 import { render } from './view.js';
 import {
   fingerprint,
