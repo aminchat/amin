@@ -177,18 +177,8 @@ export function renderReport() {
   const cm = computeMonths()[mk] || { carriedIn: 0, spent: 0, income: 0 };
   const totalSpent = cm.spent;
   const totalIncome = cm.income;
-  const wasteTxs = txs.filter((t) => t.cat === 'waste' && t.type === 'out');
-
-  const slices = [];
-  for (const c of CATS) {
-    const v = txs
-      .filter((t) => t.type === 'out' && t.cat === c.id)
-      .reduce((s, t) => {
-        const a = accountById(t.accountId);
-        return s + t.amount * rateOf(a ? a.currency : 'تومان');
-      }, 0);
-    slices.push({ v, color: c.color, label: c.label });
-  }
+  const wasteItems = pocketItems(mk, 'waste');
+  const slices = CATS.map((c) => ({ v: catSpent(mk, c.id), color: c.color, label: c.label }));
 
   let html = `<div class="mnav">
     <button onclick="repShift(-1)">‹</button>
@@ -366,12 +356,22 @@ export function renderAccounts() {
 }
 
 export function renderAll() {
-  renderHome();
-  renderTx();
-  renderReport();
-  renderInvest();
-  renderAccounts();
-  renderDebts();
+  const steps = [
+    ['خانه', renderHome],
+    ['تراکنش', renderTx],
+    ['گزارش', renderReport],
+    ['سرمایه', renderInvest],
+    ['حساب‌ها', renderAccounts],
+    ['طلب و بدهی', renderDebts],
+  ];
+  for (const [name, fn] of steps) {
+    try {
+      fn();
+    } catch (err) {
+      console.error(name, err);
+      if (window.__capLog) window.__capLog(name, err);
+    }
+  }
   const menuBtn = document.getElementById('btnMenu');
   if (menuBtn) menuBtn.classList.toggle('has-alert', overdueCount() > 0);
 }

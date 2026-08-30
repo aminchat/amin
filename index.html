@@ -13,6 +13,21 @@
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=vazirmatn:400,600,700&display=swap">
 <link rel="stylesheet" href="css/app.css">
 <script>
+window.__capErrors = [];
+window.__capLog = function (where, err) {
+  var msg = (err && (err.stack || err.message)) || String(err);
+  var row = { where: String(where || ''), msg: msg, at: Date.now() };
+  window.__capErrors.push(row);
+  try {
+    localStorage.setItem('capital_debug_errors', JSON.stringify(window.__capErrors.slice(-30)));
+  } catch (e) {}
+};
+window.addEventListener('error', function (e) {
+  window.__capLog((e.filename || '') + ':' + (e.lineno || ''), e.error || e.message);
+});
+window.addEventListener('unhandledrejection', function (e) {
+  window.__capLog('promise', e.reason);
+});
 try {
   if (localStorage.getItem('capital_pin_hash')) document.documentElement.classList.add('needs-lock');
 } catch (e) {}

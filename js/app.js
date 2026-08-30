@@ -291,6 +291,7 @@ Object.assign(window, {
   tryBiometric,
   unlockApp,
   leaveApp,
+  togglePrivacy,
 });
 
 document.getElementById('fab').onclick = () => {
@@ -308,18 +309,25 @@ if (btnHome) {
   btnHome.style.visibility = 'hidden';
   btnHome.onclick = () => switchTab('home');
 }
+const btnPrivacy = document.getElementById('btnPrivacy');
+const btnSettings = document.getElementById('btnSettings');
+if (btnPrivacy) btnPrivacy.onclick = togglePrivacy;
+if (btnSettings) btnSettings.onclick = openSettings;
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.body.classList.contains('menu-open')) closeMenu();
 });
+try {
+  setupBackButton();
+} catch (e) {}
 try {
   setTodayLabel();
   buildMenu();
   render();
   initPrefs();
   notifyDueDebts();
-  setupBackButton();
 } catch (err) {
   console.error(err);
+  if (window.__capLog) window.__capLog('شروع برنامه', err);
   const home = document.getElementById('homeContent');
   if (home) home.innerHTML = '<div class="card">برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.</div>';
 }
