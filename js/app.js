@@ -23,6 +23,7 @@ import {
   initPrefs,
   openSettings,
   submitLockPin,
+  togglePrivacy,
   tryBiometric,
   unlockApp,
 } from './prefs.js';
