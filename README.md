@@ -34,7 +34,7 @@ https://old.tsetmc.com/Loader.aspx?ParTree=15131F#
 
 **نصب:**
 
-**روش ۱ (پیشنهادی — بدون کپی‌پیست):** صفحه‌ی **[install.html](https://cdn.jsdelivr.net/gh/aminchat/amin@arena/01a0523d-amin/install.html)** را در مرورگر باز کن، نوار بوکمارک‌ها را با `Ctrl+Shift+B` نشان بده و دکمه‌ی سبز «🎯 فیلترهای دیده‌بان بازار» را با ماوس بگیر و روی نوار بوکمارک‌ها رها کن. (اگر لینک jsDelivr باز نشد، نسخه‌ی [raw](https://raw.githubusercontent.com/aminchat/amin/arena/01a0523d-amin/install.html) را در تب جدید باز کن — متن کد نشان می‌دهد؛ در آن صورت از روش ۲ استفاده کن.)
+**روش ۱ (پیشنهادی — بدون کپی‌پیست):** صفحه‌ی **[install.html](https://cdn.jsdelivr.net/gh/aminchat/amin@64f3eb4b0b746bf83209639a5eedf8f0bdcf2521/install.html)** را در مرورگر باز کن (این آدرس به‌صورت یک صفحه‌ی درست رندر می‌شود)، نوار بوکمارک‌ها را با `Ctrl+Shift+B` نشان بده و دکمه‌ی سبز «🎯 فیلترهای دیده‌بان بازار» را با ماوس بگیر و روی نوار بوکمارک‌ها رها کن. (نکته: به‌جای اینکه به [raw](https://raw.githubusercontent.com/aminchat/amin/arena/01a0523d-amin/install.html) بروی — چون raw همیشه متن ساده نشان می‌دهد — فقط از همین لینک jsDelivr استفاده کن.)
 
 **روش ۲ (کپی دستی):**
 
