@@ -8,6 +8,7 @@
  *   - در localStorage خود سایت ذخیره می‌شوند (بعد از رفرش صفحه هم فعال‌اند)
  *   - در پنجره‌ی «فیلتر» خود سایت هم دیده می‌شوند
  *
+ * نسخه ۱.۳: فیلتر ویژه‌ی «نوسان‌گیری (سوینگ کوتاه‌مدت)»
  * نسخه ۱.۲: تم ظاهری سایت (مدرن روشن/تیره + فونت وزیرمتن) — فقط CSS، بدون دست‌کاری موتور
  * نسخه ۱.۱: فیلترهای ویژه (پول هوشمند بر پایه‌ی داده‌ی حقیقی/حقوقی خود سایت:
  * mw.ClientType از ClientTypeAll.aspx) + پنل مدرن
@@ -25,7 +26,7 @@
   }
   window.__tsetmcFiltersLoaded = true;
 
-  var VERSION = "1.2.1";
+  var VERSION = "1.3.0";
   var FILTER_NAME = "فیلترهای بوکمارکلت";
   var LS_KEY = "tsetmcFiltersPanel.v1";
 
@@ -157,6 +158,29 @@
         var K = n(p.k, 3), X = n(p.x, -2);
         return "(parseInt(row.bvol,10)>0&&parseInt(row.tvol,10)>=" + K + "*parseInt(row.bvol,10))" +
           "&&parseFloat(row.pcp)<=" + X;
+      }
+    },
+    {
+      id: "swing", icon: "🎯", group: "sp",
+      label: "نوسان‌گیری (سوینگ کوتاه‌مدت)",
+      desc: "نمادهای نقدشونده و پرنوسان برای نوسان‌گیری با افق حدود یک هفته: حجم و ارزش کافی برای ورود/خروج سریع، دامنه‌ی حرکت روزانه‌ی مناسب، و بدون قفلِ صف تا هنوز جای ورود باشد",
+      def: { k: 1.5, v: 1000000000, r: 2, x: 4 },
+      pmeta: [
+        { key: "k", label: "حداقل ضریب حجم به حجم مبنا" },
+        { key: "v", label: "حداقل ارزش معامله (ریال)" },
+        { key: "r", label: "حداقل دامنه‌ی نوسان روزانه (٪)" },
+        { key: "x", label: "حداکثر درصد تغییر پایانی" }
+      ],
+      expr: function (p) {
+        var K = n(p.k, 1.5), V = n(p.v, 1000000000), R = n(p.r, 2), X = n(p.x, 4);
+        return "(function(){var tv=parseInt(row.tvol,10)||0,bv=parseInt(row.bvol,10)||0," +
+          "tval=parseInt(row.tval,10)||0,tmax=parseFloat(row.tmax)||0,tmin=parseFloat(row.tmin)||0," +
+          "pcp=parseFloat(row.pcp)||0;if(tv<=0||tval<" + V + "){return false}" +
+          "if(bv>0&&tv<" + K + "*bv){return false}" +
+          "var range=tmin>0?((tmax-tmin)/tmin)*100:0;" +
+          "if(range<" + R + "){return false}" +
+          "if(pcp>" + X + "){return false}" +
+          "return true})()";
       }
     }
   ];
