@@ -135,22 +135,73 @@ async function callGemini(model, key, b64) {
   return parseModelJson(text);
 }
 
+function shortErr(e) {
+  const raw = (e && e.message) || String(e || '');
+  const s = raw.toLowerCase();
+  if (s.includes('api key') || s.includes('api_key')) return 'کلید نامعتبر است؛ در تنظیمات دوباره ذخیره کن';
+  if (s.includes('permission') || s.includes('403')) return 'کلید اجازه این کار را ندارد';
+  if (s.includes('quota') || s.includes('resource exhausted')) return 'سهمیه رایگان گوگل تمام شده';
+  if (s.includes('not found') || s.includes('supported methods') || s.includes('listmodels'))
+    return 'مدل گوگل عوض شده؛ یک‌بار دیگر عکس را بفرست';
+  if (s.includes('failed to fetch') || s.includes('network')) return 'اینترنت نرسید به گوگل';
+  const cut = raw.replace(/\s+/g, ' ').trim();
+  return cut.length > 80 ? cut.slice(0, 80) + '…' : cut || 'خواندن فاکتور نشد';
+}
+
+async function listModels(key) {
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key);
+  const resp = await fetch(url);
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const err = new Error((data.error && data.error.message) || 'لیست مدل نیامد');
+    err.status = resp.status;
+    throw err;
+  }
+  const names = [];
+  for (const m of data.models || []) {
+    const name = String(m.name || '').replace(/^models\//, '');
+    const methods = m.supportedGenerationMethods || [];
+    if (!name || methods.indexOf('generateContent') < 0) continue;
+    if (/tts|image|live|embed|audio|imagen|veo|native/i.test(name)) continue;
+    names.push(name);
+  }
+  names.sort((a, b) => {
+    const score = (n) => {
+      let s = 0;
+      if (/flash/i.test(n)) s += 10;
+      if (/lite/i.test(n)) s += 2;
+      if (/^gemini-3/.test(n)) s += 30;
+      if (/^gemini-2\.5/.test(n)) s += 20;
+      return s;
+    };
+    return score(b) - score(a);
+  });
+  return names;
+}
+
 export async function readInvoiceImage(file) {
   const key = getGeminiKey();
   if (!key) throw new Error('NO_KEY');
   const b64 = await fileToJpeg(file);
+  let models = MODELS.slice();
+  try {
+    const listed = await listModels(key);
+    if (listed.length) models = listed;
+  } catch (e) {}
   let lastErr = null;
-  for (const model of MODELS) {
+  for (const model of models.slice(0, 6)) {
     try {
       const raw = await callGemini(model, key, b64);
       if (raw) return normalizeScan(raw);
       lastErr = new Error('جواب قابل فهم نبود');
     } catch (e) {
       lastErr = e;
-      if (e.status && e.status !== 404) break;
+      const msg = ((e && e.message) || '').toLowerCase();
+      const skip = e.status === 404 || msg.includes('not found') || msg.includes('supported methods');
+      if (!skip && e.status && e.status !== 429) break;
     }
   }
-  throw lastErr || new Error('خواندن فاکتور نشد');
+  throw new Error(shortErr(lastErr || new Error('خواندن فاکتور نشد')));
 }
 
 function normalizeScan(raw) {
