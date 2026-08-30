@@ -218,21 +218,33 @@ export function openSettings() {
           ? `<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>`
           : ''
     }
-    <div class="divider"></div>
-    <h3 style="margin:8px 0 10px">گوگل درایو</h3>
-    ${
-      gUser
-        ? `<p class="small muted">${esc(gUser.name || 'حساب گوگل')}${gUser.email ? '<br>' + esc(gUser.email) : ''}</p>
-           <div class="hint" style="margin:0 0 10px">${googleSyncOk() ? 'همگام‌سازی فعال است.' : 'برای ادامه همگام‌سازی یک‌بار ذخیره یا دریافت را بزن.'}</div>
-           <button class="btn primary block" onclick="closeModal();pushToDrive(true)">الان در گوگل ذخیره کن</button>
-           <button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast('دریافت از گوگل انجام شد ✓');},true)">دریافت از گوگل</button>
-           <button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">خروج از حساب گوگل</button>`
-        : `<p class="small muted">با گوگل وارد شو تا داده‌ها در درایو ذخیره شوند.</p>
-           <button class="btn primary block" onclick="closeModal();googleSignIn()">ورود با گوگل</button>`
-    }
+    ${googleSettingsHtml()}
     <div class="divider"></div>
     <p class="small muted" style="text-align:center;margin:4px 0 0">نسخه ${APP_VERSION}</p>
   `);
+}
+
+function googleUserFromStore() {
+  try {
+    const raw = store.get('g_user');
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    return u && (u.name || u.email) ? u : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function googleSettingsHtml() {
+  const u = googleUserFromStore();
+  if (!u) return '';
+  return `
+    <div class="divider"></div>
+    <h3 style="margin:8px 0 10px">گوگل درایو</h3>
+    <p class="small muted">${esc(u.name || 'حساب گوگل')}${u.email ? '<br>' + esc(u.email) : ''}</p>
+    <button class="btn primary block" onclick="closeModal();pushToDrive(true)">الان در گوگل ذخیره کن</button>
+    <button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast('دریافت از گوگل انجام شد ✓');},true)">دریافت از گوگل</button>
+    <button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">خروج از حساب گوگل</button>`;
 }
 
 export async function changePinPrompt() {
