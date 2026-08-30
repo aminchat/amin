@@ -12,7 +12,9 @@ import {
   catById,
   catCeiling,
   catSpent,
+  isInvoice,
   isTransfer,
+  pocketItems,
   save,
   sortTxs,
   state,
@@ -69,6 +71,24 @@ let editingAcctId = null;
 let editingInvId = null;
 let editingTransferPair = null;
 let transferStoredRates = {};
+let txMode = 'simple';
+let draftLines = [];
+
+function catChipsHtml(selected, onclickName, extraArg) {
+  return CATS.map((c) => {
+    const on = c.id === selected;
+    const extra = extraArg ? ",'" + extraArg + "'" : '';
+    return `<button type="button" class="chip ${on ? 'on' : ''}" data-cat="${c.id}"
+      style="${on ? 'background:' + c.color : ''}"
+      onclick="${onclickName}(this${extra})">
+      <span class="dot"></span>${c.emoji} ${c.label}
+    </button>`;
+  }).join('');
+}
+
+function nearlyZero(n) {
+  return Math.abs(n) < 0.000001;
+}
 
 export function openTxForm(tx, opts) {
   if (tx && isTransfer(tx)) {
@@ -88,6 +108,9 @@ export function openTxForm(tx, opts) {
     return;
   }
 
+  txMode = tx && isInvoice(tx) ? 'invoice' : 'simple';
+  draftLines = tx && isInvoice(tx) ? tx.lines.map((l) => Object.assign({}, l)) : [];
+
   const selectedAccountId = tx ? tx.accountId : lastAccountId();
   const selectedAccount = accountById(selectedAccountId);
   const amountCur = selectedAccount ? selectedAccount.currency : 'تومان';
@@ -97,53 +120,122 @@ export function openTxForm(tx, opts) {
         `<option value="${a.id}" ${a.id === selectedAccountId ? 'selected' : ''}>${esc(a.name)} · ${esc(a.currency)}</option>`
     )
     .join('');
-  const defaultCat = tx ? tx.cat : presetCat || 'need';
-  const catChips = CATS.map(
-    (c) => `
-    <button type="button" class="chip ${c.id === defaultCat ? 'on' : ''}" data-cat="${c.id}"
-      style="${c.id === defaultCat ? 'background:' + c.color : ''}"
-      onclick="setTxCat(this)">
-      <span class="dot"></span>${c.emoji} ${c.label}
-    </button>`
-  ).join('');
-  const showReflect = !!(defaultCat === 'waste' && type === 'out');
+  const defaultCat = tx && !isInvoice(tx) ? tx.cat : presetCat || 'need';
+  const showReflect = !!(defaultCat === 'waste' && type === 'out' && txMode === 'simple');
 
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
-    <h2>${isEdit ? 'ویرایش تراکنش' : 'تراکنش جدید'}</h2>
-    <div class="seg" id="txTypeSeg" style="margin-bottom:14px">
+    <h2>${isEdit ? (txMode === 'invoice' ? 'ویرایش فاکتور' : 'ویرایش تراکنش') : 'تراکنش جدید'}</h2>
+    <div class="seg" id="txTypeSeg" style="margin-bottom:10px">
       <button class="${type === 'out' ? 'on out' : ''}" data-t="out" onclick="setTxType(this)">خرج −</button>
       <button class="${type === 'in' ? 'on' : ''}" data-t="in" onclick="setTxType(this)">درآمد +</button>
     </div>
-    <div class="field"><label id="txAmountLbl">مبلغ (${esc(amountCur)})</label>
-      <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : ''}">
+    <div class="seg" id="txModeSeg" style="margin-bottom:14px;${type === 'in' ? 'display:none' : ''}">
+      <button class="${txMode === 'simple' ? 'on' : ''}" data-m="simple" onclick="setTxMode(this)">خرج ساده</button>
+      <button class="${txMode === 'invoice' ? 'on' : ''}" data-m="invoice" onclick="setTxMode(this)">فاکتور</button>
+    </div>
+    <div class="field"><label id="txAmountLbl">${txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ'} (${esc(amountCur)})</label>
+      <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : ''}" oninput="onTxAmountInput()">
+    </div>
+    <div id="txUnitWrap" style="${txMode === 'invoice' ? 'display:none' : ''}">
+      <div class="hint" style="margin:0 0 12px">اگر قیمت واحد و مقدار را بزنی، مبلغ کل خودش حساب می‌شود.</div>
+      <div class="row">
+        <div class="col field"><label>قیمت واحد</label>
+          <input class="input" id="txUnitPrice" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 80000" value="${tx && tx.unitPrice ? tx.unitPrice : ''}" oninput="syncTxUnitTotal()">
+        </div>
+        <div class="col field"><label>مقدار</label>
+          <input class="input" id="txQty" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً ۲.۵" value="${tx && tx.qty ? tx.qty : ''}" oninput="syncTxUnitTotal()">
+        </div>
+      </div>
+      <div class="field"><label>واحد (اختیاری)</label>
+        <input class="input" id="txUnit" placeholder="عدد / کیلو / گرم" value="${tx && tx.unit ? esc(tx.unit) : ''}">
+      </div>
     </div>
     <div class="field"><label>از کدام حساب؟</label>
       <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
     </div>
-    <div class="field" id="txCatWrap" style="${type === 'in' ? 'display:none' : ''}">
+    <div class="field" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
       <label>دسته‌بندی خرج</label>
-      <div class="chips" id="txCats">${catChips}</div>
+      <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
     </div>
     <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
       <label>🤔 اگر این خرج را نمی‌کردی، چه می‌شد؟</label>
       <textarea class="input" id="txReflect" placeholder="مثلاً: می‌توانستم همان پول را پس‌انداز کنم...">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
     </div>
+    <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
+      <div class="hint" style="margin:0 0 10px">اول مبلغ کل را بزن، بعد اقلام را وارد کن. هر قلم پاکت خودش را دارد. جمع اقلام باید با مبلغ کل یکی شود. از حساب فقط همان مبلغ کل کم می‌شود.</div>
+      <div id="txLines"></div>
+      <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
+      <div class="row" style="margin-bottom:12px">
+        <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">+ قلم</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">مانده را «سایر» کن</button>
+      </div>
+    </div>
     <div class="field"><label>توضیح (اختیاری)</label>
-      <input class="input" id="txNote" placeholder="مثلاً: خرید هفتگی" value="${tx ? esc(tx.note || '') : ''}">
+      <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? 'مثلاً: فروشگاه رفاه' : 'مثلاً: خرید هفتگی'}" value="${tx ? esc(tx.note || '') : ''}">
     </div>
     <div class="field"><label>تاریخ</label>
       <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : todayISO()}">
     </div>
-    <button class="btn primary block" onclick="saveTx()">${isEdit ? 'ذخیره تغییرات' : 'ثبت تراکنش'}</button>
-    ${isEdit ? '<button class="btn danger block" style="margin-top:8px" onclick="delTx(\'' + tx.id + '\')">حذف این تراکنش</button>' : ''}
+    <button class="btn primary block" onclick="saveTx()">${isEdit ? 'ذخیره تغییرات' : 'ثبت'}</button>
+    ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? 'حذف این فاکتور' : 'حذف این تراکنش'}</button>` : ''}
   `);
+  if (txMode === 'invoice') {
+    if (!draftLines.length) addTxLine(presetCat || 'need');
+    else renderTxLines();
+  } else if (type === 'in') {
+    applyTxModeUi();
+  }
 }
 
 export function syncTxAmountLabel() {
   const a = accountById(document.getElementById('txAccount').value);
   const lbl = document.getElementById('txAmountLbl');
-  if (lbl) lbl.textContent = 'مبلغ (' + (a ? a.currency : 'تومان') + ')';
+  if (!lbl) return;
+  const cur = a ? a.currency : 'تومان';
+  lbl.textContent = (txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ') + ' (' + cur + ')';
+}
+
+export function onTxAmountInput() {
+  if (txMode === 'invoice') updateInvoiceRemain();
+}
+
+export function syncTxUnitTotal() {
+  if (txMode !== 'simple') return;
+  const p = parseFloat((document.getElementById('txUnitPrice') || {}).value);
+  const q = parseFloat((document.getElementById('txQty') || {}).value);
+  const amt = document.getElementById('txAmount');
+  if (!amt) return;
+  if (p > 0 && q > 0) amt.value = String(p * q);
+}
+
+export function setTxMode(btn) {
+  txMode = btn.dataset.m === 'invoice' ? 'invoice' : 'simple';
+  document.querySelectorAll('#txModeSeg button').forEach((b) => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyTxModeUi();
+}
+
+function applyTxModeUi() {
+  const typeBtn = document.querySelector('#txTypeSeg button.on');
+  const isOut = typeBtn && typeBtn.dataset.t === 'out';
+  if (!isOut) txMode = 'simple';
+  const inv = isOut && txMode === 'invoice';
+  const modeSeg = document.getElementById('txModeSeg');
+  if (modeSeg) modeSeg.style.display = isOut ? '' : 'none';
+  const unitWrap = document.getElementById('txUnitWrap');
+  const catWrap = document.getElementById('txCatWrap');
+  const invWrap = document.getElementById('txInvoiceWrap');
+  if (unitWrap) unitWrap.style.display = inv ? 'none' : '';
+  if (catWrap) catWrap.style.display = !isOut || inv ? 'none' : '';
+  if (invWrap) invWrap.style.display = inv ? '' : 'none';
+  const reflect = document.getElementById('txReflectWrap');
+  if (inv && reflect) reflect.style.display = 'none';
+  syncTxAmountLabel();
+  if (inv) {
+    if (!draftLines.length) addTxLine();
+    else renderTxLines();
+  }
 }
 
 export function setTxType(btn) {
@@ -151,12 +243,20 @@ export function setTxType(btn) {
   document.querySelectorAll('#txTypeSeg button').forEach((b) => b.classList.remove('on', 'out'));
   btn.classList.add('on');
   if (t === 'out') btn.classList.add('out');
-  document.getElementById('txCatWrap').style.display = t === 'in' ? 'none' : '';
-  if (t === 'in') document.getElementById('txReflectWrap').style.display = 'none';
-  else {
+  if (t === 'in') {
+    txMode = 'simple';
+    document.querySelectorAll('#txModeSeg button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.m === 'simple');
+    });
+  }
+  applyTxModeUi();
+  if (t === 'in') {
+    const rw = document.getElementById('txReflectWrap');
+    if (rw) rw.style.display = 'none';
+  } else if (txMode === 'simple') {
     const active = document.querySelector('#txCats .chip.on');
-    document.getElementById('txReflectWrap').style.display =
-      active && active.dataset.cat === 'waste' ? '' : 'none';
+    const rw = document.getElementById('txReflectWrap');
+    if (rw) rw.style.display = active && active.dataset.cat === 'waste' ? '' : 'none';
   }
 }
 
@@ -167,15 +267,172 @@ export function setTxCat(btn) {
   });
   btn.classList.add('on');
   btn.style.background = CATS.find((c) => c.id === btn.dataset.cat).color;
-  document.getElementById('txReflectWrap').style.display = btn.dataset.cat === 'waste' ? '' : 'none';
+  const rw = document.getElementById('txReflectWrap');
+  if (rw) rw.style.display = btn.dataset.cat === 'waste' && txMode === 'simple' ? '' : 'none';
+}
+
+function readDraftLinesFromDom() {
+  draftLines.forEach((l) => {
+    const name = document.getElementById('lnName_' + l.id);
+    const price = document.getElementById('lnPrice_' + l.id);
+    const qty = document.getElementById('lnQty_' + l.id);
+    const unit = document.getElementById('lnUnit_' + l.id);
+    if (name) l.name = name.value;
+    if (price) l.unitPrice = price.value;
+    if (qty) l.qty = qty.value;
+    if (unit) l.unit = unit.value;
+    const p = parseFloat(l.unitPrice) || 0;
+    const q = parseFloat(l.qty) || 0;
+    l.amount = p > 0 && q > 0 ? p * q : 0;
+  });
+}
+
+function lineSum() {
+  return draftLines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+}
+
+function updateInvoiceRemain() {
+  const box = document.getElementById('txRemain');
+  if (!box) return;
+  const total = parseFloat((document.getElementById('txAmount') || {}).value) || 0;
+  const sum = lineSum();
+  const rem = total - sum;
+  if (!total) {
+    box.innerHTML = 'اول مبلغ کل فاکتور را بنویس.';
+    return;
+  }
+  if (nearlyZero(rem)) {
+    box.innerHTML = '<b style="color:var(--green)">جمع اقلام با مبلغ کل یکی است ✓</b>';
+    return;
+  }
+  if (rem > 0) {
+    box.innerHTML = 'مانده برای تخصیص: <b>' + fmt(rem) + '</b> — یا یک قلم دیگر بزن، یا «مانده را سایر کن».';
+    return;
+  }
+  box.innerHTML = '<span style="color:var(--red)">جمع اقلام ' + fmt(sum) + ' از مبلغ کل ' + fmt(total) + ' بیشتر است.</span>';
+}
+
+export function renderTxLines() {
+  const box = document.getElementById('txLines');
+  if (!box) return;
+  if (!draftLines.length) {
+    box.innerHTML = '<div class="small muted" style="margin-bottom:8px">هنوز قلمی نیست.</div>';
+    updateInvoiceRemain();
+    return;
+  }
+  box.innerHTML = draftLines
+    .map((l) => {
+      const p = parseFloat(l.unitPrice) || 0;
+      const q = parseFloat(l.qty) || 0;
+      const amt = p > 0 && q > 0 ? p * q : Number(l.amount) || 0;
+      l.amount = amt;
+      const cat = l.cat || 'need';
+      return `<div class="inv-line" data-id="${l.id}">
+        <div class="field" style="margin-bottom:8px"><label>نام قلم</label>
+          <input class="input" id="lnName_${l.id}" placeholder="مثلاً شیر" value="${esc(l.name || '')}" oninput="syncTxLine('${l.id}')">
+        </div>
+        <div class="row">
+          <div class="col field"><label>قیمت واحد</label>
+            <input class="input" id="lnPrice_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.unitPrice || ''}" oninput="syncTxLine('${l.id}')">
+          </div>
+          <div class="col field"><label>مقدار</label>
+            <input class="input" id="lnQty_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.qty || ''}" oninput="syncTxLine('${l.id}')">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col field"><label>واحد</label>
+            <input class="input" id="lnUnit_${l.id}" placeholder="عدد / کیلو" value="${esc(l.unit || '')}" oninput="syncTxLine('${l.id}')">
+          </div>
+          <div class="col field"><label>مبلغ این قلم</label>
+            <div class="input" id="lnAmt_${l.id}" style="display:flex;align-items:center;font-weight:800">${fmt(amt)}</div>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:8px"><label>پاکت این قلم</label>
+          <div class="chips">${catChipsHtml(cat, 'setLineCat', l.id)}</div>
+        </div>
+        <button type="button" class="btn sm danger block" onclick="removeTxLine('${l.id}')">حذف این قلم</button>
+      </div>`;
+    })
+    .join('');
+  updateInvoiceRemain();
+}
+
+export function addTxLine(catId) {
+  readDraftLinesFromDom();
+  draftLines.push({
+    id: uid(),
+    name: '',
+    unitPrice: '',
+    qty: '',
+    unit: '',
+    amount: 0,
+    cat: typeof catId === 'string' ? catId : 'need',
+  });
+  renderTxLines();
+}
+
+export function removeTxLine(id) {
+  readDraftLinesFromDom();
+  draftLines = draftLines.filter((l) => l.id !== id);
+  renderTxLines();
+}
+
+export function syncTxLine(id) {
+  const l = draftLines.find((x) => x.id === id);
+  if (!l) return;
+  const name = document.getElementById('lnName_' + id);
+  const price = document.getElementById('lnPrice_' + id);
+  const qty = document.getElementById('lnQty_' + id);
+  const unit = document.getElementById('lnUnit_' + id);
+  if (name) l.name = name.value;
+  if (price) l.unitPrice = price.value;
+  if (qty) l.qty = qty.value;
+  if (unit) l.unit = unit.value;
+  const p = parseFloat(l.unitPrice) || 0;
+  const q = parseFloat(l.qty) || 0;
+  l.amount = p > 0 && q > 0 ? p * q : 0;
+  const amtEl = document.getElementById('lnAmt_' + id);
+  if (amtEl) amtEl.textContent = fmt(l.amount);
+  updateInvoiceRemain();
+}
+
+export function setLineCat(btn, lineId) {
+  const l = draftLines.find((x) => x.id === lineId);
+  if (!l) return;
+  l.cat = btn.dataset.cat;
+  const wrap = btn.parentElement;
+  if (wrap) {
+    wrap.querySelectorAll('.chip').forEach((c) => {
+      c.classList.remove('on');
+      c.style.background = '';
+    });
+  }
+  btn.classList.add('on');
+  const found = CATS.find((c) => c.id === l.cat);
+  if (found) btn.style.background = found.color;
+}
+
+export function addRemainderLine() {
+  readDraftLinesFromDom();
+  const total = parseFloat((document.getElementById('txAmount') || {}).value) || 0;
+  const rem = total - lineSum();
+  if (rem <= 0) {
+    toast('مانده‌ای نمانده');
+    return;
+  }
+  draftLines.push({
+    id: uid(),
+    name: 'سایر',
+    unitPrice: rem,
+    qty: 1,
+    unit: 'قلم',
+    amount: rem,
+    cat: 'need',
+  });
+  renderTxLines();
 }
 
 export function saveTx() {
-  const amount = parseFloat(document.getElementById('txAmount').value);
-  if (!amount || amount <= 0) {
-    toast('مبلغ را درست وارد کن');
-    return;
-  }
   const onBtn = document.querySelector('#txTypeSeg button.on');
   if (!onBtn) {
     toast('نوع تراکنش را انتخاب کن');
@@ -190,33 +447,109 @@ export function saveTx() {
   const note = document.getElementById('txNote').value.trim();
   const dateISO = document.getElementById('txDate').value || todayISO();
   const month = monthOfISO(dateISO);
-  const activeCat = document.querySelector('#txCats .chip.on');
-  const cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
-  const reflect = type === 'out' && cat === 'waste' ? document.getElementById('txReflect').value.trim() : '';
   const stamp = Date.now();
   rememberAccount(accountId);
+
+  const invoice = type === 'out' && txMode === 'invoice';
+  let amount;
+  let cat = null;
+  let reflect = '';
+  let unitPrice = 0;
+  let qty = 0;
+  let unit = '';
+  let lines = [];
+  let kind = '';
+
+  if (invoice) {
+    readDraftLinesFromDom();
+    amount = parseFloat(document.getElementById('txAmount').value);
+    if (!amount || amount <= 0) {
+      toast('مبلغ کل فاکتور را بنویس');
+      return;
+    }
+    if (!draftLines.length) {
+      toast('حداقل یک قلم اضافه کن');
+      return;
+    }
+    for (const l of draftLines) {
+      if (!(parseFloat(l.unitPrice) > 0) || !(parseFloat(l.qty) > 0)) {
+        toast('برای هر قلم، قیمت واحد و مقدار را بنویس');
+        return;
+      }
+      if (!String(l.name || '').trim()) {
+        toast('نام هر قلم را بنویس');
+        return;
+      }
+    }
+    const sum = lineSum();
+    if (!nearlyZero(amount - sum)) {
+      toast('جمع اقلام باید با مبلغ کل یکی باشد');
+      return;
+    }
+    kind = 'invoice';
+    lines = draftLines.map((l) => ({
+      id: l.id || uid(),
+      name: String(l.name || '').trim(),
+      unitPrice: parseFloat(l.unitPrice),
+      qty: parseFloat(l.qty),
+      unit: String(l.unit || '').trim(),
+      amount: parseFloat(l.unitPrice) * parseFloat(l.qty),
+      cat: l.cat || 'need',
+    }));
+  } else {
+    const p = parseFloat((document.getElementById('txUnitPrice') || {}).value) || 0;
+    const q = parseFloat((document.getElementById('txQty') || {}).value) || 0;
+    unit = ((document.getElementById('txUnit') || {}).value || '').trim();
+    if (p > 0 && q > 0) {
+      amount = p * q;
+      unitPrice = p;
+      qty = q;
+      const amtEl = document.getElementById('txAmount');
+      if (amtEl) amtEl.value = String(amount);
+    } else {
+      amount = parseFloat(document.getElementById('txAmount').value);
+      unitPrice = 0;
+      qty = 0;
+      unit = '';
+    }
+    if (!amount || amount <= 0) {
+      toast('مبلغ را درست وارد کن');
+      return;
+    }
+    const activeCat = document.querySelector('#txCats .chip.on');
+    cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
+    const rf = document.getElementById('txReflect');
+    reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
+  }
+
+  const payload = {
+    amount,
+    accountId,
+    note,
+    dateISO,
+    type,
+    cat,
+    reflect,
+    month,
+    updatedAt: stamp,
+    kind,
+    lines,
+    unitPrice,
+    qty,
+    unit,
+  };
+
   if (editingTxId) {
     const t = state.transactions.find((x) => x.id === editingTxId);
     if (!t || isTransfer(t)) {
       toast('این انتقال را از فرم مخصوصش ویرایش کن');
       return;
     }
-    Object.assign(t, { amount, accountId, note, dateISO, type, cat, reflect, month, updatedAt: stamp });
+    Object.assign(t, payload);
     toast('ویرایش شد');
   } else {
-    state.transactions.push({
-      id: uid(),
-      amount,
-      accountId,
-      note,
-      dateISO,
-      type,
-      cat,
-      reflect,
-      month,
-      updatedAt: stamp,
-    });
-    toast('ثبت شد ✓');
+    state.transactions.push(Object.assign({ id: uid() }, payload));
+    toast(invoice ? 'فاکتور ثبت شد ✓' : 'ثبت شد ✓');
   }
   save();
   closeModal();
@@ -233,7 +566,10 @@ function pairTransactions(idOrPair) {
 export function delTx(id) {
   const group = pairTransactions(id);
   const isPair = group.length > 1;
-  askConfirm(isPair ? 'این انتقال (هر دو طرف) حذف شود؟' : 'این تراکنش حذف شود؟', () => {
+  const inv = group.length === 1 && isInvoice(group[0]);
+  askConfirm(
+    isPair ? 'این انتقال (هر دو طرف) حذف شود؟' : inv ? 'این فاکتور و همه اقلامش حذف شود؟' : 'این تراکنش حذف شود؟',
+    () => {
     const ids = new Set(group.map((x) => x.id));
     state.transactions = state.transactions.filter((t) => !ids.has(t.id));
     save();
@@ -316,22 +652,25 @@ export function openAccountLedger(id) {
       : txs
           .map((t) => {
             const transfer = isTransfer(t);
-            const cat = t.type === 'out' ? catById(t.cat) : null;
+            const inv = isInvoice(t);
+            const cat = t.type === 'out' && !inv ? catById(t.cat) : null;
             const title = t.note
               ? esc(t.note)
               : transfer
                 ? 'انتقال بین حساب‌ها'
-                : t.type === 'in'
-                  ? 'درآمد'
-                  : cat
-                    ? cat.label
-                    : 'خرج';
+                : inv
+                  ? 'فاکتور'
+                  : t.type === 'in'
+                    ? 'درآمد'
+                    : cat
+                      ? cat.label
+                      : 'خرج';
             const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
             const amtClass = transfer ? 'transfer' : t.type;
             return `<div class="item" onclick="openTxForm(findTx('${t.id}'))">
               <div class="mid">
-                <div class="t1">${title}</div>
-                <div class="t2">${fmtDate(t.dateISO)}${transfer ? ' · انتقال' : cat ? ' · ' + cat.label : ''}</div>
+                <div class="t1">${title}${inv ? ' <span class="badge">فاکتور</span>' : ''}</div>
+                <div class="t2">${fmtDate(t.dateISO)}${transfer ? ' · انتقال' : inv ? ' · ' + (t.lines || []).length + ' قلم' : cat ? ' · ' + cat.label : ''}</div>
               </div>
               <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
             </div>`;
@@ -361,22 +700,19 @@ export function openPocketLedger(catId, mk) {
   const ceil = catCeiling(mk, catId);
   const over = c.target === 0 ? spent > 0 : ceil > 0 && spent > ceil;
   const left = Math.max(0, ceil - spent);
-  const txs = sortTxs(
-    state.transactions.filter((t) => t.month === mk && t.type === 'out' && t.cat === catId)
-  );
+  const items = pocketItems(mk, catId);
   const rows =
-    txs.length === 0
+    items.length === 0
       ? `<div class="empty" style="padding:22px 8px"><span class="em">${c.emoji}</span>خرجی در این پاکت برای ${monthLabel(mk)} ثبت نشده.</div>`
-      : txs
-          .map((t) => {
-            const a = accountById(t.accountId);
-            const title = t.note ? esc(t.note) : c.label;
-            return `<div class="item" onclick="openTxForm(findTx('${t.id}'))">
+      : items
+          .map((it) => {
+            const a = accountById(it.accountId);
+            return `<div class="item" onclick="openTxForm(findTx('${it.txId}'))">
               <div class="mid">
-                <div class="t1">${title}</div>
-                <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}</div>
+                <div class="t1">${esc(it.title)}${it.invoice ? ' <span class="badge">فاکتور</span>' : ''}</div>
+                <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>
               </div>
-              <div class="amt out">−${fmt(t.amount)}</div>
+              <div class="amt out">−${fmt(it.amount)}</div>
             </div>`;
           })
           .join('');

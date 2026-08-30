@@ -401,3 +401,8 @@ body.locked{overflow:hidden}
 }
 .theme-swatch.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .theme-dot{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:1px solid var(--border)}
+
+.inv-line{
+  background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:12px;margin-bottom:10px;
+}

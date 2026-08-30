@@ -92,6 +92,10 @@ export function isTransfer(t) {
   return t.type === 'transferIn' || t.type === 'transferOut';
 }
 
+export function isInvoice(t) {
+  return !!(t && t.kind === 'invoice' && t.lines && t.lines.length);
+}
+
 export function txAmountToman(t) {
   const a = accountById(t.accountId);
   return (t.amount || 0) * rateOf(a ? a.currency : 'تومان');
@@ -152,9 +156,48 @@ export function budgetOf(mk) {
 }
 
 export function catSpent(mk, catId) {
-  return state.transactions
-    .filter((t) => t.month === mk && t.type === 'out' && t.cat === catId)
-    .reduce((s, t) => s + txAmountToman(t), 0);
+  let s = 0;
+  for (const t of state.transactions) {
+    if (t.month !== mk || t.type !== 'out') continue;
+    if (isInvoice(t)) {
+      for (const line of t.lines) {
+        if (line.cat === catId) s += (line.amount || 0) * rateOf(accountById(t.accountId)?.currency);
+      }
+    } else if (t.cat === catId) {
+      s += txAmountToman(t);
+    }
+  }
+  return s;
+}
+
+export function pocketItems(mk, catId) {
+  const items = [];
+  for (const t of state.transactions) {
+    if (t.month !== mk || t.type !== 'out') continue;
+    if (isInvoice(t)) {
+      for (const line of t.lines) {
+        if (line.cat !== catId) continue;
+        items.push({
+          txId: t.id,
+          amount: line.amount || 0,
+          title: line.name || 'قلم فاکتور',
+          dateISO: t.dateISO,
+          accountId: t.accountId,
+          invoice: true,
+        });
+      }
+    } else if (t.cat === catId) {
+      items.push({
+        txId: t.id,
+        amount: t.amount || 0,
+        title: t.note || (catById(catId) ? catById(catId).label : 'خرج'),
+        dateISO: t.dateISO,
+        accountId: t.accountId,
+        invoice: false,
+      });
+    }
+  }
+  return items.sort((a, b) => String(b.dateISO || '').localeCompare(String(a.dateISO || '')));
 }
 
 export function catCeiling(mk, catId) {

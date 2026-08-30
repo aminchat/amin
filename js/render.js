@@ -14,7 +14,9 @@ import {
   investProfit,
   investTotal,
   investValue,
+  isInvoice,
   isTransfer,
+  pocketItems,
   rateOf,
   sortTxs,
   state,
@@ -112,25 +114,34 @@ export function renderTx() {
     let html2 = '';
     for (const t of txs) {
       const a = accountById(t.accountId);
-      const cat = t.type === 'out' ? catById(t.cat) : null;
+      const inv = isInvoice(t);
+      const cat = t.type === 'out' && !inv ? catById(t.cat) : null;
       const transfer = isTransfer(t);
-      const ic = transfer ? '⇄' : t.type === 'in' ? '💵' : cat ? cat.emoji : '•';
+      const ic = transfer ? '⇄' : inv ? '🧾' : t.type === 'in' ? '💵' : cat ? cat.emoji : '•';
       const bg = transfer
         ? 'rgba(167,139,250,.15)'
-        : t.type === 'in'
-          ? 'rgba(34,197,94,.15)'
-          : cat
-            ? 'rgba(255,255,255,.05)'
-            : '';
+        : inv
+          ? 'rgba(245,158,11,.15)'
+          : t.type === 'in'
+            ? 'rgba(34,197,94,.15)'
+            : cat
+              ? 'rgba(255,255,255,.05)'
+              : '';
       const title = t.note
         ? esc(t.note)
         : transfer
           ? 'انتقال بین حساب‌ها'
-          : t.type === 'in'
-            ? 'درآمد'
-            : cat
-              ? cat.label
-              : 'خرج';
+          : inv
+            ? 'فاکتور'
+            : t.type === 'in'
+              ? 'درآمد'
+              : cat
+                ? cat.label
+                : 'خرج';
+      const unitHint =
+        !inv && t.qty && t.unitPrice
+          ? toFa(t.qty) + (t.unit ? ' ' + esc(t.unit) : '') + ' × ' + fmt(t.unitPrice)
+          : '';
       const amtClass = transfer ? 'transfer' : t.type;
       const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
       html2 += `
@@ -139,7 +150,9 @@ export function renderTx() {
         <div class="mid">
           <div class="t1">${title}</div>
           <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}
+            ${unitHint ? ' · ' + unitHint : ''}
             ${transfer ? '<span class="badge" style="color:#a78bfa;border-color:#a78bfa55">انتقال</span>' : ''}
+            ${inv ? '<span class="badge" style="color:#f59e0b;border-color:#f59e0b55">فاکتور · ' + toFa((t.lines || []).length) + ' قلم</span>' : ''}
             ${t.type === 'out' && cat ? '<span class="badge" style="color:' + cat.color + ';border-color:' + cat.color + '55">' + cat.label + '</span>' : ''}
             ${t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:#ef4444;border-color:#ef444455">🤔 پاسخ داری</span>' : ''}
             ${a && a.currency && a.currency !== 'تومان' ? '<span class="badge">' + esc(a.currency) + '</span>' : ''}
@@ -160,7 +173,6 @@ export function txShift(d) {
 
 export function renderReport() {
   const mk = repMonth;
-  const txs = state.transactions.filter((t) => t.month === mk);
   const budget = (state.budgets[mk] && state.budgets[mk].amount) || 0;
   const cm = computeMonths()[mk] || { carriedIn: 0, spent: 0, income: 0 };
   const totalSpent = cm.spent;
@@ -220,31 +232,27 @@ export function renderReport() {
   html += `<div class="card">
     <h3>🚨 هدررفت‌های این ماه</h3>
     ${
-      wasteTxs.length === 0
+      wasteItems.length === 0
         ? '<div class="small muted" style="padding:6px 0">هدررفتی ثبت نشده. عالی! 👏</div>'
-        : wasteTxs
-            .map((t) => {
-              const a = accountById(t.accountId);
+        : wasteItems
+            .map((it) => {
+              const a = accountById(it.accountId);
               return `
-      <div class="item" style="align-items:flex-start">
+      <div class="item" style="align-items:flex-start" onclick="openTxForm(findTx('${it.txId}'))">
         <div class="ic" style="background:rgba(239,68,68,.15)">🚨</div>
         <div class="mid">
-          <div class="t1">${t.note ? esc(t.note) : 'هدررفت'}</div>
-          <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}</div>
-          ${t.reflect ? `<div class="hint" style="margin-top:6px">🤔 <b>اگر نمی‌کردی:</b> ${esc(t.reflect)}</div>` : ''}
+          <div class="t1">${esc(it.title)}${it.invoice ? ' <span class="badge">فاکتور</span>' : ''}</div>
+          <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>
         </div>
-        <div class="amt out">−${fmt(t.amount)}</div>
+        <div class="amt out">−${fmt(it.amount)}</div>
       </div>`;
             })
             .join('')
     }
     ${
-      wasteTxs.length
+      wasteItems.length
         ? `<div class="divider"></div><div style="display:flex;justify-content:space-between;font-weight:700"><span>جمع هدررفت</span><span class="red">${fmt(
-            wasteTxs.reduce((s, t) => {
-              const a = accountById(t.accountId);
-              return s + t.amount * rateOf(a ? a.currency : 'تومان');
-            }, 0)
+            catSpent(mk, 'waste')
           )} تومان</span></div>`
         : ''
     }
