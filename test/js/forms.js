@@ -228,6 +228,8 @@ function applyTxModeUi() {
   const inv = isOut && txMode === 'invoice';
   const modeSeg = document.getElementById('txModeSeg');
   if (modeSeg) modeSeg.style.display = isOut ? '' : 'none';
+  const scanWrap = document.getElementById('txScanWrap');
+  if (scanWrap) scanWrap.style.display = isOut ? '' : 'none';
   const unitWrap = document.getElementById('txUnitWrap');
   const catWrap = document.getElementById('txCatWrap');
   const invWrap = document.getElementById('txInvoiceWrap');

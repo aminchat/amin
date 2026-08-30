@@ -1,6 +1,13 @@
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION } from './utils.js';
+import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
+
+export { saveGeminiKey, clearGeminiKey };
+
+function geminiHelpHref() {
+  return location.pathname.indexOf('/test') >= 0 ? '../help-gemini.html' : 'help-gemini.html';
+}
 
 const THEME_KEY = 'capital_theme';
 const PIN_KEY = 'capital_pin_hash';
@@ -219,6 +226,19 @@ export function openSettings() {
           : ''
     }
     ${googleSettingsHtml()}
+    <div class="divider"></div>
+    <h3 style="margin:8px 0 10px">خواندن فاکتور از عکس</h3>
+    <p class="small muted">کلید Google AI Studio را این‌جا بگذار. به کسی نشان نده. عکس برای خواندن به گوگل فرستاده می‌شود.</p>
+    <p><a class="btn block" href="${geminiHelpHref()}" target="_blank" rel="noopener">چطور کلید بگیرم؟</a></p>
+    ${
+      store.get('capital_gemini_key')
+        ? `<div class="hint" style="margin:10px 0">کلید ذخیره شده است.</div>
+           <button class="btn block" onclick="clearGeminiKey()">حذف کلید</button>`
+        : `<div class="field" style="margin-top:12px"><label>کلید API</label>
+           <input class="input" id="geminiKey" type="password" autocomplete="off" placeholder="AIza...">
+           </div>
+           <button class="btn primary block" onclick="saveGeminiKey()">ذخیره کلید</button>`
+    }
     <div class="divider"></div>
     <p class="small muted" style="text-align:center;margin:4px 0 0">نسخه ${APP_VERSION}</p>
   `);

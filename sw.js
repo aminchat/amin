@@ -1,7 +1,8 @@
-const CACHE = 'capital-app-v20';
+const CACHE = 'capital-app-v21';
 const ASSETS = [
   './',
   './index.html',
+  './help-gemini.html',
   './manifest.webmanifest',
   './css/app.css',
   './js/app.js',
@@ -15,6 +16,7 @@ const ASSETS = [
   './js/sync.js',
   './js/prefs.js',
   './js/debts.js',
+  './js/scan.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
