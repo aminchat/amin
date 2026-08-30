@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="برنامه مدیریت سرمایه و خرج به روش چهار پاکت">
+<title>مدیریت سرمایه — آزمایشی</title>
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" type="image/png" href="../icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.bunny.net/css?family=vazirmatn:400,600,700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<script>
+window.__capErrors = [];
+window.__capLog = function (where, err) {
+  var msg = (err && (err.stack || err.message)) || String(err);
+  var row = { where: String(where || ''), msg: msg, at: Date.now() };
+  window.__capErrors.push(row);
+  try {
+    localStorage.setItem('t_capital_debug_errors', JSON.stringify(window.__capErrors.slice(-30)));
+  } catch (e) {}
+};
+window.addEventListener('error', function (e) {
+  window.__capLog((e.filename || '') + ':' + (e.lineno || ''), e.error || e.message);
+});
+window.addEventListener('unhandledrejection', function (e) {
+  window.__capLog('promise', e.reason);
+});
+try {
+  if (localStorage.getItem('t_capital_pin_hash')) document.documentElement.classList.add('needs-lock');
+} catch (e) {}
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<header>
+  <button type="button" class="hdr-btn" id="btnMenu" title="منو" aria-label="منو">☰</button>
+  <div class="brand">
+    <div class="logo">💰</div>
+    <div>
+      <b id="pageTitle">خانه</b>
+      <small id="todayLbl">آزمایشی</small>
+    </div>
+  </div>
+  <div class="hdr-actions">
+    <button type="button" class="hdr-btn" id="btnHome" title="خانه" aria-label="خانه">🏠</button>
+    <button type="button" class="hdr-btn" id="btnPrivacy" title="مخفی کردن اعداد">👁</button>
+    <button type="button" class="hdr-btn" id="btnSettings" title="تنظیمات">⚙</button>
+  </div>
+</header>
+<div class="banner warn" style="margin:0;border-radius:0;justify-content:center">نسخه آزمایشی — این صفحه جدا از برنامه اصلی است</div>
+
+<main>
+  <section id="tab-home" class="active">
+    <div id="homeContent"></div>
+  </section>
+  <section id="tab-tx">
+    <div id="txContent"></div>
+  </section>
+  <section id="tab-report">
+    <div id="reportContent"></div>
+  </section>
+  <section id="tab-invest">
+    <div id="investContent"></div>
+  </section>
+  <section id="tab-accounts">
+    <div id="accountsContent"></div>
+  </section>
+  <section id="tab-debts">
+    <div id="debtsContent"></div>
+  </section>
+</main>
+
+<button id="fab" title="تراکنش جدید">+</button>
+
+<div id="menuScrim" class="menu-scrim"></div>
+<aside id="sideMenu" class="side-menu" aria-hidden="true">
+  <div class="menu-head">
+    <div class="logo">💰</div>
+    <div>
+      <b>مدیریت سرمایه</b>
+      <small id="menuToday">—</small>
+    </div>
+    <button type="button" class="hdr-btn" id="btnMenuClose" title="بستن">✕</button>
+  </div>
+  <div id="menuList"></div>
+</aside>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="logo" style="margin:0 auto 14px">💰</div>
+    <h1>ورود به برنامه</h1>
+    <p>رمز را وارد کن</p>
+    <input class="input" id="lockPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="رمز" autocomplete="off" name="app-pin" style="text-align:center;letter-spacing:6px;margin-bottom:12px">
+    <button class="btn primary block" onclick="submitLockPin()">ورود</button>
+    <button class="btn block" id="lockBio" style="margin-top:8px;display:none" onclick="tryBiometric().then(ok=>{if(ok)unlockApp();else toast('اثر انگشت تأیید نشد')})">ورود با اثر انگشت</button>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

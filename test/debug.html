@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>خطایاب برنامه</title>
+<style>
+  body { font-family: Tahoma, sans-serif; background:#0b0f17; color:#e9eff8; margin:0; padding:16px; line-height:1.6; }
+  h1 { font-size:18px; }
+  .ok { color:#22c55e; }
+  .bad { color:#ef4444; }
+  pre { background:#141b29; border:1px solid #243044; border-radius:12px; padding:12px; white-space:pre-wrap; word-break:break-word; font-size:12px; }
+  a { color:#3d8bfd; }
+  button { font-family:inherit; padding:8px 12px; border-radius:10px; border:1px solid #243044; background:#1b2435; color:#e9eff8; }
+</style>
+</head>
+<body>
+<h1>خطایاب</h1>
+<p><a href="./">برگشت به نسخه آزمایشی</a> · <a href="../">برنامه اصلی</a></p>
+<p id="status">در حال تست…</p>
+<pre id="out"></pre>
+<p><button type="button" id="clr">پاک کردن خطاهای ذخیره‌شده</button></p>
+<div id="homeContent"></div>
+<div id="txContent"></div>
+<div id="reportContent"></div>
+<div id="investContent"></div>
+<div id="accountsContent"></div>
+<div id="debtsContent"></div>
+<div id="todayLbl"></div>
+<div id="menuToday"></div>
+<div id="btnMenu"></div>
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+<script>
+const out = document.getElementById('out');
+const status = document.getElementById('status');
+function line(t) { out.textContent += t + '\n'; }
+window.__capLog = function (where, err) {
+  line((where || '') + ' → ' + ((err && (err.stack || err.message)) || err));
+};
+window.addEventListener('error', function (e) {
+  line('error: ' + (e.message || '') + ' @ ' + (e.filename || '') + ':' + e.lineno);
+});
+window.addEventListener('unhandledrejection', function (e) {
+  line('promise: ' + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason));
+});
+try {
+  const saved = localStorage.getItem('t_capital_debug_errors');
+  if (saved) {
+    line('--- خطاهای ذخیره‌شده از برنامه ---');
+    JSON.parse(saved).forEach(function (r) { line((r.where || '') + '\n' + r.msg); line('---'); });
+  } else {
+    line('خطای ذخیره‌شده‌ای از برنامه نیست.');
+  }
+} catch (e) { line('خواندن حافظه نشد: ' + e); }
+line('\n--- تست رسم صفحات ---');
+import('./js/render.js').then(function (m) {
+  const tests = [
+    ['خانه', m.renderHome],
+    ['تراکنش', m.renderTx],
+    ['گزارش', m.renderReport],
+    ['سرمایه', m.renderInvest],
+    ['حساب‌ها', m.renderAccounts],
+    ['طلب و بدهی', m.renderDebts],
+  ];
+  tests.forEach(function (pair) {
+    try {
+      pair[1]();
+      line(pair[0] + ': سالم');
+    } catch (err) {
+      line(pair[0] + ': خطا');
+      line(err && err.stack ? err.stack : String(err));
+    }
+  });
+  status.innerHTML = '<span class="ok">تست تمام شد.</span>';
+}).catch(function (err) {
+  status.innerHTML = '<span class="bad">بارگذاری شکست.</span>';
+  line(err && err.stack ? err.stack : String(err));
+});
+document.getElementById('clr').onclick = function () {
+  localStorage.removeItem('t_capital_debug_errors');
+  location.reload();
+};
+</script>
+</body>
+</html>
