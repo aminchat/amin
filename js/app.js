@@ -1,5 +1,5 @@
 import { store, toast } from './utils.js';
-import { closeModal } from './modal.js';
+import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
 import { renderAll, setTodayLabel, txShift, repShift, togglePocket } from './render.js';
@@ -144,10 +144,73 @@ function switchTab(id) {
   if (title && tab) title.textContent = tab.lbl;
   const fab = document.getElementById('fab');
   if (fab) fab.title = id === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
+  const homeBtn = document.getElementById('btnHome');
+  if (homeBtn) homeBtn.style.visibility = id === 'home' ? 'hidden' : '';
   closeMenu();
   buildMenu();
   render();
   syncOnPageChange();
+}
+
+function isLocked() {
+  return !!(
+    document.documentElement.classList.contains('needs-lock') ||
+    (document.getElementById('lockScreen') && document.getElementById('lockScreen').classList.contains('show'))
+  );
+}
+
+function handleAppBack() {
+  const overlay = document.getElementById('overlay');
+  if (overlay && overlay.classList.contains('show')) {
+    closeModal();
+    return true;
+  }
+  if (document.body.classList.contains('menu-open')) {
+    closeMenu();
+    return true;
+  }
+  if (isLocked()) return true;
+  if (curTab !== 'home') {
+    switchTab('home');
+    return true;
+  }
+  return false;
+}
+
+function askLeaveApp() {
+  openModal(`
+    <div style="text-align:center;padding:10px 4px">
+      <div style="font-size:38px;margin-bottom:10px">🚪</div>
+      <p style="font-size:15px;margin:0 0 18px">می‌خوای از برنامه خارج شوی؟</p>
+      <div class="row">
+        <button class="btn" style="flex:1" onclick="closeModal()">نه، بمون</button>
+        <button class="btn danger" style="flex:1" onclick="leaveApp()">بله، خارج شو</button>
+      </div>
+    </div>`);
+}
+
+let leavingApp = false;
+function leaveApp() {
+  leavingApp = true;
+  closeModal();
+  try {
+    window.close();
+  } catch (e) {}
+  history.go(-2);
+}
+
+function setupBackButton() {
+  history.replaceState({ cap: 0 }, '');
+  history.pushState({ cap: 1 }, '');
+  window.addEventListener('popstate', () => {
+    if (leavingApp) return;
+    if (handleAppBack()) {
+      history.pushState({ cap: 1 }, '');
+      return;
+    }
+    history.pushState({ cap: 1 }, '');
+    askLeaveApp();
+  });
 }
 
 function findTx(id) {
@@ -226,6 +289,7 @@ Object.assign(window, {
   submitLockPin,
   tryBiometric,
   unlockApp,
+  leaveApp,
 });
 
 document.getElementById('fab').onclick = () => {
@@ -238,6 +302,11 @@ const menuScrim = document.getElementById('menuScrim');
 if (btnMenu) btnMenu.onclick = toggleMenu;
 if (btnMenuClose) btnMenuClose.onclick = closeMenu;
 if (menuScrim) menuScrim.onclick = closeMenu;
+const btnHome = document.getElementById('btnHome');
+if (btnHome) {
+  btnHome.style.visibility = 'hidden';
+  btnHome.onclick = () => switchTab('home');
+}
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.body.classList.contains('menu-open')) closeMenu();
 });
@@ -247,6 +316,7 @@ try {
   render();
   initPrefs();
   notifyDueDebts();
+  setupBackButton();
 } catch (err) {
   console.error(err);
   const home = document.getElementById('homeContent');

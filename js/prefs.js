@@ -1,6 +1,7 @@
-import { store, toast, isMoneyHidden, setMoneyHidden } from './utils.js';
+import { esc, store, toast, isMoneyHidden, setMoneyHidden } from './utils.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
+import { APP_VERSION, gUser, googleSyncOk } from './sync.js';
 
 const THEME_KEY = 'capital_theme';
 const PIN_KEY = 'capital_pin_hash';

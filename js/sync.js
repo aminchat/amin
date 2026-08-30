@@ -424,28 +424,12 @@ export function pushToDrive(interactive) {
   run();
 }
 
+export function googleSyncOk() {
+  return tokenAlive();
+}
+
 export function renderSyncCard() {
-  if (gUser) {
-    const avatar = gUser.picture
-      ? '<img src="' +
-        esc(gUser.picture) +
-        '" style="width:30px;height:30px;border-radius:50%;object-fit:cover" alt="">'
-      : '<div style="width:30px;height:30px;border-radius:50%;background:rgba(61,139,253,.18);display:flex;align-items:center;justify-content:center">👤</div>';
-    return (
-      '<button onclick="openProfileMenu()" title="حساب کاربری" style="display:flex;align-items:center;justify-content:flex-start;gap:8px;margin:0 0 12px;padding:3px 7px;background:transparent;color:var(--muted);font:inherit;font-size:11px;direction:rtl;text-align:right">' +
-      avatar +
-      '<div><div style="color:var(--text);font-size:12px;font-weight:600">' +
-      esc(gUser.name) +
-      '</div>' +
-      '<div style="color:' +
-      (tokenAlive() ? 'var(--green)' : 'var(--orange)') +
-      ';font-size:10px">' +
-      (tokenAlive() ? 'همگام‌سازی فعال ✓' : 'برای ادامه همگام‌سازی یک‌بار بزن') +
-      ' · نسخه ' +
-      APP_VERSION +
-      '</div></div></button>'
-    );
-  }
+  if (gUser) return '';
   return (
     '<div class="card"><h3>☁️ همگام‌سازی ابری</h3>' +
     '<div class="small muted" style="margin-bottom:12px">با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.</div>' +
