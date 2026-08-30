@@ -1,7 +1,13 @@
 import { store, toast, uid } from './utils.js';
 
 const KEY = 'capital_gemini_key';
-const MODELS = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+const MODELS = [
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-2.5-flash',
+];
 
 export function hasGeminiKey() {
   return !!store.get(KEY);
@@ -106,7 +112,7 @@ async function callGemini(model, key, b64) {
         {
           parts: [
             { text: PROMPT },
-            { inline_data: { mime_type: 'image/jpeg', data: b64 } },
+            { inlineData: { mimeType: 'image/jpeg', data: b64 } },
           ],
         },
       ],
