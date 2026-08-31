@@ -16,6 +16,7 @@ import {
   isInvoice,
   isTransfer,
   pocketItems,
+  runningBalanceByTxId,
   save,
   sortTxs,
   state,
@@ -701,6 +702,7 @@ export function openAccountLedger(id) {
   rememberAccount(id);
   const bal = accountCurrent(a);
   const txs = sortTxs(state.transactions.filter((t) => t.accountId === id));
+  const after = runningBalanceByTxId();
   const rows =
     txs.length === 0
       ? `<div class="empty" style="padding:22px 8px"><span class="em">💸</span>گردشی برای این حساب ثبت نشده.</div>`
@@ -722,12 +724,17 @@ export function openAccountLedger(id) {
                       : 'خرج';
             const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
             const amtClass = transfer ? 'transfer' : t.type;
+            const bal = after[t.id];
+            const balTxt = bal == null ? '' : `<div class="bal">مانده ${fmt(bal)}</div>`;
             return `<div class="item" onclick="openTxForm(findTx('${t.id}'))">
               <div class="mid">
                 <div class="t1">${title}${inv ? ' <span class="badge">فاکتور</span>' : ''}</div>
                 <div class="t2">${fmtDate(t.dateISO)}${transfer ? ' · انتقال' : inv ? ' · ' + (t.lines || []).length + ' قلم' : cat ? ' · ' + cat.label : ''}</div>
               </div>
-              <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
+              <div class="amt-col">
+                <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
+                ${balTxt}
+              </div>
             </div>`;
           })
           .join('');

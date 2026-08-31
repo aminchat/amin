@@ -145,6 +145,25 @@ export function sortTxs(txs) {
   });
 }
 
+export function txDelta(t) {
+  return (t.type === 'in' || t.type === 'transferIn' ? 1 : -1) * (t.amount || 0);
+}
+
+// موجودی هر حساب درست بعد از همان تراکنش (از قدیم به جدید)
+export function runningBalanceByTxId() {
+  const bal = {};
+  for (const a of state.accounts) bal[a.id] = a.initial || 0;
+  const after = {};
+  const chrono = sortTxs(state.transactions).reverse();
+  for (const t of chrono) {
+    if (!t.accountId) continue;
+    if (bal[t.accountId] == null) bal[t.accountId] = 0;
+    bal[t.accountId] += txDelta(t);
+    after[t.id] = bal[t.accountId];
+  }
+  return after;
+}
+
 export function spentIn(mk) {
   return state.transactions
     .filter((t) => t.month === mk && t.type === 'out')

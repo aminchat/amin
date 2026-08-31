@@ -18,6 +18,7 @@ import {
   isTransfer,
   pocketItems,
   rateOf,
+  runningBalanceByTxId,
   sortTxs,
   state,
   budgetOf,
@@ -102,6 +103,7 @@ export function renderHome() {
 
 export function renderTx() {
   const txs = sortTxs(state.transactions.filter((t) => t.month === txMonth));
+  const after = runningBalanceByTxId();
   let html = `<div class="mnav">
     <button onclick="txShift(-1)">‹</button>
     <div class="mttl">${monthLabel(txMonth)}<div class="small muted">${txMonth === curMonthKey() ? 'ماه جاری' : ''}</div></div>
@@ -144,6 +146,8 @@ export function renderTx() {
           : '';
       const amtClass = transfer ? 'transfer' : t.type;
       const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
+      const bal = after[t.id];
+      const balTxt = bal == null ? '' : `<div class="bal">مانده ${fmt(bal)}</div>`;
       html2 += `
       <div class="item" onclick="openTxForm(findTx('${t.id}'))">
         <div class="ic" style="background:${bg}">${ic}</div>
@@ -158,7 +162,10 @@ export function renderTx() {
             ${a && a.currency && a.currency !== 'تومان' ? '<span class="badge">' + esc(a.currency) + '</span>' : ''}
           </div>
         </div>
-        <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
+        <div class="amt-col">
+          <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
+          ${balTxt}
+        </div>
       </div>`;
     }
     html += html2;
