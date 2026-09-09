@@ -510,6 +510,7 @@ export async function onPaperPhoto(inp) {
     }
     savePaperTxs();
   } catch (e) {
+    closeModal();
     if (e && e.message === 'NO_KEY') toast('اول در تنظیمات کلید عکس را بگذار');
     else toast((e && e.message) || 'خواندن عکس نشد');
   }
@@ -623,17 +624,15 @@ export function removePaperRow(id) {
 
 export function savePaperTxs() {
   readPaperDraftFromDom();
+  paperDraft = paperDraft.filter((r) => r.amount > 0);
   if (!paperDraft.length) {
     toast('چیزی برای ثبت نیست');
     return;
   }
   for (const r of paperDraft) {
-    if (!r.amount || r.amount <= 0) {
-      toast('مبلغ همه موارد را درست کن');
-      return;
-    }
+    if (!accountById(r.accountId)) r.accountId = lastAccountId();
     if (!accountById(r.accountId)) {
-      toast('حساب را برای همه موارد انتخاب کن');
+      toast('اول یک حساب بساز');
       return;
     }
   }
@@ -828,7 +827,24 @@ export function saveTx() {
     const activeCat = document.querySelector('#txCats .chip.on');
     cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
     const rf = document.getElementById('txReflect');
-    reflect = type === 'out' && cat === 'waste' ,
+    reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
+  }
+
+  const payload = {
+    amount,
+    accountId,
+    note,
+    dateISO,
+    type,
+    cat,
+    reflect,
+    month,
+    updatedAt: stamp,
+    kind,
+    lines,
+    unitPrice,
+    qty,
+    unit,
   };
 
   if (editingTxId) {
@@ -1210,13 +1226,6 @@ export function openRateEdit(cur) {
     <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند تومان است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)</p>
     <div class="field"><label>تومان به ازای هر واحد</label>
       <input class="input" id="rVal" type="number" step="any" inputmode="decimal" min="0" value="${state.rates[cur] || ''}">
-    </div>
-    <button class="btn primary block" onclick="saveRate('${cur}')">ذخیره نرخ</button>
-  `);
-}
-
-export function saveRate(cur) {
-  const v = painputmode="decimal" min="0" value="${state.rates[cur] || ''}">
     </div>
     <button class="btn primary block" onclick="saveRate('${cur}')">ذخیره نرخ</button>
   `);
