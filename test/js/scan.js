@@ -265,7 +265,11 @@ export async function readInvoiceImage(file) {
 }
 
 export async function readPaperTxImage(file, accountNames) {
-  const raw = await readWithGemini(file, paperPrompt(accountNames), { max: 2048, quality: 0.9 });
+  const raw = await readWithGemini(file, paperPrompt(accountNames), {
+    max: 2048,
+    quality: 0.9,
+    jsonMode: true,
+  });
   const list = normalizePaper(raw);
   if (!list.length) throw new Error('در عکس تراکنشی پیدا نشد');
   return list;
