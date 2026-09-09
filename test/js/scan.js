@@ -98,10 +98,11 @@ function paperPrompt(accountNames) {
 - اگر فقط ریال فیش بود و تومان دستی نبود، برنامه خودش ریال را تقسیم بر ۱۰ می‌کند.
 - موجودی حساب را تراکنش نکن.
 
-اگر روی یک ردیف کلمه «فاکتور» آمده، یا چند قلم شماره‌دار (۱- ۲- …) زیر یک برداشت بانک است، kind را invoice بگذار و هر کالا را در lines بگذار.
-نام فروشگاه را در store بگذار، نه در note. note برای فاکتور یا خالی است یا نام فروشگاه.
-کلمهٔ پاکت (ضروری، تفریح، هدررفت، سرمایه، نیکوکاری) را هیچ‌وقت به جای نام کالا یا عنوان نگذار؛ فقط در cat بگذار.
-اگر فاکتور ننوشته و فقط یک کالا است، kind: simple و note نام همان کالا.
+اگر روی یک برداشت بانک یا یک بخش کاغذ کلمه «فاکتور» آمده، یا چند قلم شماره‌دار (۱- ۲- …) است، فقط یک تراکنش با kind: invoice بساز.
+همهٔ اقلام همان فاکتور را در lines همان یک آیتم بگذار. برای ۳ قلم، ۳ فاکتور نساز؛ یک فاکتور با ۳ خط بساز.
+نام فروشگاه را در store بگذار. note خالی یا نام فروشگاه.
+کلمهٔ پاکت (ضروری، تفریح، هدررفت، سرمایه، نیکوکاری) را هیچ‌وقت به جای نام کالا نگذار؛ فقط در cat.
+اگر فاکتور ننوشته و فقط یک کالا است، kind: simple.
 
 qty و unit را از دست‌نویس بردار (بسته، لیتر، عدد، کیلو). اگر نبود خالی بگذار.
 پاکت cat: ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
@@ -525,6 +526,7 @@ function normalizePaper(raw) {
         unit: '',
         unitPrice: 0,
         lines,
+        bankRial: num(pick(row, ['bankRial', 'rial', 'amountRial'])),
       });
       continue;
     }
@@ -544,7 +546,65 @@ function normalizePaper(raw) {
       unit: qu.unit,
       unitPrice: qu.unitPrice,
       lines: [],
+      bankRial: num(pick(row, ['bankRial', 'rial', 'amountRial'])),
     });
   }
-  return out;
+  return mergeInvoiceRows(out);
+}
+
+function txToLine(t) {
+  if (t.kind === 'invoice' && t.lines && t.lines.length) return t.lines.slice();
+  const amount = t.amount || 0;
+  if (!amount) return [];
+  let qty = t.qty || 1;
+  let unit = t.unit || 'عدد';
+  let unitPrice = t.unitPrice || amount / qty;
+  return [
+    {
+      id: uid(),
+      name: t.note && t.note !== 'فاکتور' ? t.note : 'قلم',
+      qty,
+      unit,
+      unitPrice,
+      amount: unitPrice * qty,
+      cat: t.cat || 'need',
+    },
+  ];
+}
+
+function sameInvoiceGroup(a, b) {
+  if ((a.date || '') !== (b.date || '')) return false;
+  if ((a.account || '') !== (b.account || '')) return false;
+  if (a.bankRial && b.bankRial) return Number(a.bankRial) === Number(b.bankRial);
+  const al = (a.lines && a.lines.length) || 0;
+  const bl = (b.lines && b.lines.length) || 0;
+  if (a.kind === 'invoice' && b.kind === 'invoice' && al <= 1 && bl <= 1) return true;
+  return false;
+}
+
+function mergeInvoiceRows(items) {
+  const merged = [];
+  for (const t of items) {
+    const prev = merged[merged.length - 1];
+    const tInv = t.kind === 'invoice';
+    const pInv = prev && prev.kind === 'invoice';
+    if (prev && (tInv || pInv) && sameInvoiceGroup(prev, t)) {
+      if (prev.kind !== 'invoice') {
+        prev.kind = 'invoice';
+        prev.lines = txToLine(prev);
+        prev.cat = null;
+        prev.qty = 0;
+        prev.unit = '';
+        prev.unitPrice = 0;
+        if (!prev.note || prev.note === 'خرج') prev.note = 'فاکتور';
+      }
+      prev.lines = (prev.lines || []).concat(txToLine(t));
+      prev.amount = prev.lines.reduce((s, l) => s + (l.amount || 0), 0);
+      if (t.note && t.note !== 'فاکتور' && t.kind === 'invoice' && (prev.note === 'فاکتور' || !prev.note))
+        prev.note = t.note;
+      continue;
+    }
+    merged.push(t);
+  }
+  return merged;
 }
