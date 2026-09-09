@@ -1,4 +1,5 @@
 import { store, toast, uid } from './utils.js';
+import { parseAppDate } from './jalali.js';
 
 const KEY = 'capital_gemini_key';
 const MODELS = [
@@ -41,7 +42,9 @@ function faToEn(s) {
 
 function num(v) {
   if (typeof v === 'number' && isFinite(v)) return v;
-  const s = faToEn(v).replace(/,/g, '').replace(/[^\d.-]/g, '');
+  const s = faToEn(v)
+    .replace(/[,٬،\s]/g, '')
+    .replace(/[^\d.-]/g, '');
   const n = parseFloat(s);
   return n > 0 ? n : 0;
 }
@@ -86,19 +89,22 @@ const INVOICE_PROMPT = `این یک عکس فاکتور یا رسید خرید �
 
 function paperPrompt(accountNames) {
   const accts = (accountNames || []).filter(Boolean).join('، ') || 'نامشخص';
-  return `این عکس یک لیست دست‌نویس یا تایپ‌شده از چند تراکنش مالی است، نه لزوماً فاکتور فروشگاه.
-هر خط معمولاً یک تراکنش جدا است.
-فقط یک JSON معتبر برگردان، بدون متن اضافه.
-مبالغ را به تومان بده (اگر ریال بود تقسیم بر ۱۰ کن).
-اگر نوع مشخص نبود خرج است.
-type فقط in یا out باشد (درآمد=in ، خرج=out).
-پاکت cat را فقط یکی از این‌ها بگذار: need, invest, fun, charity, waste
-معنی فارسی: ضروری/ضروریات/نیاز=need ، سرمایه/سرمایه‌گذاری=invest ، تفریح/سرگرمی=fun ، نیکوکاری/خیرات/صدقه=charity ، هدررفت/اسراف=waste
-اگر پاکت نبود need بگذار. برای درآمد cat را need نگذار؛ همان need هم اشکال ندارد چون برنامه درآمد را بدون پاکت ذخیره می‌کند.
-date اگر خواندی YYYY-MM-DD میلادی، وگرنه null.
-account نام حساب اگر روی کاغذ آمده؛ حساب‌های موجود: ${accts}
+  return `این عکس یک کاغذ دست‌نویس است: جدول خرج روزانه، نه فاکتور فروشگاه.
+ممکن است چند تاریخ جدا داشته باشد. خط «تاریخ» و نام حساب (مثل ملت ۶۳۹۵) مال ردیف‌های پایین‌تر است تا تاریخ بعدی.
+هر ردیف کالا یک تراکنش جدا است. ستون‌ها معمولاً: شرح، تعداد، مبلغ، تومان، پاکت (ضروری و غیره).
+علامت « و " یعنی همان واحد قبلی (تومان).
+خط جمع کل یا مبلغ خط‌خورده را نیاور.
+فقط JSON معتبر برگردان.
+مبلغ هر ردیف را به تومان بده (عدد بدون جداکننده هزارگان). ریال را تقسیم بر ۱۰ کن.
+type فقط in یا out (اگر ننوشته out).
+cat فقط: need, invest, fun, charity, waste
+ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
+اگر پاکت نبود need.
+date را همان تاریخ همان بخش بگذار، به صورت شمسی YYYY/MM/DD (مثلا 1405/06/15) یا میلادی YYYY-MM-DD.
+account همان نام حساب بالای بخش؛ حساب‌های موجود: ${accts}
+note نام کالا یا شرح ردیف.
 شکل JSON:
-{"transactions":[{"type":"out","amount":0,"cat":"need","note":"توضیح کوتاه","account":"","date":null}]}`;
+{"transactions":[{"type":"out","amount":320000,"cat":"need","note":"نان","account":"ملت","date":"1405/06/15"}]}`;
 }
 
 function parseModelJson(text) {
@@ -106,22 +112,36 @@ function parseModelJson(text) {
   let s = String(text).trim();
   const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) s = fence[1].trim();
-  const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start >= 0 && end > start) s = s.slice(start, end + 1);
-  try {
-    return JSON.parse(s);
-  } catch (e) {
-    return null;
+  const startObj = s.indexOf('{');
+  const startArr = s.indexOf('[');
+  if (startArr >= 0 && (startObj < 0 || startArr < startObj)) {
+    const end = s.lastIndexOf(']');
+    if (end > startArr) {
+      try {
+        const arr = JSON.parse(s.slice(startArr, end + 1));
+        if (Array.isArray(arr)) return { transactions: arr };
+      } catch (e) {}
+    }
   }
+  if (startObj >= 0) {
+    const end = s.lastIndexOf('}');
+    if (end > startObj) {
+      try {
+        return JSON.parse(s.slice(startObj, end + 1));
+      } catch (e) {}
+    }
+  }
+  return null;
 }
 
-async function callGemini(model, key, b64, prompt) {
+async function callGemini(model, key, b64, prompt, jsonMode) {
   const url =
     'https://generativelanguage.googleapis.com/v1beta/models/' +
     encodeURIComponent(model) +
     ':generateContent?key=' +
     encodeURIComponent(key);
+  const gen = { temperature: 0.1 };
+  if (jsonMode) gen.responseMimeType = 'application/json';
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -134,7 +154,7 @@ async function callGemini(model, key, b64, prompt) {
           ],
         },
       ],
-      generationConfig: { temperature: 0.1 },
+      generationConfig: gen,
     }),
   });
   const data = await resp.json().catch(() => ({}));
@@ -207,16 +227,27 @@ async function readWithGemini(file, prompt, opts) {
     if (listed.length) models = listed;
   } catch (e) {}
   let lastErr = null;
+  const jsonMode = !!(opts && opts.jsonMode);
   for (const model of models.slice(0, 6)) {
     try {
-      const raw = await callGemini(model, key, b64, prompt);
+      let raw = await callGemini(model, key, b64, prompt, jsonMode);
+      if (!raw && jsonMode) raw = await callGemini(model, key, b64, prompt, false);
       if (raw) return raw;
       lastErr = new Error('جواب قابل فهم نبود');
     } catch (e) {
       lastErr = e;
-      const msg = ((e && e.message) || '').toLowerCase();
-      const skip = e.status === 404 || msg.includes('not found') || msg.includes('supported methods');
-      if (!skip && e.status && e.status !== 429) break;
+      if (jsonMode) {
+        try {
+          const raw = await callGemini(model, key, b64, prompt, false);
+          if (raw) return raw;
+        } catch (e2) {
+          lastErr = e2;
+        }
+      }
+      const msg = ((lastErr && lastErr.message) || '').toLowerCase();
+      const skip =
+        lastErr.status === 404 || msg.includes('not found') || msg.includes('supported methods');
+      if (!skip && lastErr.status && lastErr.status !== 429) break;
     }
   }
   throw new Error(shortErr(lastErr || new Error('خواندن عکس نشد')));
@@ -230,7 +261,7 @@ export async function readInvoiceImage(file) {
 }
 
 export async function readPaperTxImage(file, accountNames) {
-  const raw = await readWithGemini(file, paperPrompt(accountNames), { max: 1600, quality: 0.82 });
+  const raw = await readWithGemini(file, paperPrompt(accountNames), { max: 2048, quality: 0.9 });
   const list = normalizePaper(raw);
   if (!list.length) throw new Error('در عکس تراکنشی پیدا نشد');
   return list;
