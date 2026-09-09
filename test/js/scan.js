@@ -301,3 +301,76 @@ function normalizeScan(raw) {
     lines,
   };
 }
+
+function pick(row, keys) {
+  if (!row || typeof row !== 'object') return '';
+  for (const k of keys) {
+    if (row[k] != null && row[k] !== '') return row[k];
+  }
+  const map = {};
+  for (const k of Object.keys(row)) map[String(k).trim().toLowerCase()] = row[k];
+  for (const k of keys) {
+    const v = map[String(k).toLowerCase()];
+    if (v != null && v !== '') return v;
+  }
+  return '';
+}
+
+function mapCat(v) {
+  const s = String(v || '')
+    .trim()
+    .toLowerCase();
+  if (/invest|سرمایه/.test(s)) return 'invest';
+  if (/fun|تفریح|سرگرم/.test(s)) return 'fun';
+  if (/charity|نیکو|خیرات|صدقه/.test(s)) return 'charity';
+  if (/waste|هدر|اسراف/.test(s)) return 'waste';
+  return 'need';
+}
+
+function mapType(v) {
+  const s = String(v || '')
+    .trim()
+    .toLowerCase();
+  if (s === 'in' || /درآمد|واریز|حقوق/.test(s)) return 'in';
+  return 'out';
+}
+
+function isTotalRow(note) {
+  const s = String(note || '').replace(/\s+/g, '');
+  return /جمع|خط.?خورد|total/i.test(s);
+}
+
+function normalizePaper(raw) {
+  if (!raw) return [];
+  let rows = [];
+  if (Array.isArray(raw)) rows = raw;
+  else if (Array.isArray(raw.transactions)) rows = raw.transactions;
+  else if (Array.isArray(raw.items)) rows = raw.items;
+  else if (Array.isArray(raw.lines)) rows = raw.lines;
+  const out = [];
+  let lastDate = '';
+  let lastAccount = '';
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const note = String(pick(row, ['note', 'name', 'title', 'شرح', 'توضیح'])).trim();
+    if (isTotalRow(note)) continue;
+    const amount = num(pick(row, ['amount', 'total', 'مبلغ', 'price']));
+    if (!amount) continue;
+    const type = mapType(pick(row, ['type', 'نوع']));
+    const dateRaw = pick(row, ['date', 'تاریخ']);
+    const parsed = parseAppDate(dateRaw);
+    const date = parsed || lastDate;
+    if (parsed) lastDate = parsed;
+    const account = String(pick(row, ['account', 'accountName', 'حساب'])).trim() || lastAccount;
+    if (account) lastAccount = account;
+    out.push({
+      type,
+      amount,
+      cat: type === 'in' ? null : mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته'])),
+      note,
+      account,
+      date,
+    });
+  }
+  return out;
+}
