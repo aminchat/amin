@@ -108,7 +108,8 @@ export function renderTx() {
     <button onclick="txShift(-1)">‹</button>
     <div class="mttl">${monthLabel(txMonth)}<div class="small muted">${txMonth === curMonthKey() ? 'ماه جاری' : ''}</div></div>
     <button onclick="txShift(1)">›</button>
-  </div>`;
+  </div>
+  <button type="button" class="btn block" style="margin-bottom:12px" onclick="openPaperScan()">📝 ثبت چند تراکنش از عکس کاغذ</button>`;
 
   if (txs.length === 0) {
     html += `<div class="empty"><span class="em">💸</span>در این ماه تراکنشی ثبت نشده.<br>با دکمه + پایین صفحه شروع کن.</div>`;

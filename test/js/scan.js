@@ -46,12 +46,13 @@ function num(v) {
   return n > 0 ? n : 0;
 }
 
-function fileToJpeg(file) {
+function fileToJpeg(file, max, quality) {
+  max = max || 1280;
+  quality = quality || 0.72;
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const max = 1280;
       let w = img.width;
       let h = img.height;
       if (w > max || h > max) {
@@ -64,7 +65,7 @@ function fileToJpeg(file) {
       c.height = h;
       c.getContext('2d').drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      const data = c.toDataURL('image/jpeg', 0.72);
+      const data = c.toDataURL('image/jpeg', quality);
       resolve(data.split(',')[1]);
     };
     img.onerror = () => {
@@ -75,13 +76,30 @@ function fileToJpeg(file) {
   });
 }
 
-const PROMPT = `این یک عکس فاکتور یا رسید خرید است.
+const INVOICE_PROMPT = `این یک عکس فاکتور یا رسید خرید است.
 فقط یک JSON معتبر برگردان، بدون متن اضافه.
 مبالغ را به تومان بده (اگر روی فاکتور ریال بود تقسیم بر ۱۰ کن).
 اگر مقدار یا قیمت واحد نبود، مقدار را ۱ و قیمت واحد را برابر مبلغ همان قلم بگذار.
 تاریخ را اگر خواندی به صورت YYYY-MM-DD میلادی بده، وگرنه null.
 شکل JSON:
 {"store":"نام فروشگاه یا خالی","total":0,"date":null,"lines":[{"name":"نام کالا","qty":1,"unit":"عدد","unitPrice":0,"amount":0}]}`;
+
+function paperPrompt(accountNames) {
+  const accts = (accountNames || []).filter(Boolean).join('، ') || 'نامشخص';
+  return `این عکس یک لیست دست‌نویس یا تایپ‌شده از چند تراکنش مالی است، نه لزوماً فاکتور فروشگاه.
+هر خط معمولاً یک تراکنش جدا است.
+فقط یک JSON معتبر برگردان، بدون متن اضافه.
+مبالغ را به تومان بده (اگر ریال بود تقسیم بر ۱۰ کن).
+اگر نوع مشخص نبود خرج است.
+type فقط in یا out باشد (درآمد=in ، خرج=out).
+پاکت cat را فقط یکی از این‌ها بگذار: need, invest, fun, charity, waste
+معنی فارسی: ضروری/ضروریات/نیاز=need ، سرمایه/سرمایه‌گذاری=invest ، تفریح/سرگرمی=fun ، نیکوکاری/خیرات/صدقه=charity ، هدررفت/اسراف=waste
+اگر پاکت نبود need بگذار. برای درآمد cat را need نگذار؛ همان need هم اشکال ندارد چون برنامه درآمد را بدون پاکت ذخیره می‌کند.
+date اگر خواندی YYYY-MM-DD میلادی، وگرنه null.
+account نام حساب اگر روی کاغذ آمده؛ حساب‌های موجود: ${accts}
+شکل JSON:
+{"transactions":[{"type":"out","amount":0,"cat":"need","note":"توضیح کوتاه","account":"","date":null}]}`;
+}
 
 function parseModelJson(text) {
   if (!text) return null;
@@ -98,7 +116,7 @@ function parseModelJson(text) {
   }
 }
 
-async function callGemini(model, key, b64) {
+async function callGemini(model, key, b64, prompt) {
   const url =
     'https://generativelanguage.googleapis.com/v1beta/models/' +
     encodeURIComponent(model) +
@@ -111,7 +129,7 @@ async function callGemini(model, key, b64) {
       contents: [
         {
           parts: [
-            { text: PROMPT },
+            { text: prompt },
             { inlineData: { mimeType: 'image/jpeg', data: b64 } },
           ],
         },
@@ -145,7 +163,7 @@ function shortErr(e) {
     return 'مدل گوگل عوض شده؛ یک‌بار دیگر عکس را بفرست';
   if (s.includes('failed to fetch') || s.includes('network')) return 'اینترنت نرسید به گوگل';
   const cut = raw.replace(/\s+/g, ' ').trim();
-  return cut.length > 80 ? cut.slice(0, 80) + '…' : cut || 'خواندن فاکتور نشد';
+  return cut.length > 80 ? cut.slice(0, 80) + '…' : cut || 'خواندن عکس نشد';
 }
 
 async function listModels(key) {
@@ -179,10 +197,10 @@ async function listModels(key) {
   return names;
 }
 
-export async function readInvoiceImage(file) {
+async function readWithGemini(file, prompt, opts) {
   const key = getGeminiKey();
   if (!key) throw new Error('NO_KEY');
-  const b64 = await fileToJpeg(file);
+  const b64 = await fileToJpeg(file, opts && opts.max, opts && opts.quality);
   let models = MODELS.slice();
   try {
     const listed = await listModels(key);
@@ -191,8 +209,8 @@ export async function readInvoiceImage(file) {
   let lastErr = null;
   for (const model of models.slice(0, 6)) {
     try {
-      const raw = await callGemini(model, key, b64);
-      if (raw) return normalizeScan(raw);
+      const raw = await callGemini(model, key, b64, prompt);
+      if (raw) return raw;
       lastErr = new Error('جواب قابل فهم نبود');
     } catch (e) {
       lastErr = e;
@@ -201,7 +219,21 @@ export async function readInvoiceImage(file) {
       if (!skip && e.status && e.status !== 429) break;
     }
   }
-  throw new Error(shortErr(lastErr || new Error('خواندن فاکتور نشد')));
+  throw new Error(shortErr(lastErr || new Error('خواندن عکس نشد')));
+}
+
+export async function readInvoiceImage(file) {
+  const raw = await readWithGemini(file, INVOICE_PROMPT, { max: 1280, quality: 0.72 });
+  const data = normalizeScan(raw);
+  if (!data || !data.lines.length) throw new Error('در عکس فاکتوری پیدا نشد');
+  return data;
+}
+
+export async function readPaperTxImage(file, accountNames) {
+  const raw = await readWithGemini(file, paperPrompt(accountNames), { max: 1600, quality: 0.82 });
+  const list = normalizePaper(raw);
+  if (!list.length) throw new Error('در عکس تراکنشی پیدا نشد');
+  return list;
 }
 
 function normalizeScan(raw) {
