@@ -89,22 +89,26 @@ const INVOICE_PROMPT = `این یک عکس فاکتور یا رسید خرید �
 
 function paperPrompt(accountNames) {
   const accts = (accountNames || []).filter(Boolean).join('، ') || 'نامشخص';
-  return `این عکس یک کاغذ دست‌نویس است: جدول خرج روزانه، نه فاکتور فروشگاه.
-ممکن است چند تاریخ جدا داشته باشد. خط «تاریخ» و نام حساب (مثل ملت ۶۳۹۵) مال ردیف‌های پایین‌تر است تا تاریخ بعدی.
-هر ردیف کالا یک تراکنش جدا است. ستون‌ها معمولاً: شرح، تعداد، مبلغ، تومان، پاکت (ضروری و غیره).
-علامت « و " یعنی همان واحد قبلی (تومان).
-خط جمع کل یا مبلغ خط‌خورده را نیاور.
+  return `این عکس لیست تراکنش است: یا کاغذ دست‌نویس، یا اسکرین بانک با یادداشت دست‌نویس روی آن (مثل همراه بانک ملت).
 فقط JSON معتبر برگردان.
-مبلغ هر ردیف را به تومان بده (عدد بدون جداکننده هزارگان). ریال را تقسیم بر ۱۰ کن.
-type فقط in یا out (اگر ننوشته out).
-cat فقط: need, invest, fun, charity, waste
-ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
-اگر پاکت نبود need.
-date را همان تاریخ همان بخش بگذار، به صورت شمسی YYYY/MM/DD (مثلا 1405/06/15) یا میلادی YYYY-MM-DD.
-account همان نام حساب بالای بخش؛ حساب‌های موجود: ${accts}
-note نام کالا یا شرح ردیف.
+
+واحد پول خیلی مهم است:
+- مبلغ چاپی فیش بانک با برچسب ریال، ریال است. آن را در bankRial بگذار (عدد خام فیش، تقسیم نکن).
+- اگر روی عکس دستی «تومان» نوشته شده، آن عدد تومان است. در writtenToman بگذار. این را ریال فرض نکن و ضرب یا تقسیم نکن.
+- اگر فقط ریال فیش بود و تومان دستی نبود، برنامه خودش ریال را تقسیم بر ۱۰ می‌کند.
+- موجودی حساب را تراکنش نکن.
+
+اگر روی یک ردیف کلمه «فاکتور» آمده، kind را invoice بگذار و اقلام را در lines بگذار. اگر نام فروشگاه نوشته شده در store بگذار.
+اگر فاکتور ننوشته، حتی اگر چند قلم در یک کارت بانک باشد، هر قلم یک تراکنش ساده جدا است (kind: simple).
+
+qty و unit را از دست‌نویس بردار (بسته، لیتر، عدد، کیلو). اگر نبود خالی بگذار.
+پاکت: ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
+type فقط in یا out. برداشت بانک = out. واریز = in.
+date شمسی همان ردیف مثل 1405/06/17.
+account نام حساب؛ حساب‌های موجود: ${accts}
+
 شکل JSON:
-{"transactions":[{"type":"out","amount":320000,"cat":"need","note":"نان","account":"ملت","date":"1405/06/15"}]}`;
+{"transactions":[{"type":"out","kind":"simple","note":"نان تست","account":"ملت 6395","date":"1405/06/17","cat":"need","qty":2,"unit":"بسته","writtenToman":160000,"bankRial":1600000,"store":"","lines":[]},{"type":"out","kind":"invoice","note":"فاکتور","store":"نام فروشگاه","account":"ملت 6395","date":"1405/06/16","cat":"fun","qty":0,"unit":"","writtenToman":0,"bankRial":10585000,"lines":[{"name":"بستنی","qty":1,"unit":"کیلو","writtenToman":248000,"cat":"fun"}]}]}`;
 }
 
 function parseModelJson(text) {
@@ -337,7 +341,72 @@ function mapType(v) {
 
 function isTotalRow(note) {
   const s = String(note || '').replace(/\s+/g, '');
-  return /جمع|خط.?خورد|total/i.test(s);
+  return /^(جمع|جمعکل|موجودی|total)$/i.test(s);
+}
+
+function isRialHint(v) {
+  return /rial|ریال/i.test(String(v || ''));
+}
+
+function isTomanHint(v) {
+  return /toman|تومان/i.test(String(v || ''));
+}
+
+function toToman(row, extra) {
+  const written = num(pick(row, ['writtenToman', 'toman', 'amountToman']));
+  if (written) return written;
+  const rial = num(pick(row, ['bankRial', 'rial', 'amountRial']));
+  if (rial) return rial / 10;
+  const amt = num(pick(row, ['amount', 'total', 'مبلغ', 'price']));
+  if (!amt) return 0;
+  const cur = pick(row, ['currency', 'unitMoney', 'واحدپول']);
+  if (isRialHint(cur) || isRialHint(extra)) return amt / 10;
+  if (isTomanHint(cur) || isTomanHint(extra)) return amt;
+  return amt;
+}
+
+function qtyUnitPrice(row, amount) {
+  let qty = num(pick(row, ['qty', 'quantity', 'مقدار', 'تعداد']));
+  let unit = String(pick(row, ['unit', 'واحد']) || '').trim();
+  let unitPrice = num(pick(row, ['unitPrice', 'price', 'قیمتواحد']));
+  if (qty > 0 && amount) {
+    if (!unitPrice) unitPrice = amount / qty;
+    if (!unit) unit = 'عدد';
+    return { qty, unit, unitPrice };
+  }
+  return { qty: 0, unit: '', unitPrice: 0 };
+}
+
+function normalizeLine(row, fallbackCat) {
+  const name = String(pick(row, ['name', 'note', 'title', 'شرح'])).trim();
+  const amount = toToman(row);
+  if (!name || !amount) return null;
+  const qu = qtyUnitPrice(row, amount);
+  let qty = qu.qty;
+  let unit = qu.unit;
+  let unitPrice = qu.unitPrice;
+  if (!qty) {
+    qty = 1;
+    unit = unit || 'عدد';
+    unitPrice = amount;
+  }
+  return {
+    id: uid(),
+    name,
+    qty,
+    unit,
+    unitPrice,
+    amount: unitPrice * qty,
+    cat: mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته']) || fallbackCat),
+  };
+}
+
+function isInvoiceRow(row, note) {
+  const kind = String(pick(row, ['kind', 'mode']) || '').toLowerCase();
+  if (kind === 'invoice' || kind === 'فاکتور') return true;
+  if (/فاکتور/.test(note)) return true;
+  if (row && row.invoice === true) return true;
+  return false;
 }
 
 function normalizePaper(raw) {
@@ -346,7 +415,7 @@ function normalizePaper(raw) {
   if (Array.isArray(raw)) rows = raw;
   else if (Array.isArray(raw.transactions)) rows = raw.transactions;
   else if (Array.isArray(raw.items)) rows = raw.items;
-  else if (Array.isArray(raw.lines)) rows = raw.lines;
+  else if (Array.isArray(raw.lines) && !raw.transactions) rows = raw.lines;
   const out = [];
   let lastDate = '';
   let lastAccount = '';
@@ -354,8 +423,6 @@ function normalizePaper(raw) {
     if (!row || typeof row !== 'object') continue;
     const note = String(pick(row, ['note', 'name', 'title', 'شرح', 'توضیح'])).trim();
     if (isTotalRow(note)) continue;
-    const amount = num(pick(row, ['amount', 'total', 'مبلغ', 'price']));
-    if (!amount) continue;
     const type = mapType(pick(row, ['type', 'نوع']));
     const dateRaw = pick(row, ['date', 'تاریخ']);
     const parsed = parseAppDate(dateRaw);
@@ -363,13 +430,82 @@ function normalizePaper(raw) {
     if (parsed) lastDate = parsed;
     const account = String(pick(row, ['account', 'accountName', 'حساب'])).trim() || lastAccount;
     if (account) lastAccount = account;
+    const cat = type === 'in' ? null : mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته']));
+    const store = String(pick(row, ['store', 'shop', 'فروشگاه'])).trim();
+    const rawLines = Array.isArray(row.lines) ? row.lines : [];
+    const invoice = type === 'out' && isInvoiceRow(row, note);
+
+    if (invoice) {
+      const lines = [];
+      for (const ln of rawLines) {
+        const one = normalizeLine(ln, cat || 'need');
+        if (one) lines.push(one);
+      }
+      if (!lines.length && note && !/^فاکتور$/.test(note)) {
+        const one = normalizeLine(row, cat || 'need');
+        if (one) lines.push(one);
+      }
+      let amount = lines.reduce((s, l) => s + l.amount, 0);
+      const bankToman = toToman(row);
+      if (!amount && bankToman) {
+        lines.push({
+          id: uid(),
+          name: note && !/^فاکتور$/.test(note) ? note : 'قلم فاکتور',
+          qty: 1,
+          unit: 'قلم',
+          unitPrice: bankToman,
+          amount: bankToman,
+          cat: cat || 'need',
+        });
+        amount = bankToman;
+      }
+      if (!amount) continue;
+      if (bankToman && Math.abs(bankToman - amount) > 1) {
+        const rem = bankToman - amount;
+        if (rem > 0) {
+          lines.push({
+            id: uid(),
+            name: 'سایر',
+            qty: 1,
+            unit: 'قلم',
+            unitPrice: rem,
+            amount: rem,
+            cat: cat || 'need',
+          });
+          amount = bankToman;
+        }
+      }
+      out.push({
+        type: 'out',
+        kind: 'invoice',
+        amount,
+        cat: null,
+        note: store || (note && !/^فاکتور$/.test(note) ? note : ''),
+        account,
+        date,
+        qty: 0,
+        unit: '',
+        unitPrice: 0,
+        lines,
+      });
+      continue;
+    }
+
+    const amount = toToman(row);
+    if (!amount) continue;
+    const qu = qtyUnitPrice(row, amount);
     out.push({
       type,
+      kind: '',
       amount,
-      cat: type === 'in' ? null : mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته'])),
-      note,
+      cat,
+      note: note || store,
       account,
       date,
+      qty: qu.qty,
+      unit: qu.unit,
+      unitPrice: qu.unitPrice,
+      lines: [],
     });
   }
   return out;

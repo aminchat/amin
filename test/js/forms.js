@@ -443,11 +443,11 @@ function matchAccountId(name) {
     .trim()
     .replace(/\s+/g, '');
   if (!n) return lastAccountId();
+  const digits = n.replace(/\D/g, '');
   for (const a of state.accounts) {
     const an = String(a.name || '').replace(/\s+/g, '');
-    if (!an) continue;
-    if (an === n || an.indexOf(n) >= 0 || n.indexOf(an) >= 0) return a.id;
-    if (a.last4 && n.indexOf(String(a.last4)) >= 0) return a.id;
+    if (an && (an === n || an.indexOf(n) >= 0 || n.indexOf(an) >= 0)) return a.id;
+    if (a.last4 && (n.indexOf(String(a.last4)) >= 0 || digits.indexOf(String(a.last4)) >= 0)) return a.id;
   }
   return lastAccountId();
 }
@@ -464,7 +464,7 @@ export function openPaperScan() {
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
     <h2>ثبت از عکس کاغذ</h2>
-    <p class="small muted" style="margin-top:-6px">لیست تراکنش‌ها را روی کاغذ بنویس (مبلغ، پاکت، خرج یا درآمد، در صورت نیاز نام حساب) بعد عکس بگیر یا از گالری انتخاب کن. قبل از ثبت لیست را چک می‌کنی.</p>
+    <p class="small muted" style="margin-top:-6px">عکس کاغذ یا فیش بانک با دست‌نویس را بده. مستقیم ذخیره می‌شود؛ بعداً از لیست می‌توانی ویرایش کنی. اگر تومان نوشتی همان تومان است؛ مبلغ ریالِ فیش تقسیم بر ۱۰ می‌شود. هر جا «فاکتور» بنویسی یک فاکتور ثبت می‌شود.</p>
     <input id="paperCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onPaperPhoto(this)">
     <input id="paperGal" type="file" accept="image/*" style="display:none" onchange="onPaperPhoto(this)">
     <button type="button" class="btn primary block" onclick="startPaperPhoto('cam')">📸 عکس بگیر</button>
@@ -637,22 +637,35 @@ export function savePaperTxs() {
   for (const r of paperDraft) {
     const dateISO = r.dateISO || todayISO();
     const type = r.type === 'in' ? 'in' : 'out';
+    const invoice = type === 'out' && r.kind === 'invoice' && r.lines && r.lines.length;
+    const lines = invoice
+      ? r.lines.map((l) => ({
+          id: l.id || uid(),
+          name: String(l.name || '').trim() || 'قلم',
+          unitPrice: Number(l.unitPrice) || Number(l.amount) || 0,
+          qty: Number(l.qty) || 1,
+          unit: String(l.unit || 'عدد').trim() || 'عدد',
+          amount: (Number(l.unitPrice) || Number(l.amount) || 0) * (Number(l.qty) || 1),
+          cat: l.cat || 'need',
+        }))
+      : [];
+    const amount = invoice ? lines.reduce((s, l) => s + l.amount, 0) : r.amount;
     state.transactions.push({
       id: uid(),
-      amount: r.amount,
+      amount,
       accountId: r.accountId,
       note: r.note || '',
       dateISO,
       type,
-      cat: type === 'out' ? r.cat || 'need' : null,
+      cat: invoice ? null : type === 'out' ? r.cat || 'need' : null,
       reflect: '',
       month: monthOfISO(dateISO),
       updatedAt: stamp + n,
-      kind: '',
-      lines: [],
-      unitPrice: 0,
-      qty: 0,
-      unit: '',
+      kind: invoice ? 'invoice' : '',
+      lines,
+      unitPrice: invoice ? 0 : r.unitPrice || 0,
+      qty: invoice ? 0 : r.qty || 0,
+      unit: invoice ? '' : r.unit || '',
     });
     rememberAccount(r.accountId);
     n += 1;
@@ -661,7 +674,7 @@ export function savePaperTxs() {
   save();
   closeModal();
   render();
-  toast(n + ' تراکنش ثبت شد — در لیست چک کن');
+  toast(n + ' مورد ذخیره شد');
 }
 
 export async function onInvoicePhoto(inp) {
