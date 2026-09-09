@@ -98,11 +98,13 @@ function paperPrompt(accountNames) {
 - اگر فقط ریال فیش بود و تومان دستی نبود، برنامه خودش ریال را تقسیم بر ۱۰ می‌کند.
 - موجودی حساب را تراکنش نکن.
 
-اگر روی یک ردیف کلمه «فاکتور» آمده، kind را invoice بگذار و اقلام را در lines بگذار. اگر نام فروشگاه نوشته شده در store بگذار.
-اگر فاکتور ننوشته، حتی اگر چند قلم در یک کارت بانک باشد، هر قلم یک تراکنش ساده جدا است (kind: simple).
+اگر روی یک ردیف کلمه «فاکتور» آمده، یا چند قلم شماره‌دار (۱- ۲- …) زیر یک برداشت بانک است، kind را invoice بگذار و هر کالا را در lines بگذار.
+نام فروشگاه را در store بگذار، نه در note. note برای فاکتور یا خالی است یا نام فروشگاه.
+کلمهٔ پاکت (ضروری، تفریح، هدررفت، سرمایه، نیکوکاری) را هیچ‌وقت به جای نام کالا یا عنوان نگذار؛ فقط در cat بگذار.
+اگر فاکتور ننوشته و فقط یک کالا است، kind: simple و note نام همان کالا.
 
 qty و unit را از دست‌نویس بردار (بسته، لیتر، عدد، کیلو). اگر نبود خالی بگذار.
-پاکت: ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
+پاکت cat: ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
 type فقط in یا out. برداشت بانک = out. واریز = in.
 date شمسی همان ردیف مثل 1405/06/17.
 account نام حساب؛ حساب‌های موجود: ${accts}
@@ -382,9 +384,11 @@ function qtyUnitPrice(row, amount) {
 }
 
 function normalizeLine(row, fallbackCat) {
-  const name = String(pick(row, ['name', 'note', 'title', 'شرح'])).trim();
+  let name = cleanTitle(pick(row, ['name', 'note', 'title', 'شرح']));
+  if (!name || /^(ضروریات|ضروری|تفریح|هدررفت|سرمایه|نیکوکاری)$/.test(name)) name = '';
   const amount = toToman(row);
-  if (!name || !amount) return null;
+  if (!amount) return null;
+  if (!name) name = 'قلم';
   const qu = qtyUnitPrice(row, amount);
   let qty = qu.qty;
   let unit = qu.unit;
@@ -405,12 +409,42 @@ function normalizeLine(row, fallbackCat) {
   };
 }
 
+function rowBlob(row) {
+  try {
+    return JSON.stringify(row);
+  } catch (e) {
+    return String(pick(row, ['note', 'name', 'title']) || '');
+  }
+}
+
+function hasInvoiceWord(s) {
+  return /فاکتور|فاكتور|فاکنور/i.test(String(s || ''));
+}
+
+function hasNumberedItems(s) {
+  const t = faToEn(s);
+  return /(?:^|[^\d])1\s*[-–.:)]/.test(t) && /(?:^|[^\d])2\s*[-–.:)]/.test(t);
+}
+
 function isInvoiceRow(row, note) {
   const kind = String(pick(row, ['kind', 'mode']) || '').toLowerCase();
   if (kind === 'invoice' || kind === 'فاکتور') return true;
-  if (/فاکتور/.test(note)) return true;
   if (row && row.invoice === true) return true;
+  if (hasInvoiceWord(note) || hasInvoiceWord(rowBlob(row))) return true;
+  if (Array.isArray(row.lines) && row.lines.length >= 2) return true;
+  if (hasNumberedItems(note)) return true;
   return false;
+}
+
+function cleanTitle(s) {
+  let t = String(s || '')
+    .replace(/فاکتور|فاكتور|فاکنور/g, ' ')
+    .replace(/[:：]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  t = t.replace(/^(ضروریات|ضروری|تفریح|هدررفت|سرمایه‌گذاری|سرمایه|نیکوکاری)$/g, '');
+  t = t.replace(/\s+(ضروریات|ضروری|تفریح|هدررفت|سرمایه‌گذاری|سرمایه|نیکوکاری)$/g, '');
+  return t.trim();
 }
 
 function normalizePaper(raw) {
@@ -434,8 +468,8 @@ function normalizePaper(raw) {
     if (parsed) lastDate = parsed;
     const account = String(pick(row, ['account', 'accountName', 'حساب'])).trim() || lastAccount;
     if (account) lastAccount = account;
-    const cat = type === 'in' ? null : mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته']));
-    const store = String(pick(row, ['store', 'shop', 'فروشگاه'])).trim();
+    const cat = type === 'in' ? null : mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته']) || note);
+    const store = cleanTitle(pick(row, ['store', 'shop', 'فروشگاه']));
     const rawLines = Array.isArray(row.lines) ? row.lines : [];
     const invoice = type === 'out' && isInvoiceRow(row, note);
 
@@ -445,8 +479,8 @@ function normalizePaper(raw) {
         const one = normalizeLine(ln, cat || 'need');
         if (one) lines.push(one);
       }
-      if (!lines.length && note && !/^فاکتور$/.test(note)) {
-        const one = normalizeLine(row, cat || 'need');
+      if (!lines.length) {
+        const one = normalizeLine(Object.assign({}, row, { name: cleanTitle(note) || 'قلم فاکتور' }), cat || 'need');
         if (one) lines.push(one);
       }
       let amount = lines.reduce((s, l) => s + l.amount, 0);
@@ -454,7 +488,7 @@ function normalizePaper(raw) {
       if (!amount && bankToman) {
         lines.push({
           id: uid(),
-          name: note && !/^فاکتور$/.test(note) ? note : 'قلم فاکتور',
+          name: cleanTitle(note) || 'قلم فاکتور',
           qty: 1,
           unit: 'قلم',
           unitPrice: bankToman,
@@ -484,7 +518,7 @@ function normalizePaper(raw) {
         kind: 'invoice',
         amount,
         cat: null,
-        note: store || (note && !/^فاکتور$/.test(note) ? note : ''),
+        note: store || cleanTitle(note) || 'فاکتور',
         account,
         date,
         qty: 0,
@@ -503,7 +537,7 @@ function normalizePaper(raw) {
       kind: '',
       amount,
       cat,
-      note: note || store,
+      note: cleanTitle(note) || store || 'خرج',
       account,
       date,
       qty: qu.qty,

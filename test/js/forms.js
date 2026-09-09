@@ -494,16 +494,21 @@ export async function onPaperPhoto(inp) {
       id: uid(),
       type: r.type === 'in' ? 'in' : 'out',
       amount: r.amount,
-      cat: r.type === 'in' ? null : r.cat || 'need',
+      cat: r.type === 'in' || r.kind === 'invoice' ? null : r.cat || 'need',
       note: r.note || '',
-      accountId: matchAccountId(r.account),
+      accountId: matchAccountId(r.account) || lastAccountId(),
       dateISO: r.date || todayISO(),
+      kind: r.kind === 'invoice' ? 'invoice' : '',
+      qty: r.qty || 0,
+      unit: r.unit || '',
+      unitPrice: r.unitPrice || 0,
+      lines: r.kind === 'invoice' ? r.lines || [] : [],
     }));
     if (!paperDraft.length) {
       toast('در عکس تراکنشی پیدا نشد');
       return;
     }
-    openPaperReview();
+    savePaperTxs();
   } catch (e) {
     if (e && e.message === 'NO_KEY') toast('اول در تنظیمات کلید عکس را بگذار');
     else toast((e && e.message) || 'خواندن عکس نشد');
@@ -823,24 +828,7 @@ export function saveTx() {
     const activeCat = document.querySelector('#txCats .chip.on');
     cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
     const rf = document.getElementById('txReflect');
-    reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
-  }
-
-  const payload = {
-    amount,
-    accountId,
-    note,
-    dateISO,
-    type,
-    cat,
-    reflect,
-    month,
-    updatedAt: stamp,
-    kind,
-    lines,
-    unitPrice,
-    qty,
-    unit,
+    reflect = type === 'out' && cat === 'waste' ,
   };
 
   if (editingTxId) {
@@ -1222,6 +1210,13 @@ export function openRateEdit(cur) {
     <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند تومان است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)</p>
     <div class="field"><label>تومان به ازای هر واحد</label>
       <input class="input" id="rVal" type="number" step="any" inputmode="decimal" min="0" value="${state.rates[cur] || ''}">
+    </div>
+    <button class="btn primary block" onclick="saveRate('${cur}')">ذخیره نرخ</button>
+  `);
+}
+
+export function saveRate(cur) {
+  const v = painputmode="decimal" min="0" value="${state.rates[cur] || ''}">
     </div>
     <button class="btn primary block" onclick="saveRate('${cur}')">ذخیره نرخ</button>
   `);
