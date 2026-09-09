@@ -1,5 +1,5 @@
 import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
-import { hasGeminiKey, readInvoiceImage } from './scan.js';
+import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
 import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -75,6 +75,7 @@ let editingTransferPair = null;
 let transferStoredRates = {};
 let txMode = 'simple';
 let draftLines = [];
+let paperDraft = [];
 
 function catChipsHtml(selected, onclickName, extraArg) {
   return CATS.map((c) => {
@@ -136,9 +137,14 @@ export function openTxForm(tx, opts) {
       <button class="${txMode === 'simple' ? 'on' : ''}" data-m="simple" onclick="setTxMode(this)">خرج ساده</button>
       <button class="${txMode === 'invoice' ? 'on' : ''}" data-m="invoice" onclick="setTxMode(this)">فاکتور</button>
     </div>
-    <div id="txScanWrap" style="${type === 'in' ? 'display:none' : ''}">
-      <input id="invPhoto" type="file" accept="image/*" capture="environment" style="display:none" onchange="onInvoicePhoto(this)">
-      <button type="button" class="btn block" style="margin-bottom:12px" onclick="startInvoicePhoto()">📸 خواندن فاکتور از عکس</button>
+    <div id="txScanWrap" style="${isEdit ? 'display:none' : ''}">
+      <input id="invPhotoCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onInvoicePhoto(this)">
+      <input id="invPhotoGal" type="file" accept="image/*" style="display:none" onchange="onInvoicePhoto(this)">
+      <div class="row" id="txInvScanRow" style="margin-bottom:8px;${type === 'in' ? 'display:none' : ''}">
+        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('cam')">📸 عکس فاکتور</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('gal')">🖼️ فاکتور از گالری</button>
+      </div>
+      <button type="button" class="btn block" style="margin-bottom:12px" onclick="openPaperScan()">📝 لیست چند تراکنش از عکس کاغذ</button>
     </div>
     <div class="field"><label id="txAmountLbl">${txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ'} (${esc(amountCur)})</label>
       <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : ''}" oninput="onTxAmountInput()">
@@ -230,7 +236,9 @@ function applyTxModeUi() {
   const modeSeg = document.getElementById('txModeSeg');
   if (modeSeg) modeSeg.style.display = isOut ? '' : 'none';
   const scanWrap = document.getElementById('txScanWrap');
-  if (scanWrap) scanWrap.style.display = isOut ? '' : 'none';
+  if (scanWrap && !editingTxId) scanWrap.style.display = '';
+  const invScan = document.getElementById('txInvScanRow');
+  if (invScan) invScan.style.display = isOut ? '' : 'none';
   const unitWrap = document.getElementById('txUnitWrap');
   const catWrap = document.getElementById('txCatWrap');
   const invWrap = document.getElementById('txInvoiceWrap');
@@ -420,13 +428,257 @@ export function setLineCat(btn, lineId) {
   if (found) btn.style.background = found.color;
 }
 
-export function startInvoicePhoto() {
+export function startInvoicePhoto(kind) {
   if (!hasGeminiKey()) {
     toast('اول در تنظیمات کلید عکس را بگذار');
     return;
   }
-  const inp = document.getElementById('invPhoto');
+  const id = kind === 'gal' ? 'invPhotoGal' : 'invPhotoCam';
+  const inp = document.getElementById(id);
   if (inp) inp.click();
+}
+
+function matchAccountId(name) {
+  const n = String(name || '')
+    .trim()
+    .replace(/\s+/g, '');
+  if (!n) return lastAccountId();
+  const digits = n.replace(/\D/g, '');
+  for (const a of state.accounts) {
+    const an = String(a.name || '').replace(/\s+/g, '');
+    if (an && (an === n || an.indexOf(n) >= 0 || n.indexOf(an) >= 0)) return a.id;
+    if (a.last4 && (n.indexOf(String(a.last4)) >= 0 || digits.indexOf(String(a.last4)) >= 0)) return a.id;
+  }
+  return lastAccountId();
+}
+
+export function openPaperScan() {
+  if (state.accounts.length === 0) {
+    toast('اول یک حساب بساز');
+    return;
+  }
+  if (!hasGeminiKey()) {
+    toast('اول در تنظیمات کلید عکس را بگذار');
+    return;
+  }
+  openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>ثبت از عکس کاغذ</h2>
+    <p class="small muted" style="margin-top:-6px">عکس کاغذ یا فیش بانک با دست‌نویس را بده. مستقیم ذخیره می‌شود؛ بعداً از لیست می‌توانی ویرایش کنی. اگر تومان نوشتی همان تومان است؛ مبلغ ریالِ فیش تقسیم بر ۱۰ می‌شود. هر جا «فاکتور» بنویسی یک فاکتور ثبت می‌شود.</p>
+    <input id="paperCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onPaperPhoto(this)">
+    <input id="paperGal" type="file" accept="image/*" style="display:none" onchange="onPaperPhoto(this)">
+    <button type="button" class="btn primary block" onclick="startPaperPhoto('cam')">📸 عکس بگیر</button>
+    <button type="button" class="btn block" style="margin-top:8px" onclick="startPaperPhoto('gal')">🖼️ از گالری انتخاب کن</button>
+  `);
+}
+
+export function startPaperPhoto(kind) {
+  if (!hasGeminiKey()) {
+    toast('اول در تنظیمات کلید عکس را بگذار');
+    return;
+  }
+  const id = kind === 'gal' ? 'paperGal' : 'paperCam';
+  const inp = document.getElementById(id);
+  if (inp) inp.click();
+}
+
+export async function onPaperPhoto(inp) {
+  const file = inp && inp.files && inp.files[0];
+  if (inp) inp.value = '';
+  if (!file) return;
+  toast('در حال خواندن عکس…');
+  try {
+    const names = state.accounts.map((a) => a.name);
+    const rows = await readPaperTxImage(file, names);
+    paperDraft = rows.map((r) => ({
+      id: uid(),
+      type: r.type === 'in' ? 'in' : 'out',
+      amount: r.amount,
+      cat: r.type === 'in' || r.kind === 'invoice' ? null : r.cat || 'need',
+      note: r.note || '',
+      accountId: matchAccountId(r.account) || lastAccountId(),
+      dateISO: r.date || todayISO(),
+      kind: r.kind === 'invoice' ? 'invoice' : '',
+      qty: r.qty || 0,
+      unit: r.unit || '',
+      unitPrice: r.unitPrice || 0,
+      lines: r.kind === 'invoice' ? r.lines || [] : [],
+    }));
+    if (!paperDraft.length) {
+      toast('در عکس تراکنشی پیدا نشد');
+      return;
+    }
+    savePaperTxs();
+  } catch (e) {
+    closeModal();
+    if (e && e.message === 'NO_KEY') toast('اول در تنظیمات کلید عکس را بگذار');
+    else toast((e && e.message) || 'خواندن عکس نشد');
+  }
+}
+
+function paperAcctOpts(selected) {
+  return state.accounts
+    .map(
+      (a) =>
+        `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(a.name)} · ${esc(a.currency)}</option>`
+    )
+    .join('');
+}
+
+export function openPaperReview() {
+  if (!paperDraft.length) {
+    toast('چیزی برای ثبت نیست');
+    return;
+  }
+  const rows = paperDraft
+    .map((r) => {
+      const cat = r.cat || 'need';
+      return `<div class="inv-line" data-id="${r.id}">
+        <div class="seg" style="margin-bottom:10px">
+          <button type="button" class="${r.type === 'out' ? 'on out' : ''}" data-t="out" onclick="setPaperType(this,'${r.id}')">خرج −</button>
+          <button type="button" class="${r.type === 'in' ? 'on' : ''}" data-t="in" onclick="setPaperType(this,'${r.id}')">درآمد +</button>
+        </div>
+        <div class="field"><label>مبلغ</label>
+          <input class="input" id="pAmt_${r.id}" type="number" step="any" inputmode="decimal" min="0" value="${r.amount || ''}">
+        </div>
+        <div class="field" id="pCatWrap_${r.id}" style="${r.type === 'in' ? 'display:none' : ''}"><label>پاکت</label>
+          <div class="chips">${catChipsHtml(cat, 'setPaperCat', r.id)}</div>
+        </div>
+        <div class="field"><label>حساب</label>
+          <select class="input" id="pAcct_${r.id}">${paperAcctOpts(r.accountId)}</select>
+        </div>
+        <div class="field"><label>توضیح</label>
+          <input class="input" id="pNote_${r.id}" value="${esc(r.note || '')}" placeholder="مثلاً نان">
+        </div>
+        <div class="field"><label>تاریخ</label>
+          <input class="input" id="pDate_${r.id}" type="date" value="${r.dateISO || todayISO()}">
+        </div>
+        <button type="button" class="btn sm danger block" onclick="removePaperRow('${r.id}')">حذف این مورد</button>
+      </div>`;
+    })
+    .join('');
+  openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>چک کن، بعد ثبت کن</h2>
+    <p class="small muted" style="margin-top:-6px">${paperDraft.length} مورد خوانده شد. اگر چیزی غلط است همین‌جا درستش کن. بعد از ثبت هم در لیست قابل ویرایش است.</p>
+    ${rows}
+    <button class="btn primary block" onclick="savePaperTxs()">ثبت همه</button>
+  `);
+}
+
+function readPaperDraftFromDom() {
+  paperDraft.forEach((r) => {
+    const amt = document.getElementById('pAmt_' + r.id);
+    const acct = document.getElementById('pAcct_' + r.id);
+    const note = document.getElementById('pNote_' + r.id);
+    const date = document.getElementById('pDate_' + r.id);
+    if (amt) r.amount = parseFloat(amt.value) || 0;
+    if (acct) r.accountId = acct.value;
+    if (note) r.note = note.value.trim();
+    if (date) r.dateISO = date.value || todayISO();
+  });
+}
+
+export function setPaperType(btn, id) {
+  const r = paperDraft.find((x) => x.id === id);
+  if (!r) return;
+  r.type = btn.dataset.t === 'in' ? 'in' : 'out';
+  if (r.type === 'in') r.cat = null;
+  else if (!r.cat) r.cat = 'need';
+  const wrap = btn.parentElement;
+  if (wrap) {
+    wrap.querySelectorAll('button').forEach((b) => b.classList.remove('on', 'out'));
+  }
+  btn.classList.add('on');
+  if (r.type === 'out') btn.classList.add('out');
+  const catWrap = document.getElementById('pCatWrap_' + id);
+  if (catWrap) catWrap.style.display = r.type === 'in' ? 'none' : '';
+}
+
+export function setPaperCat(btn, id) {
+  const r = paperDraft.find((x) => x.id === id);
+  if (!r) return;
+  r.cat = btn.dataset.cat;
+  const wrap = btn.parentElement;
+  if (wrap) {
+    wrap.querySelectorAll('.chip').forEach((c) => {
+      c.classList.remove('on');
+      c.style.background = '';
+    });
+  }
+  btn.classList.add('on');
+  const found = CATS.find((c) => c.id === r.cat);
+  if (found) btn.style.background = found.color;
+}
+
+export function removePaperRow(id) {
+  readPaperDraftFromDom();
+  paperDraft = paperDraft.filter((r) => r.id !== id);
+  if (!paperDraft.length) {
+    closeModal();
+    toast('همه موارد حذف شد');
+    return;
+  }
+  openPaperReview();
+}
+
+export function savePaperTxs() {
+  readPaperDraftFromDom();
+  paperDraft = paperDraft.filter((r) => r.amount > 0);
+  if (!paperDraft.length) {
+    toast('چیزی برای ثبت نیست');
+    return;
+  }
+  for (const r of paperDraft) {
+    if (!accountById(r.accountId)) r.accountId = lastAccountId();
+    if (!accountById(r.accountId)) {
+      toast('اول یک حساب بساز');
+      return;
+    }
+  }
+  const stamp = Date.now();
+  let n = 0;
+  for (const r of paperDraft) {
+    const dateISO = r.dateISO || todayISO();
+    const type = r.type === 'in' ? 'in' : 'out';
+    const invoice = type === 'out' && r.kind === 'invoice' && r.lines && r.lines.length;
+    const lines = invoice
+      ? r.lines.map((l) => ({
+          id: l.id || uid(),
+          name: String(l.name || '').trim() || 'قلم',
+          unitPrice: Number(l.unitPrice) || Number(l.amount) || 0,
+          qty: Number(l.qty) || 1,
+          unit: String(l.unit || 'عدد').trim() || 'عدد',
+          amount: (Number(l.unitPrice) || Number(l.amount) || 0) * (Number(l.qty) || 1),
+          cat: l.cat || 'need',
+        }))
+      : [];
+    const amount = invoice ? lines.reduce((s, l) => s + l.amount, 0) : r.amount;
+    state.transactions.push({
+      id: uid(),
+      amount,
+      accountId: r.accountId,
+      note: r.note || '',
+      dateISO,
+      type,
+      cat: invoice ? null : type === 'out' ? r.cat || 'need' : null,
+      reflect: '',
+      month: monthOfISO(dateISO),
+      updatedAt: stamp + n,
+      kind: invoice ? 'invoice' : '',
+      lines,
+      unitPrice: invoice ? 0 : r.unitPrice || 0,
+      qty: invoice ? 0 : r.qty || 0,
+      unit: invoice ? '' : r.unit || '',
+    });
+    rememberAccount(r.accountId);
+    n += 1;
+  }
+  paperDraft = [];
+  save();
+  closeModal();
+  render();
+  toast(n + ' مورد ذخیره شد');
 }
 
 export async function onInvoicePhoto(inp) {

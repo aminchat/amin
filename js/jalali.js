@@ -81,3 +81,42 @@ export function monthOfISO(iso) {
   const [jy, jm] = toJalali(y, m, d);
   return jy + '/' + String(jm).padStart(2, '0');
 }
+
+export function toGregorian(jy, jm, jd) {
+  jy = +jy;
+  jm = +jm;
+  jd = +jd;
+  if (!jy || !jm || !jd) return null;
+  const t = new Date(jy + 621, 2, 1);
+  t.setDate(t.getDate() - 50);
+  for (let i = 0; i < 450; i++) {
+    const y = t.getFullYear();
+    const m = t.getMonth() + 1;
+    const d = t.getDate();
+    const j = toJalali(y, m, d);
+    if (j[0] === jy && j[1] === jm && j[2] === jd) return [y, m, d];
+    t.setDate(t.getDate() + 1);
+  }
+  return null;
+}
+
+export function parseAppDate(v) {
+  if (!v) return '';
+  const s = String(v)
+    .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .trim();
+  const m = s.match(/(\d{3,4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (!m) return '';
+  let y = +m[1];
+  let mo = +m[2];
+  let d = +m[3];
+  if (!y || mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+  if (y >= 1200 && y <= 1700) {
+    const g = toGregorian(y, mo, d);
+    if (!g) return '';
+    y = g[0];
+    mo = g[1];
+    d = g[2];
+  } else if (y < 1800) return '';
+  return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}

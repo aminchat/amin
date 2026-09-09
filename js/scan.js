@@ -1,4 +1,5 @@
 import { store, toast, uid } from './utils.js';
+import { parseAppDate } from './jalali.js';
 
 const KEY = 'capital_gemini_key';
 const MODELS = [
@@ -41,17 +42,20 @@ function faToEn(s) {
 
 function num(v) {
   if (typeof v === 'number' && isFinite(v)) return v;
-  const s = faToEn(v).replace(/,/g, '').replace(/[^\d.-]/g, '');
+  const s = faToEn(v)
+    .replace(/[,٬،\s]/g, '')
+    .replace(/[^\d.-]/g, '');
   const n = parseFloat(s);
   return n > 0 ? n : 0;
 }
 
-function fileToJpeg(file) {
+function fileToJpeg(file, max, quality) {
+  max = max || 1280;
+  quality = quality || 0.72;
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const max = 1280;
       let w = img.width;
       let h = img.height;
       if (w > max || h > max) {
@@ -64,7 +68,7 @@ function fileToJpeg(file) {
       c.height = h;
       c.getContext('2d').drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      const data = c.toDataURL('image/jpeg', 0.72);
+      const data = c.toDataURL('image/jpeg', quality);
       resolve(data.split(',')[1]);
     };
     img.onerror = () => {
@@ -75,7 +79,7 @@ function fileToJpeg(file) {
   });
 }
 
-const PROMPT = `این یک عکس فاکتور یا رسید خرید است.
+const INVOICE_PROMPT = `این یک عکس فاکتور یا رسید خرید است.
 فقط یک JSON معتبر برگردان، بدون متن اضافه.
 مبالغ را به تومان بده (اگر روی فاکتور ریال بود تقسیم بر ۱۰ کن).
 اگر مقدار یا قیمت واحد نبود، مقدار را ۱ و قیمت واحد را برابر مبلغ همان قلم بگذار.
@@ -83,27 +87,68 @@ const PROMPT = `این یک عکس فاکتور یا رسید خرید است.
 شکل JSON:
 {"store":"نام فروشگاه یا خالی","total":0,"date":null,"lines":[{"name":"نام کالا","qty":1,"unit":"عدد","unitPrice":0,"amount":0}]}`;
 
+function paperPrompt(accountNames) {
+  const accts = (accountNames || []).filter(Boolean).join('، ') || 'نامشخص';
+  return `این عکس لیست تراکنش است: یا کاغذ دست‌نویس، یا اسکرین بانک با یادداشت دست‌نویس روی آن (مثل همراه بانک ملت).
+فقط JSON معتبر برگردان.
+
+واحد پول خیلی مهم است:
+- مبلغ چاپی فیش بانک با برچسب ریال، ریال است. آن را در bankRial بگذار (عدد خام فیش، تقسیم نکن).
+- اگر روی عکس دستی «تومان» نوشته شده، آن عدد تومان است. در writtenToman بگذار. این را ریال فرض نکن و ضرب یا تقسیم نکن.
+- اگر فقط ریال فیش بود و تومان دستی نبود، برنامه خودش ریال را تقسیم بر ۱۰ می‌کند.
+- موجودی حساب را تراکنش نکن.
+
+اگر روی یک برداشت بانک یا یک بخش کاغذ کلمه «فاکتور» آمده، یا چند قلم شماره‌دار (۱- ۲- …) است، فقط یک تراکنش با kind: invoice بساز.
+همهٔ اقلام همان فاکتور را در lines همان یک آیتم بگذار. برای ۳ قلم، ۳ فاکتور نساز؛ یک فاکتور با ۳ خط بساز.
+نام فروشگاه را در store بگذار. note خالی یا نام فروشگاه.
+کلمهٔ پاکت (ضروری، تفریح، هدررفت، سرمایه، نیکوکاری) را هیچ‌وقت به جای نام کالا نگذار؛ فقط در cat.
+اگر فاکتور ننوشته و فقط یک کالا است، kind: simple.
+
+qty و unit را از دست‌نویس بردار (بسته، لیتر، عدد، کیلو). اگر نبود خالی بگذار.
+پاکت cat: ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
+type فقط in یا out. برداشت بانک = out. واریز = in.
+date شمسی همان ردیف مثل 1405/06/17.
+account نام حساب؛ حساب‌های موجود: ${accts}
+
+شکل JSON:
+{"transactions":[{"type":"out","kind":"simple","note":"نان تست","account":"ملت 6395","date":"1405/06/17","cat":"need","qty":2,"unit":"بسته","writtenToman":160000,"bankRial":1600000,"store":"","lines":[]},{"type":"out","kind":"invoice","note":"فاکتور","store":"نام فروشگاه","account":"ملت 6395","date":"1405/06/16","cat":"fun","qty":0,"unit":"","writtenToman":0,"bankRial":10585000,"lines":[{"name":"بستنی","qty":1,"unit":"کیلو","writtenToman":248000,"cat":"fun"}]}]}`;
+}
+
 function parseModelJson(text) {
   if (!text) return null;
   let s = String(text).trim();
   const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) s = fence[1].trim();
-  const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start >= 0 && end > start) s = s.slice(start, end + 1);
-  try {
-    return JSON.parse(s);
-  } catch (e) {
-    return null;
+  const startObj = s.indexOf('{');
+  const startArr = s.indexOf('[');
+  if (startArr >= 0 && (startObj < 0 || startArr < startObj)) {
+    const end = s.lastIndexOf(']');
+    if (end > startArr) {
+      try {
+        const arr = JSON.parse(s.slice(startArr, end + 1));
+        if (Array.isArray(arr)) return { transactions: arr };
+      } catch (e) {}
+    }
   }
+  if (startObj >= 0) {
+    const end = s.lastIndexOf('}');
+    if (end > startObj) {
+      try {
+        return JSON.parse(s.slice(startObj, end + 1));
+      } catch (e) {}
+    }
+  }
+  return null;
 }
 
-async function callGemini(model, key, b64) {
+async function callGemini(model, key, b64, prompt, jsonMode) {
   const url =
     'https://generativelanguage.googleapis.com/v1beta/models/' +
     encodeURIComponent(model) +
     ':generateContent?key=' +
     encodeURIComponent(key);
+  const gen = { temperature: 0.1 };
+  if (jsonMode) gen.responseMimeType = 'application/json';
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -111,12 +156,12 @@ async function callGemini(model, key, b64) {
       contents: [
         {
           parts: [
-            { text: PROMPT },
+            { text: prompt },
             { inlineData: { mimeType: 'image/jpeg', data: b64 } },
           ],
         },
       ],
-      generationConfig: { temperature: 0.1 },
+      generationConfig: gen,
     }),
   });
   const data = await resp.json().catch(() => ({}));
@@ -145,7 +190,7 @@ function shortErr(e) {
     return 'مدل گوگل عوض شده؛ یک‌بار دیگر عکس را بفرست';
   if (s.includes('failed to fetch') || s.includes('network')) return 'اینترنت نرسید به گوگل';
   const cut = raw.replace(/\s+/g, ' ').trim();
-  return cut.length > 80 ? cut.slice(0, 80) + '…' : cut || 'خواندن فاکتور نشد';
+  return cut.length > 80 ? cut.slice(0, 80) + '…' : cut || 'خواندن عکس نشد';
 }
 
 async function listModels(key) {
@@ -179,29 +224,58 @@ async function listModels(key) {
   return names;
 }
 
-export async function readInvoiceImage(file) {
+async function readWithGemini(file, prompt, opts) {
   const key = getGeminiKey();
   if (!key) throw new Error('NO_KEY');
-  const b64 = await fileToJpeg(file);
+  const b64 = await fileToJpeg(file, opts && opts.max, opts && opts.quality);
   let models = MODELS.slice();
   try {
     const listed = await listModels(key);
     if (listed.length) models = listed;
   } catch (e) {}
   let lastErr = null;
+  const jsonMode = !!(opts && opts.jsonMode);
   for (const model of models.slice(0, 6)) {
     try {
-      const raw = await callGemini(model, key, b64);
-      if (raw) return normalizeScan(raw);
+      let raw = await callGemini(model, key, b64, prompt, jsonMode);
+      if (!raw && jsonMode) raw = await callGemini(model, key, b64, prompt, false);
+      if (raw) return raw;
       lastErr = new Error('جواب قابل فهم نبود');
     } catch (e) {
       lastErr = e;
-      const msg = ((e && e.message) || '').toLowerCase();
-      const skip = e.status === 404 || msg.includes('not found') || msg.includes('supported methods');
-      if (!skip && e.status && e.status !== 429) break;
+      if (jsonMode) {
+        try {
+          const raw = await callGemini(model, key, b64, prompt, false);
+          if (raw) return raw;
+        } catch (e2) {
+          lastErr = e2;
+        }
+      }
+      const msg = ((lastErr && lastErr.message) || '').toLowerCase();
+      const skip =
+        lastErr.status === 404 || msg.includes('not found') || msg.includes('supported methods');
+      if (!skip && lastErr.status && lastErr.status !== 429) break;
     }
   }
-  throw new Error(shortErr(lastErr || new Error('خواندن فاکتور نشد')));
+  throw new Error(shortErr(lastErr || new Error('خواندن عکس نشد')));
+}
+
+export async function readInvoiceImage(file) {
+  const raw = await readWithGemini(file, INVOICE_PROMPT, { max: 1280, quality: 0.72 });
+  const data = normalizeScan(raw);
+  if (!data || !data.lines.length) throw new Error('در عکس فاکتوری پیدا نشد');
+  return data;
+}
+
+export async function readPaperTxImage(file, accountNames) {
+  const raw = await readWithGemini(file, paperPrompt(accountNames), {
+    max: 2048,
+    quality: 0.9,
+    jsonMode: true,
+  });
+  const list = normalizePaper(raw);
+  if (!list.length) throw new Error('در عکس تراکنشی پیدا نشد');
+  return list;
 }
 
 function normalizeScan(raw) {
@@ -237,4 +311,300 @@ function normalizeScan(raw) {
     date,
     lines,
   };
+}
+
+function pick(row, keys) {
+  if (!row || typeof row !== 'object') return '';
+  for (const k of keys) {
+    if (row[k] != null && row[k] !== '') return row[k];
+  }
+  const map = {};
+  for (const k of Object.keys(row)) map[String(k).trim().toLowerCase()] = row[k];
+  for (const k of keys) {
+    const v = map[String(k).toLowerCase()];
+    if (v != null && v !== '') return v;
+  }
+  return '';
+}
+
+function mapCat(v) {
+  const s = String(v || '')
+    .trim()
+    .toLowerCase();
+  if (/invest|سرمایه/.test(s)) return 'invest';
+  if (/fun|تفریح|سرگرم/.test(s)) return 'fun';
+  if (/charity|نیکو|خیرات|صدقه/.test(s)) return 'charity';
+  if (/waste|هدر|اسراف/.test(s)) return 'waste';
+  return 'need';
+}
+
+function mapType(v) {
+  const s = String(v || '')
+    .trim()
+    .toLowerCase();
+  if (s === 'in' || /درآمد|واریز|حقوق/.test(s)) return 'in';
+  return 'out';
+}
+
+function isTotalRow(note) {
+  const s = String(note || '').replace(/\s+/g, '');
+  return /^(جمع|جمعکل|موجودی|total)$/i.test(s);
+}
+
+function isRialHint(v) {
+  return /rial|ریال/i.test(String(v || ''));
+}
+
+function isTomanHint(v) {
+  return /toman|تومان/i.test(String(v || ''));
+}
+
+function toToman(row, extra) {
+  const written = num(pick(row, ['writtenToman', 'toman', 'amountToman']));
+  if (written) return written;
+  const rial = num(pick(row, ['bankRial', 'rial', 'amountRial']));
+  if (rial) return rial / 10;
+  const amt = num(pick(row, ['amount', 'total', 'مبلغ', 'price']));
+  if (!amt) return 0;
+  const cur = pick(row, ['currency', 'unitMoney', 'واحدپول']);
+  if (isRialHint(cur) || isRialHint(extra)) return amt / 10;
+  if (isTomanHint(cur) || isTomanHint(extra)) return amt;
+  return amt;
+}
+
+function qtyUnitPrice(row, amount) {
+  let qty = num(pick(row, ['qty', 'quantity', 'مقدار', 'تعداد']));
+  let unit = String(pick(row, ['unit', 'واحد']) || '').trim();
+  let unitPrice = num(pick(row, ['unitPrice', 'price', 'قیمتواحد']));
+  if (qty > 0 && amount) {
+    if (!unitPrice) unitPrice = amount / qty;
+    if (!unit) unit = 'عدد';
+    return { qty, unit, unitPrice };
+  }
+  return { qty: 0, unit: '', unitPrice: 0 };
+}
+
+function normalizeLine(row, fallbackCat) {
+  let name = cleanTitle(pick(row, ['name', 'note', 'title', 'شرح']));
+  if (!name || /^(ضروریات|ضروری|تفریح|هدررفت|سرمایه|نیکوکاری)$/.test(name)) name = '';
+  const amount = toToman(row);
+  if (!amount) return null;
+  if (!name) name = 'قلم';
+  const qu = qtyUnitPrice(row, amount);
+  let qty = qu.qty;
+  let unit = qu.unit;
+  let unitPrice = qu.unitPrice;
+  if (!qty) {
+    qty = 1;
+    unit = unit || 'عدد';
+    unitPrice = amount;
+  }
+  return {
+    id: uid(),
+    name,
+    qty,
+    unit,
+    unitPrice,
+    amount: unitPrice * qty,
+    cat: mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته']) || fallbackCat),
+  };
+}
+
+function rowBlob(row) {
+  try {
+    return JSON.stringify(row);
+  } catch (e) {
+    return String(pick(row, ['note', 'name', 'title']) || '');
+  }
+}
+
+function hasInvoiceWord(s) {
+  return /فاکتور|فاكتور|فاکنور/i.test(String(s || ''));
+}
+
+function hasNumberedItems(s) {
+  const t = faToEn(s);
+  return /(?:^|[^\d])1\s*[-–.:)]/.test(t) && /(?:^|[^\d])2\s*[-–.:)]/.test(t);
+}
+
+function isInvoiceRow(row, note) {
+  const kind = String(pick(row, ['kind', 'mode']) || '').toLowerCase();
+  if (kind === 'invoice' || kind === 'فاکتور') return true;
+  if (row && row.invoice === true) return true;
+  if (hasInvoiceWord(note) || hasInvoiceWord(rowBlob(row))) return true;
+  if (Array.isArray(row.lines) && row.lines.length >= 2) return true;
+  if (hasNumberedItems(note)) return true;
+  return false;
+}
+
+function cleanTitle(s) {
+  let t = String(s || '')
+    .replace(/فاکتور|فاكتور|فاکنور/g, ' ')
+    .replace(/[:：]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  t = t.replace(/^(ضروریات|ضروری|تفریح|هدررفت|سرمایه‌گذاری|سرمایه|نیکوکاری)$/g, '');
+  t = t.replace(/\s+(ضروریات|ضروری|تفریح|هدررفت|سرمایه‌گذاری|سرمایه|نیکوکاری)$/g, '');
+  return t.trim();
+}
+
+function normalizePaper(raw) {
+  if (!raw) return [];
+  let rows = [];
+  if (Array.isArray(raw)) rows = raw;
+  else if (Array.isArray(raw.transactions)) rows = raw.transactions;
+  else if (Array.isArray(raw.items)) rows = raw.items;
+  else if (Array.isArray(raw.lines) && !raw.transactions) rows = raw.lines;
+  const out = [];
+  let lastDate = '';
+  let lastAccount = '';
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const note = String(pick(row, ['note', 'name', 'title', 'شرح', 'توضیح'])).trim();
+    if (isTotalRow(note)) continue;
+    const type = mapType(pick(row, ['type', 'نوع']));
+    const dateRaw = pick(row, ['date', 'تاریخ']);
+    const parsed = parseAppDate(dateRaw);
+    const date = parsed || lastDate;
+    if (parsed) lastDate = parsed;
+    const account = String(pick(row, ['account', 'accountName', 'حساب'])).trim() || lastAccount;
+    if (account) lastAccount = account;
+    const cat = type === 'in' ? null : mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته']) || note);
+    const store = cleanTitle(pick(row, ['store', 'shop', 'فروشگاه']));
+    const rawLines = Array.isArray(row.lines) ? row.lines : [];
+    const invoice = type === 'out' && isInvoiceRow(row, note);
+
+    if (invoice) {
+      const lines = [];
+      for (const ln of rawLines) {
+        const one = normalizeLine(ln, cat || 'need');
+        if (one) lines.push(one);
+      }
+      if (!lines.length) {
+        const one = normalizeLine(Object.assign({}, row, { name: cleanTitle(note) || 'قلم فاکتور' }), cat || 'need');
+        if (one) lines.push(one);
+      }
+      let amount = lines.reduce((s, l) => s + l.amount, 0);
+      const bankToman = toToman(row);
+      if (!amount && bankToman) {
+        lines.push({
+          id: uid(),
+          name: cleanTitle(note) || 'قلم فاکتور',
+          qty: 1,
+          unit: 'قلم',
+          unitPrice: bankToman,
+          amount: bankToman,
+          cat: cat || 'need',
+        });
+        amount = bankToman;
+      }
+      if (!amount) continue;
+      if (bankToman && Math.abs(bankToman - amount) > 1) {
+        const rem = bankToman - amount;
+        if (rem > 0) {
+          lines.push({
+            id: uid(),
+            name: 'سایر',
+            qty: 1,
+            unit: 'قلم',
+            unitPrice: rem,
+            amount: rem,
+            cat: cat || 'need',
+          });
+          amount = bankToman;
+        }
+      }
+      out.push({
+        type: 'out',
+        kind: 'invoice',
+        amount,
+        cat: null,
+        note: store || cleanTitle(note) || 'فاکتور',
+        account,
+        date,
+        qty: 0,
+        unit: '',
+        unitPrice: 0,
+        lines,
+        bankRial: num(pick(row, ['bankRial', 'rial', 'amountRial'])),
+      });
+      continue;
+    }
+
+    const amount = toToman(row);
+    if (!amount) continue;
+    const qu = qtyUnitPrice(row, amount);
+    out.push({
+      type,
+      kind: '',
+      amount,
+      cat,
+      note: cleanTitle(note) || store || 'خرج',
+      account,
+      date,
+      qty: qu.qty,
+      unit: qu.unit,
+      unitPrice: qu.unitPrice,
+      lines: [],
+      bankRial: num(pick(row, ['bankRial', 'rial', 'amountRial'])),
+    });
+  }
+  return mergeInvoiceRows(out);
+}
+
+function txToLine(t) {
+  if (t.kind === 'invoice' && t.lines && t.lines.length) return t.lines.slice();
+  const amount = t.amount || 0;
+  if (!amount) return [];
+  let qty = t.qty || 1;
+  let unit = t.unit || 'عدد';
+  let unitPrice = t.unitPrice || amount / qty;
+  return [
+    {
+      id: uid(),
+      name: t.note && t.note !== 'فاکتور' ? t.note : 'قلم',
+      qty,
+      unit,
+      unitPrice,
+      amount: unitPrice * qty,
+      cat: t.cat || 'need',
+    },
+  ];
+}
+
+function sameInvoiceGroup(a, b) {
+  if ((a.date || '') !== (b.date || '')) return false;
+  if ((a.account || '') !== (b.account || '')) return false;
+  if (a.bankRial && b.bankRial) return Number(a.bankRial) === Number(b.bankRial);
+  const al = (a.lines && a.lines.length) || 0;
+  const bl = (b.lines && b.lines.length) || 0;
+  if (a.kind === 'invoice' && b.kind === 'invoice' && al <= 1 && bl <= 1) return true;
+  return false;
+}
+
+function mergeInvoiceRows(items) {
+  const merged = [];
+  for (const t of items) {
+    const prev = merged[merged.length - 1];
+    const tInv = t.kind === 'invoice';
+    const pInv = prev && prev.kind === 'invoice';
+    if (prev && (tInv || pInv) && sameInvoiceGroup(prev, t)) {
+      if (prev.kind !== 'invoice') {
+        prev.kind = 'invoice';
+        prev.lines = txToLine(prev);
+        prev.cat = null;
+        prev.qty = 0;
+        prev.unit = '';
+        prev.unitPrice = 0;
+        if (!prev.note || prev.note === 'خرج') prev.note = 'فاکتور';
+      }
+      prev.lines = (prev.lines || []).concat(txToLine(t));
+      prev.amount = prev.lines.reduce((s, l) => s + (l.amount || 0), 0);
+      if (t.note && t.note !== 'فاکتور' && t.kind === 'invoice' && (prev.note === 'فاکتور' || !prev.note))
+        prev.note = t.note;
+      continue;
+    }
+    merged.push(t);
+  }
+  return merged;
 }
