@@ -79,7 +79,8 @@ let draftLines = [];
 let paperDraft = [];
 
 function catChipsHtml(selected, onclickName, extraArg) {
-  return CATS.map((c) => {
+  // پاکت قرض/امانت فقط از بخش «طلب و بدهی» پر می‌شود؛ در فرم تراکنش نمایش داده نمی‌شود
+  return CATS.filter((c) => !c.loan).map((c) => {
     const on = c.id === selected;
     const extra = extraArg ? ",'" + extraArg + "'" : '';
     return `<button type="button" class="chip ${on ? 'on' : ''}" data-cat="${c.id}"
@@ -133,7 +134,7 @@ export function openTxForm(tx, opts) {
         `<option value="${a.id}" ${a.id === selectedAccountId ? 'selected' : ''}>${esc(a.name)} · ${esc(a.currency)}</option>`
     )
     .join('');
-  const defaultCat = tx && !isInvoice(tx) ? tx.cat : presetCat || 'need';
+  const defaultCat = tx && !isInvoice(tx) ? (tx.cat === 'loan' ? 'need' : tx.cat) : presetCat || 'need';
   const showReflect = !!(defaultCat === 'waste' && type === 'out' && txMode === 'simple');
 
   openModal(`
@@ -179,25 +180,6 @@ export function openTxForm(tx, opts) {
     <div class="field" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
       <label>دسته‌بندی خرج</label>
       <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
-    </div>
-    <div class="field" id="txLoanInWrap" style="${type === 'in' && txMode === 'simple' ? '' : 'display:none'}">
-      <label class="row" style="gap:8px;align-items:center;cursor:pointer">
-        <input type="checkbox" id="txLoanIn" ${tx && tx.type === 'in' && tx.cat === 'loan' ? 'checked' : (presetCat === 'loan' && type === 'in' ? 'checked' : '')}>
-        <span>🤝 این پول قرضی/امانتی است (درآمد واقعی نیست)</span>
-      </label>
-    </div>
-    <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
-      <label>🤔 اگر این خرج را نمی‌کردی، چه می‌شد؟</label>
-      <textarea class="input" id="txReflect" placeholder="مثلاً: می‌توانستم همان پول را پس‌انداز کنم...">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
-    </div>
-    <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
-      <div class="hint" style="margin:0 0 10px">اول مبلغ کل را بزن، بعد اقلام را وارد کن. هر قلم پاکت خودش را دارد. جمع اقلام باید با مبلغ کل یکی شود. از حساب فقط همان مبلغ کل کم می‌شود.</div>
-      <div id="txLines"></div>
-      <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
-      <div class="row" style="margin-bottom:12px">
-        <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">+ قلم</button>
-        <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">مانده را «سایر» کن</button>
-      </div>
     </div>
     <div class="field"><label>توضیح (اختیاری)</label>
       <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? 'مثلاً: فروشگاه رفاه' : 'مثلاً: خرید هفتگی'}" value="${tx ? esc(tx.note || '') : ''}">
@@ -282,8 +264,6 @@ export function setTxType(btn) {
     });
   }
   applyTxModeUi();
-  const lw = document.getElementById('txLoanInWrap');
-  if (lw) lw.style.display = t === 'in' && txMode === 'simple' ? '' : 'none';
   if (t === 'in') {
     const rw = document.getElementById('txReflectWrap');
     if (rw) rw.style.display = 'none';
@@ -843,8 +823,7 @@ export function saveTx() {
       return;
     }
     const activeCat = document.querySelector('#txCats .chip.on');
-    const loanIn = document.getElementById('txLoanIn');
-    cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : loanIn && loanIn.checked ? 'loan' : null;
+    cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
     const rf = document.getElementById('txReflect');
     reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
   }
@@ -1060,9 +1039,10 @@ export function openPocketLedger(catId, mk) {
       <div class="stat"><div class="lbl">گرفته‌ام (قرض گرفتن / برگشت طلب)</div><div class="val green">${fmt(f.in)}</div></div>
     </div>
     <div class="row" style="margin-bottom:12px">
-      <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ثبت طلب/بدهی</button>
-      <button class="btn sm" style="flex:1" onclick="openTxForm(null,{cat:'loan'})">+ تراکنش دستی</button>
+      <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ثبت طلب / بدهی</button>
+      <button class="btn sm" style="flex:1" onclick="closeModal();switchTab('debts')">فهرست طلب و بدهی</button>
     </div>
+    <div class="hint" style="margin-bottom:10px">این پاکت خودکار از بخش «طلب و بدهی» پر می‌شود (وقتی برای هر مورد حساب انتخاب کنی).</div>
     <div style="max-height:44vh;overflow:auto">${rows}</div>
   `);
     return;
