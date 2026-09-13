@@ -9,7 +9,7 @@ import {
   state,
 } from './state.js';
 import * as sec from './securestore.js';
-import { showLockForRemote, openPinRestoreModal, unlockApp, clearBioRecord } from './prefs.js';
+import { showLockForRemote, unlockApp, clearBioRecord } from './prefs.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -29,7 +29,6 @@ let pullInFlight = false;
 let pendingLocalSave = false;
 let pendingRemoteEnv = null;
 let legacyLocalSnapshot = null;
-let pinRestoreAsked = false;
 let lastPullAt = 0;
 
 function decodeJWT(tok) {
@@ -578,10 +577,8 @@ async function applyRemoteMerge(env, got) {
   if (document.body.classList.contains('locked')) unlockApp();
   render();
   pendingLocalSave = true;
-  pinRestoreAsked = false;
   toast('داده‌ها یکی شد ✓ از این پس با این رمز باز می‌شود');
   pushToDrive(false);
-  askRestorePin();
 }
 
 function closeModalSafe() {
@@ -612,18 +609,10 @@ async function processPendingRemote() {
   }
 }
 
-function askRestorePin() {
-  if (pinRestoreAsked) return;
-  if (!sec.isEncrypted() || sec.hasWrap('pin')) return;
-  pinRestoreAsked = true;
-  setTimeout(() => openPinRestoreModal(), 600);
-}
-
 // بعد از باز شدن قفل: رسیدگی به دوردستِ معطل، پوش‌های مانده و پیشنهاد پین
 document.addEventListener('cap:unlocked', function () {
   if (pendingRemoteEnv) processPendingRemote();
   else if (pendingLocalSave) pushToDrive(false);
-  askRestorePin();
 });
 
 // بعد از فعال‌شدن رمزنگاری: پوش فوری پاکت رمزشده به درایو

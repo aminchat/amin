@@ -213,8 +213,10 @@ export async function setPinWrap(pin) {
 }
 
 export function removePinWrap() {
-  if (!envelope) return;
-  envelope.wraps = envelope.wraps.filter((w) => w.kind !== 'pin');
+  const env = getEnvelope();
+  if (!env || !env.wraps || !env.wraps.some((w) => w.kind === 'pin')) return;
+  env.wraps = env.wraps.filter((w) => w.kind !== 'pin');
+  envelope = env;
   saveEnvelope();
 }
 

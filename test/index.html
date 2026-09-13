@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" type="image/png" href="../icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=vazirmatn:400,600,700&display=swap">
-<link rel="stylesheet" href="css/app.css?v=1.2.9">
+<link rel="stylesheet" href="css/app.css?v=1.3.0">
 <script>
 window.__capErrors = [];
 window.__capLog = function (where, err) {
@@ -98,7 +98,7 @@ try {
     <div class="logo" style="margin:0 auto 14px">💰</div>
     <h1 id="lockTitle">ورود به برنامه</h1>
     <p id="lockSub">رمز را وارد کن</p>
-    <input class="input" id="lockPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="رمز" autocomplete="off" name="app-pin" style="text-align:center;letter-spacing:6px;margin-bottom:12px">
+    <input class="input" id="lockPin" type="password" maxlength="64" placeholder="رمز" autocomplete="current-password" name="app-pass" style="text-align:center;margin-bottom:12px">
     <button class="btn primary block" onclick="submitLockPin()">ورود</button>
     <button class="btn block" id="lockBio" style="margin-top:8px;display:none" onclick="bioUnlock()">ورود با اثر انگشت</button>
     <button class="link-btn" id="lockSwitch" style="display:none">ورود با رمز عبورِ مشترک</button>
@@ -107,6 +107,6 @@ try {
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=1.2.9"></script>
+<script type="module" src="js/app.js?v=1.3.0"></script>
 </body>
 </html>

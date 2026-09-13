@@ -63,7 +63,7 @@ export function syncPrivacyBtn() {
 
 // ─── پین: در حالت رمزشده «کلید» است، در حالت قدیمی فقط هش ─────────────────
 export function hasPin() {
-  if (sec.isEncrypted()) return sec.hasWrap('pin');
+  if (sec.isEncrypted()) return false; // در حالت رمزنگاری پین وجود ندارد؛ فقط رمز عبور + اثر انگشت
   return !!store.get(PIN_KEY);
 }
 
@@ -97,15 +97,7 @@ function readBioRecord() {
 }
 
 export async function setPin(pin) {
-  if (sec.isEncrypted()) {
-    if (!/^\d{6,8}$/.test(pin)) {
-      toast('رمز باید ۶ تا ۸ رقم باشد');
-      return false;
-    }
-    const ok = await sec.setPinWrap(pin);
-    if (ok) toast('رمز ورود ذخیره شد');
-    return ok;
-  }
+  if (sec.isEncrypted()) return false;
   if (!/^\d{4,8}$/.test(pin)) {
     toast('رمز باید ۴ تا ۸ رقم باشد');
     return false;
@@ -116,12 +108,7 @@ export async function setPin(pin) {
 }
 
 export function clearPin() {
-  if (sec.isEncrypted()) {
-    sec.removePinWrap();
-    setLockMode('pass');
-    toast('پین حذف شد؛ از این پس با رمز عبور باز می‌شود');
-    return;
-  }
+  if (sec.isEncrypted()) return;
   store.set(PIN_KEY, '');
   store.set(BIO_KEY, '');
   toast('قفل برداشته شد');
@@ -370,7 +357,7 @@ export function setLockMode(mode, sub) {
       sub ||
       (mode === 'pass'
         ? 'رمز عبور را وارد کن (در همهٔ دستگاه‌هایت یکسان است)'
-        : 'پینِ این گوشی را وارد کن');
+        : 'رمز را وارد کن');
   if (inp) {
     inp.value = '';
     inp.placeholder = mode === 'pass' ? 'رمز عبور' : 'پین';
@@ -378,21 +365,12 @@ export function setLockMode(mode, sub) {
     inp.setAttribute('inputmode', mode === 'pass' ? 'text' : 'numeric');
     inp.setAttribute('pattern', mode === 'pass' ? '.*' : '[0-9]*');
   }
-  if (bio) bio.style.display = mode === 'pin' && hasBiometric() && hasPin() ? '' : 'none';
+  if (bio) bio.style.display = hasBiometric() && (sec.isEncrypted() || hasPin()) ? '' : 'none';
   const forgot = document.getElementById('lockForgot');
   if (forgot) forgot.style.display = sec.isEncrypted() ? '' : 'none';
   const sw = document.getElementById('lockSwitch');
   if (sw) {
-    if (!sec.isEncrypted()) sw.style.display = 'none';
-    else if (mode === 'pin') {
-      sw.style.display = '';
-      sw.textContent = 'ورود با رمز عبورِ مشترک';
-    } else if (hasPin()) {
-      sw.style.display = '';
-      sw.textContent = 'بازگشت به پین این گوشی';
-    } else {
-      sw.style.display = 'none';
-    }
+    sw.style.display = 'none';
   }
 }
 
@@ -427,7 +405,7 @@ export function lockApp() {
   if (lock) lock.classList.add('show');
   const bioBtn = document.getElementById('lockBio');
   if (bioBtn)
-    bioBtn.style.display = lockMode === 'pin' && hasBiometric() && hasPin() ? '' : 'none';
+    bioBtn.style.display = hasBiometric() && (sec.isEncrypted() || hasPin()) ? '' : 'none';
   setTimeout(() => {
     if (pin) pin.focus();
   }, 80);
@@ -456,16 +434,11 @@ export async function submitLockPin() {
   }
   if (sec.isEncrypted()) {
     try {
-      const st = await sec.unlock(val, lockMode);
+      const st = await sec.unlock(val, 'pass');
       finalizeUnlock(st);
     } catch (e) {
       pinFailCount++;
-      if (lockMode === 'pin' && pinFailCount >= 5 && sec.hasWrap('pass')) {
-        setLockMode('pass');
-        toast('با رمز عبور ادامه بده');
-      } else {
-        toast(lockMode === 'pass' ? 'رمز عبور اشتباه است' : 'رمز اشتباه است');
-      }
+      toast('رمز عبور اشتباه است');
       if (inp) {
         inp.value = '';
         inp.focus();
@@ -645,7 +618,7 @@ export async function encryptStep2() {
     <div class="field"><label>کلمهٔ شمارهٔ ${wizCheckB + 1}؟</label>
       <input class="input" id="wizChkB" dir="ltr" autocomplete="off" style="text-align:left"></div>
     <div class="hint">اسکرین‌شات نگیر؛ فقط کاغذ.</div>
-    <button class="btn primary block" style="margin-top:12px" onclick="encryptStep3()">ادامه</button>
+    <button class="btn primary block" style="margin-top:12px" onclick="encryptStep3()">فعال کن</button>
   `);
 }
 
@@ -657,44 +630,11 @@ export function encryptStep3() {
     toast('کلمه‌ها را درست یادداشت نکردی؛ دوباره نگاه کن');
     return;
   }
-  openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
-    <h2>🔢 ورود سریع با پین</h2>
-    <p class="small muted">برای بازکردن سریع برنامه روی این گوشی، یک پین ۶ تا ۸ رقمی بگذار.
-    این پین فقط روی همین دستگاه کار می‌کند.</p>
-    <div class="field"><label>پین جدید</label>
-      <input class="input" id="encPinNew" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
-    <div class="field"><label>تکرار پین</label>
-      <input class="input" id="encPinNew2" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
-    <button class="btn primary block" style="margin-top:12px" onclick="encryptFinish()">فعال کن</button>
-    <button class="btn block" style="margin-top:8px" onclick="encryptFinish(true)">بی‌خیال پین، فقط رمز عبور</button>
-  `);
+  return encryptFinish(true);
 }
 
-export async function encryptFinish(skipPin) {
-  let pin = null;
-  if (!skipPin) {
-    const p1 = String((document.getElementById('encPinNew') || {}).value || '').trim();
-    const p2 = String((document.getElementById('encPinNew2') || {}).value || '').trim();
-    if (p1 || p2) {
-      if (!/^\d{6,8}$/.test(p1)) {
-        toast('پین باید ۶ تا ۸ رقم باشد');
-        return;
-      }
-      if (p1 !== p2) {
-        toast('پین‌ها یکی نیستند');
-        return;
-      }
-      pin = p1;
-    }
-  }
-  // پین قدیمی اگر داده شد و درست بود، همان منتقل می‌شود
-  const oldPinEl = document.getElementById('encOldPin');
-  if (!pin && oldPinEl && oldPinEl.value) {
-    const op = String(oldPinEl.value).trim();
-    if (await checkPin(op)) pin = op;
-    else toast('پین قدیمی درست نبود؛ بدون پین ادامه می‌دهم');
-  }
+export async function encryptFinish() {
+  const pin = null;
   try {
     await sec.enableEncryption(state, wizPass, wizPhrase, pin);
     store.set(LEGACY_DATA_KEY, '');
@@ -702,7 +642,7 @@ export async function encryptFinish(skipPin) {
     wizPass = '';
     wizPhrase = '';
     closeModal();
-    setLockMode(pin ? 'pin' : 'pass');
+    setLockMode('pass');
     render();
     toast('رمزنگاری فعال شد 🔐');
     document.dispatchEvent(new CustomEvent('cap:encrypt-on'));
@@ -712,33 +652,9 @@ export async function encryptFinish(skipPin) {
   }
 }
 
-// ─── پیشنهاد پین بعد از ورود با رمز عبور (مودال، چون prompt در PWA نیست) ──
-export function openPinRestoreModal() {
-  openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
-    <h2>🔢 ورود سریع روی این گوشی</h2>
-    <p class="small muted">رمز عبور روی همهٔ دستگاه‌ها یکی است، اما پین فقط برای همین گوشی است.
-    برای ورود سریع می‌توانی یک پین ۶ تا ۸ رقمی بگذاری.</p>
-    <div class="field"><label>پین جدید</label>
-      <input class="input" id="pinRestore" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
-    <button class="btn primary block" style="margin-top:12px" onclick="savePinRestore()">ذخیره پین</button>
-    <button class="btn block" style="margin-top:8px" onclick="closeModal()">فعلاً نه، با رمز عبور ادامه می‌دهم</button>
-  `);
-}
-
-export async function savePinRestore() {
-  const v = String((document.getElementById('pinRestore') || {}).value || '').trim();
-  if (!/^\d{6,8}$/.test(v)) {
-    toast('پین باید ۶ تا ۸ رقم باشد');
-    return;
-  }
-  const ok = await sec.setPinWrap(v);
-  if (ok) {
-    closeModal();
-    setLockMode('pin');
-    toast('پین ذخیره شد ✓');
-  }
-}
+// پین در حالت رمزنگاری حذف شده؛ این دو تابع برای سازگاری با app.js می‌مانند
+export function openPinRestoreModal() {}
+export async function savePinRestore() {}
 
 // ─── تغییر رمز عبور / عبارت بازیابی جدید ───────────────────────────────────
 export function changePassPrompt() {
@@ -824,16 +740,22 @@ export function openSettings() {
     }
     <div class="divider"></div>
     <h3 style="margin:8px 0 10px">قفل ورود</h3>
-    <p class="small muted">${
+    ${
       enc
-        ? 'پین و اثر انگشت برای ورود سریع روی همین گوشی هستند (مثل بقیهٔ اپ‌ها، با یک لمس)؛ کلید اصلی همان رمز عبور است.'
-        : 'با رمز وارد برنامه می‌شوی. اثر انگشت اختیاری است و روی کرومِ گوشی معمولاً کار می‌کند.'
-    }</p>
+        ? `<p class="small muted">برنامه با رمز عبور باز می‌شود. برای ورود سریع روی همین گوشی می‌توانی اثر انگشت را فعال کنی.</p>
+           ${
+             bioOk
+               ? bioOn
+                 ? `<button class="btn block" onclick="disableBiometric();openSettings()">خاموش کردن اثر انگشت</button>`
+                 : `<button class="btn primary block" onclick="enableBiometric().then(()=>openSettings())">فعال‌کردن اثر انگشت</button>`
+               : `<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>`
+           }`
+        : `<p class="small muted">با رمز وارد برنامه می‌شوی. اثر انگشت اختیاری است و روی کرومِ گوشی معمولاً کار می‌کند.</p>
     ${
       pinOn
-        ? `<button class="btn block" onclick="changePinPrompt()">تغییر ${enc ? 'پین' : 'رمز'}</button>
-           <button class="btn danger block" style="margin-top:8px" onclick="clearPin();openSettings()">حذف ${enc ? 'پین' : 'قفل'}</button>`
-        : `<button class="btn primary block" onclick="changePinPrompt()">فعال‌کردن ${enc ? 'پین' : 'رمز'}</button>`
+        ? `<button class="btn block" onclick="changePinPrompt()">تغییر رمز</button>
+           <button class="btn danger block" style="margin-top:8px" onclick="clearPin();openSettings()">حذف قفل</button>`
+        : `<button class="btn primary block" onclick="changePinPrompt()">فعال‌کردن رمز</button>`
     }
     ${
       pinOn && bioOk
@@ -843,6 +765,7 @@ export function openSettings() {
         : pinOn && !bioOk
           ? `<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>`
           : ''
+    }`
     }
     ${googleSettingsHtml()}
     <div class="divider"></div>
@@ -929,7 +852,8 @@ export function initPrefs() {
   const sw = document.getElementById('lockSwitch');
   if (sw) sw.onclick = () => toggleLockMode();
   if (sec.isEncrypted()) {
-    setLockMode(sec.hasWrap('pin') ? 'pin' : 'pass');
+    sec.removePinWrap(); // پاک‌سازی پین‌های قدیمی
+    setLockMode('pass');
     lockApp();
   } else if (hasPin()) {
     setLockMode('pin');
