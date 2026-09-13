@@ -107,11 +107,15 @@ export function handleCredential(resp) {
   }, true);
 }
 
+let lastTokenError = '';
+let tokenReqTimer = null;
+
 export function requestAccessToken(cb, interactive) {
   const done = function (ok) {
     if (cb) cb(ok);
   };
   if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    lastTokenError = 'gsi-not-loaded';
     done(false);
     return;
   }
@@ -119,31 +123,84 @@ export function requestAccessToken(cb, interactive) {
     done(true);
     return;
   }
+  // اگر یک درخواستِ بی‌صدا در جریان است و حالا کاربر خودش دکمه زده، منتظرش نمی‌مانیم؛
+  // درخواست تعاملی جدید می‌فرستیم (وگرنه کلیک کاربر بی‌اثر می‌ماند)
+  if (tokenRequesting && !interactive) {
+    tokenWaiters.push(done);
+    return;
+  }
   tokenWaiters.push(done);
-  if (tokenRequesting) return;
 
   if (!tokenClient) {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: DRIVE_SCOPE,
       callback: function () {},
+      error_callback: function () {},
     });
   }
 
+  const finishAll = function (ok) {
+    tokenRequesting = false;
+    clearTimeout(tokenReqTimer);
+    const waiters = tokenWaiters.splice(0);
+    waiters.forEach((fn) => fn(ok));
+    render();
+  };
+
   tokenRequesting = true;
   tokenClient.callback = function (resp) {
-    tokenRequesting = false;
     const ok = !!(resp && !resp.error && resp.access_token);
     if (ok) {
+      lastTokenError = '';
       rememberToken({
         token: resp.access_token,
         exp: Date.now() + (resp.expires_in || 3600) * 1000,
       });
+    } else {
+      lastTokenError = (resp && resp.error) || 'unknown';
     }
-    const waiters = tokenWaiters.splice(0);
-    waiters.forEach((fn) => fn(ok));
+    finishAll(ok);
   };
-  tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
+  // اگر پنجرهٔ گوگل بسته شود یا بلاک شود، callback عادی صدا زده نمی‌شود
+  tokenClient.error_callback = function (err) {
+    lastTokenError = (err && err.type) || 'popup';
+    finishAll(false);
+  };
+  // درخواست بی‌صدا گاهی هیچ جوابی نمی‌دهد؛ نباید برای همیشه «در حال درخواست» بمانیم
+  clearTimeout(tokenReqTimer);
+  tokenReqTimer = setTimeout(
+    function () {
+      if (!tokenRequesting) return;
+      lastTokenError = 'timeout';
+      finishAll(false);
+    },
+    interactive ? 120000 : 15000
+  );
+  try {
+    tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
+  } catch (e) {
+    lastTokenError = 'exception';
+    finishAll(false);
+  }
+}
+
+function tokenErrorHint() {
+  switch (lastTokenError) {
+    case 'gsi-not-loaded':
+      return 'کتابخانهٔ گوگل بارگذاری نشده (اینترنت/فیلترشکن را چک کن و صفحه را دوباره باز کن).';
+    case 'popup_closed':
+    case 'popup':
+      return 'پنجرهٔ ورود گوگل بسته شد یا مرورگر آن را بلاک کرد؛ اجازهٔ پاپ‌آپ بده و دوباره بزن.';
+    case 'popup_failed_to_open':
+      return 'مرورگر پنجرهٔ ورود را باز نکرد؛ پاپ‌آپ را برای این سایت آزاد کن.';
+    case 'access_denied':
+      return 'دسترسی به درایو داده نشد؛ در پنجرهٔ گوگل تیک دسترسی به Drive را بزن.';
+    case 'timeout':
+      return 'گوگل جواب نداد؛ اتصال اینترنت را چک کن.';
+    default:
+      return '';
+  }
 }
 
 export function googleSignIn() {
@@ -155,9 +212,11 @@ export function googleSignIn() {
 }
 
 function requestDriveSignIn() {
+  toast('در حال اتصال به گوگل…');
   requestAccessToken(function (ok) {
     if (!ok) {
-      toast('ورود انجام نشد');
+      toast('ورود انجام نشد. ' + tokenErrorHint());
+      render();
       return;
     }
     if (!gUser) {
@@ -701,9 +760,18 @@ export function googleSyncOk() {
 export function renderSyncCard() {
   if (gUser && tokenAlive()) return '';
   if (gUser) {
+    if (tokenRequesting) {
+      return (
+        '<div class="card"><h3>☁️ اتصال به گوگل</h3>' +
+        '<div class="small muted">در حال تمدید اتصال…</div></div>'
+      );
+    }
+    const hint = tokenErrorHint();
     return (
       '<div class="card"><h3>☁️ اتصال به گوگل</h3>' +
-      '<div class="small muted" style="margin-bottom:12px">اتصال همگام‌سازی در دسترس نیست.</div>' +
+      '<div class="small muted" style="margin-bottom:12px">اعتبار اتصال به درایو تمام شده (هر ساعت تمدید می‌شود). ' +
+      (hint ? hint : 'با یک ضربه دوباره وصل می‌شود.') +
+      '</div>' +
       '<button class="btn primary block" onclick="googleSignIn()">اتصال دوباره</button></div>'
     );
   }
@@ -741,8 +809,27 @@ export function initGoogleOnLoad() {
 
 loadSavedToken();
 
+// تمدید پیشگیرانهٔ توکن (چند دقیقه قبل از انقضا) تا کاربر اصلاً قطع‌شدن را نبیند
+setInterval(function () {
+  if (!gUser || tokenRequesting) return;
+  if (document.visibilityState !== 'visible') return;
+  if (!gToken || !gToken.token) return;
+  if (gToken.exp - Date.now() < 5 * 60000) requestAccessToken(function () {}, false);
+}, 60000);
+
 export function refreshFromDrive() {
-  if (!gUser || pullInFlight || pushInFlight || pendingLocalSave) return;
+  if (!gUser) return;
+  if (!tokenAlive() && !tokenRequesting) {
+    // توکن تمام شده؛ بی‌صدا تمدید کن تا کارت «اتصال دوباره» بی‌دلیل نماند
+    requestAccessToken(function (ok) {
+      if (ok && !pullInFlight && !pushInFlight) {
+        if (pendingLocalSave) pushToDrive(false);
+        else loadFromDrive(function () { render(); }, false, true);
+      }
+    }, false);
+    return;
+  }
+  if (pullInFlight || pushInFlight || pendingLocalSave) return;
   if (Date.now() - lastPullAt < 30000) return;
   const done = function () {
     render();
