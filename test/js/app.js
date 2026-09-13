@@ -41,7 +41,6 @@ import {
   showLockForRemote,
   startPhraseRecovery,
   submitLockPin,
-  submitRemotePass,
   toggleLockMode,
   togglePrivacy,
   tryBiometric,
@@ -56,6 +55,7 @@ import {
   pushToDrive,
   refreshFromDrive,
   scheduleSync,
+  submitRemotePass,
   syncOnPageChange,
 } from './sync.js';
 import {
@@ -348,6 +348,7 @@ Object.assign(window, {
   savePinRestore,
   setLockMode,
   showLockForRemote,
+  submitRemotePass,
   toggleLockMode,
 });
 
@@ -385,6 +386,8 @@ try {
 } catch (err) {
   console.error(err);
   if (window.__capLog) window.__capLog('شروع برنامه', err);
+  const dbg = document.getElementById('lockDebug');
+  if (dbg) dbg.textContent = 'خطا در شروع: ' + ((err && err.message) || err);
   const home = document.getElementById('homeContent');
   if (home) home.innerHTML = '<div class="card">برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.</div>';
 }
