@@ -8,6 +8,8 @@ import {
   replaceState,
   state,
 } from './state.js';
+import * as sec from './securestore.js';
+import { showLockForRemote } from './prefs.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -25,6 +27,9 @@ let syncTimer = null;
 let pushInFlight = false;
 let pullInFlight = false;
 let pendingLocalSave = false;
+let pendingRemoteEnv = null;
+let legacyLocalSnapshot = null;
+let pinRestoreAsked = false;
 let lastPullAt = 0;
 
 function decodeJWT(tok) {
@@ -336,7 +341,8 @@ export function loadFromDrive(cb, interactive, quiet) {
     driveFindFile()
       .then(function (f) {
         if (!f) {
-          return driveCreate(JSON.stringify(state)).then(function () {
+          if (sec.isEncrypted() && !sec.isUnlocked()) return; // هنوز قفل است
+          return driveCreate(syncContent()).then(function () {
             pendingLocalSave = false;
             if (!quiet) toast('اطلاعات در Google Drive ذخیره شد ✓');
           });
@@ -348,13 +354,32 @@ export function loadFromDrive(cb, interactive, quiet) {
           } catch (e) {
             return;
           }
+          // پاکت رمزشدهٔ نسخهٔ ۲؟
+          if (remote && remote.v === 2 && remote.wraps && remote.data) {
+            return handleRemoteEnvelope(remote, f.id);
+          }
+          // فایل قدیمیِ متن‌ساده
+          if (sec.isEncrypted()) {
+            if (!sec.isUnlocked()) return; // بعد از باز شدن قفل رسیدگی می‌شود
+            const d2 = decideSync(state, remote);
+            if (d2.action === 'pull') {
+              replaceState(d2.next);
+              render();
+              pendingLocalSave = true;
+            } else if (d2.action === 'push') {
+              replaceState(d2.next);
+              persistLocal();
+              return driveUpdate(f.id, syncContent());
+            }
+            return;
+          }
           const decision = decideSync(state, remote);
           if (decision.action === 'pull') {
             replaceState(decision.next);
           } else if (decision.action === 'push') {
             replaceState(decision.next);
             persistLocal();
-            return driveUpdate(f.id, JSON.stringify(state));
+            return driveUpdate(f.id, syncContent());
           }
         });
       })
@@ -362,7 +387,7 @@ export function loadFromDrive(cb, interactive, quiet) {
         lastPullAt = Date.now();
       })
       .catch(function () {
-        if (!quiet) toast('خطا در دریافت از درایو؛ دوباره مجوز را تأیید کن');
+        if (!quiet && interactive) toast('خطا در دریافت از درایو؛ دوباره مجوز را تأیید کن');
       })
       .then(function () {
         pullInFlight = false;
@@ -374,7 +399,7 @@ export function loadFromDrive(cb, interactive, quiet) {
     requestAccessToken(function (ok) {
       if (ok) run();
       else {
-        if (!quiet) toast('مجوز Google Drive داده نشد');
+        if (!quiet && interactive) toast('مجوز Google Drive داده نشد');
         cb();
       }
     }, !!interactive);
@@ -383,30 +408,160 @@ export function loadFromDrive(cb, interactive, quiet) {
   run();
 }
 
+// ─── پردازش پاکت رمزشدهٔ دوردست ────────────────────────────────────────────
+async function handleRemoteEnvelope(env, fileId) {
+  // دستگاه تازه یا بدون رمزنگاری محلی: پاکت را «قفل‌شده» می‌پذیریم تا
+  // جریان عادیِ ورود با رمز عبور اجرا شود — هیچ داده‌ای قبلش دیده نمی‌شود
+  if (!sec.isEncrypted()) {
+    if (hasLocalData(state)) {
+      legacyLocalSnapshot = JSON.parse(JSON.stringify(state));
+      pendingRemoteEnv = env;
+    }
+    sec.adoptRemoteEnvelope(env);
+    showLockForRemote();
+    render();
+    return;
+  }
+  const localAt = sec.metaUpdatedAt();
+  const remoteAt = (env.meta && env.meta.updatedAt) || 0;
+
+  if (remoteAt > localAt) {
+    if (!sec.hasSessionPass()) {
+      pendingRemoteEnv = env;
+      showLockForRemote();
+      return;
+    }
+    try {
+      const got = await sec.decryptRemote(env);
+      sec.adoptRemoteEnvelope(env);
+      replaceState(got.state);
+      render();
+      pendingLocalSave = false;
+      toast('داده‌های جدیدتر از گوگل دریافت شد ✓');
+    } catch (e) {
+      pendingRemoteEnv = env;
+      showLockForRemote();
+    }
+    return;
+  }
+
+  if (localAt > remoteAt) {
+    // محلی جدیدتر است؛ پاکت محلی پوش می‌شود
+    if (sec.isUnlocked()) return driveUpdate(fileId, syncContent()).then(() => (pendingLocalSave = false));
+    pendingLocalSave = true;
+    return;
+  }
+
+  // هم‌زمان: ادغام در صورت تفاوت
+  if (!sec.hasSessionPass()) {
+    pendingRemoteEnv = env;
+    return;
+  }
+  try {
+    const got = await sec.decryptRemote(env);
+    const merged = mergeStates(state, got.state);
+    if (fingerprint(merged) !== fingerprint(state)) {
+      replaceState(merged);
+      render();
+      pendingLocalSave = true;
+    }
+  } catch (e) {
+    pendingRemoteEnv = env;
+  }
+}
+
+async function processPendingRemote() {
+  const env = pendingRemoteEnv;
+  if (!env) return;
+  if (!sec.hasSessionPass()) return; // هنوز با رمز عبور باز نشده
+  try {
+    const got = await sec.decryptRemote(env);
+    pendingRemoteEnv = null;
+    let next = got.state;
+    if (legacyLocalSnapshot) {
+      next = mergeStates(legacyLocalSnapshot, next);
+      legacyLocalSnapshot = null;
+    }
+    if (hasLocalData(state)) next = mergeStates(state, next);
+    replaceState(next);
+    render();
+    toast('داده‌ها از گوگل باز شد ✓');
+  } catch (e) {
+    pendingRemoteEnv = null;
+    toast('دریافت تغییرات گوگل با این رمز نشد');
+  }
+}
+
+function askRestorePin() {
+  if (pinRestoreAsked) return;
+  if (!sec.isEncrypted() || sec.hasWrap('pin')) return;
+  pinRestoreAsked = true;
+  setTimeout(() => {
+    const pin = prompt('برای ورود سریع‌تر روی این گوشی، پین ۶ تا ۸ رقمی بگذار (یا خالی بگذار):');
+    if (pin == null || !pin) return;
+    if (!/^\d{6,8}$/.test(pin)) {
+      toast('پین باید ۶ تا ۸ رقم باشد؛ بعداً از تنظیمات می‌توانی بگذاری');
+      pinRestoreAsked = false;
+      return;
+    }
+    sec.setPinWrap(pin).then((ok) => {
+      if (ok) toast('پین ذخیره شد ✓');
+      else pinRestoreAsked = false;
+    });
+  }, 600);
+}
+
+// بعد از باز شدن قفل: رسیدگی به دوردستِ معطل، پوش‌های مانده و پیشنهاد پین
+document.addEventListener('cap:unlocked', function () {
+  if (pendingRemoteEnv) processPendingRemote();
+  else if (pendingLocalSave) pushToDrive(false);
+  askRestorePin();
+});
+
+// بعد از فعال‌شدن رمزنگاری: پوش فوری پاکت رمزشده به درایو
+document.addEventListener('cap:encrypt-on', function () {
+  if (gUser || tokenAlive()) pushToDrive(false);
+});
+
+// محتوایی که در درایو ذخیره می‌شود: پاکت رمزشده یا حالت ساده
+function syncContent() {
+  if (sec.isEncrypted()) {
+    const env = sec.remoteEnvelopeJson();
+    if (env) return env;
+  }
+  return JSON.stringify(state);
+}
+
 export function scheduleSync() {
-  if (!gUser && !gToken) return;
+  if (!gUser && !tokenAlive()) return;
   pendingLocalSave = true;
-  pushToDrive(true);
+  // فقط تلاش بی‌صدا — هیچ پنجرهٔ لاگینی باز نمی‌شود
+  pushToDrive(false);
 }
 
 export function pushToDrive(interactive) {
+  if (sec.isEncrypted() && !sec.isUnlocked()) return;
   const finish = function () {
     pushInFlight = false;
   };
   const run = function () {
     pushInFlight = true;
-    const content = JSON.stringify(state);
-    driveFindFile()
+    // اول صبر می‌کنیم آخرین رمزکردن محلی تمام شود، بعد محتوا را می‌سازیم
+    return sec.whenPersisted().then(startPush);
+  };
+  const startPush = function () {
+    const content = syncContent();
+    return driveFindFile()
       .then(function (f) {
         if (f) return driveUpdate(f.id, content);
         return driveCreate(content);
       })
       .then(function () {
         pendingLocalSave = false;
-        toast('در Google Drive ذخیره شد ✓');
+        if (interactive) toast('در Google Drive ذخیره شد ✓');
       })
       .catch(function () {
-        toast('ذخیره در گوگل نشد؛ یک‌بار دیگر ثبت را بزن');
+        if (interactive) toast('ذخیره در گوگل نشد؛ یک‌بار دیگر ثبت را بزن');
       })
       .then(finish);
   };
@@ -415,10 +570,11 @@ export function pushToDrive(interactive) {
     requestAccessToken(function (ok) {
       if (ok) run();
       else {
-        toast('برای ذخیره در گوگل دوباره ثبت را بزن');
+        // ذخیرهٔ محلی انجام شده؛ بعداً بی‌صدا دوباره تلاش می‌شود
+        if (interactive) toast('برای ذخیره در گوگل دوباره ثبت را بزن');
         finish();
       }
-    }, interactive !== false);
+    }, interactive === true);
     return;
   }
   run();
@@ -429,7 +585,14 @@ export function googleSyncOk() {
 }
 
 export function renderSyncCard() {
-  if (gUser) return '';
+  if (gUser && tokenAlive()) return '';
+  if (gUser) {
+    return (
+      '<div class="card"><h3>☁️ اتصال به گوگل</h3>' +
+      '<div class="small muted" style="margin-bottom:12px">اتصال همگام‌سازی در دسترس نیست.</div>' +
+      '<button class="btn primary block" onclick="googleSignIn()">اتصال دوباره</button></div>'
+    );
+  }
   return (
     '<div class="card"><h3>☁️ همگام‌سازی ابری</h3>' +
     '<div class="small muted" style="margin-bottom:12px">با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.</div>' +
@@ -447,10 +610,17 @@ export function initGoogleOnLoad() {
   }
   loadSavedToken();
   google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredential });
-  if (store.get('g_signed') === '1' && tokenAlive()) {
-    loadFromDrive(function () {
-      render();
-    });
+  if (store.get('g_signed') === '1') {
+    // اول تلاشِ بی‌صدا؛ اگر سشن گوگل زنده باشد کاربر هیچ صفحهٔ لاگینی نمی‌بیند
+    requestAccessToken(function (ok) {
+      if (ok) {
+        loadFromDrive(function () {
+          render();
+        }, false, true);
+      } else {
+        render();
+      }
+    }, false);
   }
   render();
 }
@@ -463,16 +633,18 @@ export function refreshFromDrive() {
   const done = function () {
     render();
   };
-  if (tokenAlive()) loadFromDrive(done);
+  requestAccessToken(function (ok) {
+    if (ok) loadFromDrive(done, false, true);
+  }, false);
 }
 
 let pageSyncTimer = null;
 export function syncOnPageChange() {
-  if (!gUser || !tokenAlive()) return;
+  if (!gUser) return;
   if (pushInFlight || pullInFlight) return;
   clearTimeout(pageSyncTimer);
   pageSyncTimer = setTimeout(function () {
-    if (!tokenAlive()) return;
+    if (pushInFlight || pullInFlight) return;
     if (pendingLocalSave) {
       pushToDrive(false);
       return;

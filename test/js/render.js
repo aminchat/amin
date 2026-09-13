@@ -2,6 +2,7 @@ import { esc, fmt, fmtT, toFa, store } from './utils.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, MONTHS } from './jalali.js';
 import { pieSVG } from './forms.js';
 import { renderSyncCard } from './sync.js';
+import * as sec from './securestore.js';
 import { debtHomeBanner, overdueCount, renderDebts } from './debts.js';
 import {
   CATS,
@@ -11,6 +12,7 @@ import {
   catById,
   computeMonths,
   curStats,
+  hasLocalData,
   investProfit,
   investTotal,
   investValue,
@@ -63,6 +65,14 @@ export function renderHome() {
 
   html += renderSyncCard();
   html += debtHomeBanner();
+
+  if (!sec.isEncrypted() && hasLocalData()) {
+    html += `<div class="card" style="border-color:rgba(245,158,11,.45)">
+      <h3>🔐 داده‌هایت هنوز رمزشده نیستند</h3>
+      <div class="small muted" style="margin-bottom:12px">با فعال‌کردن رمزنگاری، داده‌ها چه روی گوشی چه در گوگل‌درایو فقط با کلید خودت خوانده می‌شوند.</div>
+      <button class="btn primary block" onclick="openEncryptSetup()">فعال‌کردن رمزنگاری</button>
+    </div>`;
+  }
 
   if (!hasBudget) {
     html += `<div class="banner warn">⏰ <span>بودجه ${monthLabel(mk)} هنوز ثبت نشده است.</span>

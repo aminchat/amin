@@ -283,7 +283,7 @@ body.menu-open .side-menu{transform:none}
 
 /* modal */
 .overlay{
-  position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);
+  position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);
   display:none;align-items:flex-end;justify-content:center;
 }
 .overlay.show{display:flex}
@@ -394,6 +394,25 @@ html.needs-lock #lockScreen,
 .lock-box h1{font-size:18px;margin-bottom:6px}
 .lock-box p{color:var(--muted);font-size:13px;margin:0 0 16px}
 body.locked{overflow:hidden}
+
+.link-btn{
+  display:inline-block;margin-top:14px;
+  background:none;border:none;color:var(--accent,#3d8bfd);
+  font-size:13px;cursor:pointer;text-decoration:underline;
+  font-family:inherit;
+}
+
+.phrase-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+  margin:14px 0 4px;text-align:left;
+}
+.phrase-w{
+  background:var(--card2,#101827);
+  border:1px solid var(--border,#1f2b3f);
+  border-radius:10px;padding:7px 10px;
+  font-size:13.5px;letter-spacing:.4px;
+}
+.phrase-w b{color:var(--muted,#8aa);font-weight:600;margin-right:6px}
 
 .theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .theme-swatch{

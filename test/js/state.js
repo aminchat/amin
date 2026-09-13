@@ -1,5 +1,6 @@
 import { store } from './utils.js';
 import { curMonthKey } from './jalali.js';
+import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
 export const KEY = 'capital_app_v1';
 
@@ -30,6 +31,8 @@ export function defaultState() {
 }
 
 function loadState() {
+  // حالت رمزشده: داده بعد از بازکردن قفل تزریق می‌شود
+  if (isEncrypted()) return defaultState();
   try {
     const s = store.get(KEY);
     if (s) return Object.assign(defaultState(), JSON.parse(s));
@@ -45,6 +48,10 @@ export function setOnSave(fn) {
 }
 
 export function persistLocal() {
+  if (isEncrypted()) {
+    if (isUnlocked()) persistEncrypted(state);
+    return;
+  }
   store.set(KEY, JSON.stringify(state));
 }
 
