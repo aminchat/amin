@@ -251,6 +251,14 @@ async function unlockInternalWith(secret, kind) {
   return unwrapDataKey(wrap, secret);
 }
 
+// فقط بررسی درستی عبارت بازیابی (بدون تغییر چیزی)
+export async function verifyPhrase(phraseText) {
+  const wrap = findWrap('phrase');
+  if (!wrap) throw new Error('phrase wrap missing');
+  await unwrapDataKey(wrap, normalizePhrase(phraseText).join(' '));
+  return true;
+}
+
 // بازیابی با عبارت بازیابی: رمز عبور جدید جایگزین می‌شود
 export async function recoverWithPhrase(phraseText, newPass) {
   const phrase = normalizePhrase(phraseText).join(' ');

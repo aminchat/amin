@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '1.2.8-test';
+export const APP_VERSION = '1.2.9-test';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -110,7 +110,7 @@ export function toast(msg) {
     el = document.createElement('div');
     el.id = 'toast';
     el.style.cssText =
-      'position:fixed;bottom:100px;right:50%;transform:translateX(50%);background:#22c55e;color:#04180a;font-weight:700;padding:11px 22px;border-radius:99px;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:.25s;font-size:14px;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis';
+      'position:fixed;bottom:100px;right:50%;transform:translateX(50%);background:#22c55e;color:#04180a;font-weight:700;padding:11px 22px;border-radius:99px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:.25s;font-size:14px;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis';
     document.body.appendChild(el);
   }
   el.textContent = msg;

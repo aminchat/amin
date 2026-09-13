@@ -508,6 +508,17 @@ export async function recoveryStep2() {
     }
     return;
   }
+  // عبارت واقعاً با کلید داده امتحان می‌شود، نه فقط از نظر املایی
+  try {
+    await sec.verifyPhrase(val);
+  } catch (e) {
+    if (window.__capLog) window.__capLog('recoveryStep2', e);
+    if (err) {
+      err.style.display = '';
+      err.textContent = 'این عبارت به داده‌های این دستگاه نمی‌خورد؛ ترتیب و املای کلمه‌ها را دوباره چک کن.';
+    }
+    return;
+  }
   // عبارت برای مرحلهٔ بعد نگه داشته می‌شود چون اینپوت از صفحه می‌رود
   recPhraseValue = normalizePhrase(val).join(' ');
   openModal(`
@@ -518,8 +529,22 @@ export async function recoveryStep2() {
       <input class="input" id="recPass" type="password" autocomplete="new-password" dir="ltr"></div>
     <div class="field"><label>تکرار رمز عبور</label>
       <input class="input" id="recPass2" type="password" autocomplete="new-password" dir="ltr"></div>
-    <button class="btn primary block" style="margin-top:12px" onclick="recoveryFinish()">بازکردن داده‌ها</button>
+    <div id="recPassErr" class="hint" style="display:none;color:#fb7185"></div>
+    <button class="btn primary block" id="recFinishBtn" style="margin-top:12px" onclick="recoveryFinish()">بازکردن داده‌ها</button>
   `);
+  setTimeout(() => {
+    const p1 = document.getElementById('recPass');
+    if (p1) p1.focus();
+  }, 60);
+}
+
+function recPassError(msg) {
+  const err = document.getElementById('recPassErr');
+  if (err) {
+    err.style.display = '';
+    err.textContent = msg;
+  }
+  toast(msg);
 }
 
 export async function recoveryFinish() {
@@ -531,12 +556,17 @@ export async function recoveryFinish() {
     return;
   }
   if (a.length < 8) {
-    toast('رمز عبور حداقل ۸ نویسه باشد');
+    recPassError('رمز عبور حداقل ۸ نویسه باشد');
     return;
   }
   if (a !== b) {
-    toast('رمزها یکی نیستند');
+    recPassError('رمزها یکی نیستند');
     return;
+  }
+  const btn = document.getElementById('recFinishBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'در حال بازکردن…';
   }
   try {
     const st = await sec.recoverWithPhrase(phrase, a);
@@ -546,7 +576,11 @@ export async function recoveryFinish() {
     toast('رمز عبور جدید ذخیره شد ✓');
   } catch (e) {
     if (window.__capLog) window.__capLog('recoveryFinish', e);
-    toast('بازیابی انجام نشد؛ دوباره تلاش کن');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'بازکردن داده‌ها';
+    }
+    recPassError('بازیابی انجام نشد: ' + ((e && e.message) || e));
   }
 }
 
