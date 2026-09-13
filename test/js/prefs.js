@@ -1,4 +1,5 @@
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION } from './utils.js';
+import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
@@ -58,7 +59,7 @@ export function togglePrivacy() {
 
 export function syncPrivacyBtn() {
   const btn = document.getElementById('btnPrivacy');
-  if (btn) btn.textContent = isMoneyHidden() ? '🙈' : '👁';
+  if (btn) btn.innerHTML = icon(isMoneyHidden() ? 'eyeOff' : 'eye');
 }
 
 // ─── پین: در حالت رمزشده «کلید» است، در حالت قدیمی فقط هش ─────────────────
@@ -334,7 +335,7 @@ export async function bioUnlock(auto) {
       return;
     }
     openModal(`
-      <button class="x" onclick="closeModal()">✕</button>
+      <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
       <div style="text-align:center;padding:6px 2px">
         <div style="font-size:34px;margin-bottom:8px">👆</div>
         <p style="margin:0 0 14px">اثر انگشت تأیید شد، ولی این مرورگر نمی‌تواند داده‌ها را مستقیم با آن باز کند.<br>پین یا رمز عبور را وارد کن.</p>
@@ -522,7 +523,7 @@ let recPhraseValue = '';
 export function startPhraseRecovery() {
   recPhraseValue = '';
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>بازیابی با عبارت بازیابی</h2>
     <p class="small muted">آن ${PHRASE_WORDS} کلمه را که روی کاغذ نوشتی به ترتیب وارد کن.</p>
     <div class="field"><label>عبارت بازیابی</label>
@@ -561,7 +562,7 @@ export async function recoveryStep2() {
   // عبارت برای مرحلهٔ بعد نگه داشته می‌شود چون اینپوت از صفحه می‌رود
   recPhraseValue = normalizePhrase(val).join(' ');
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>رمز عبور جدید</h2>
     <p class="small muted">عبارت درست است ✓ حالا یک رمز عبور جدید انتخاب کن (حداقل ۸ نویسه).</p>
     <div class="field"><label>رمز عبور جدید</label>
@@ -632,7 +633,7 @@ let wizCheckB = 0;
 export function openEncryptSetup() {
   const legacyPin = !sec.isEncrypted() && !!store.get(PIN_KEY);
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>🔐 فعال‌کردن رمزنگاری</h2>
     <p class="small muted">از این پس داده‌ها چه روی گوشی چه در گوگل‌درایو فقط با کلید تو خوانده می‌شوند.
     یک <b>رمز عبور</b> انتخاب کن؛ کلید اصلی داده‌های توست.</p>
@@ -672,7 +673,7 @@ export async function encryptStep2() {
   wizCheckA = idxs[0];
   wizCheckB = idxs[1];
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>📜 عبارت بازیابی</h2>
     <p class="small muted">این ${PHRASE_WORDS} کلمه را <b>روی کاغذ یادداشت کن</b> و جای امن بگذار.
     اگر رمز عبور را فراموش کنی، فقط با این عبارت می‌توانی داده‌ها را پس بگیری.</p>
@@ -725,7 +726,7 @@ export async function savePinRestore() {}
 // ─── تغییر رمز عبور / عبارت بازیابی جدید ───────────────────────────────────
 export function changePassPrompt() {
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>تغییر رمز عبور</h2>
     <div class="field"><label>رمز عبور فعلی</label>
       <input class="input" id="cpOld" type="password" autocomplete="off" dir="ltr"></div>
@@ -765,7 +766,7 @@ export async function rotatePhrasePrompt() {
   if (!ok) return;
   const words = phrase.split(' ');
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>📜 عبارت بازیابی جدید</h2>
     <p class="small muted">عبارت قبلی باطل شد. این یکی را روی کاغذ بنویس و جای قبلی جایگزین کن.</p>
     <div class="phrase-grid" dir="ltr">
@@ -777,21 +778,22 @@ export async function rotatePhrasePrompt() {
 
 // ─── تنظیمات ───────────────────────────────────────────────────────────────
 // ─── تنظیمات: منوی اصلی + زیرصفحه‌ها (سبک تلگرام) ──────────────────────────
-function settingsRow(icon, color, title, sub, onclick, extra) {
+function settingsRow(ic, color, title, sub, onclick, extra) {
+  const glyph = hasIcon(ic) ? icon(ic) : ic;
   return `<button type="button" class="srow" onclick="${onclick}">
-    <span class="sic" style="background:${color}">${icon}</span>
+    <span class="sic" style="background:${color}">${glyph}</span>
     <span class="smid"><span class="st1">${title}</span>${sub ? `<span class="st2">${sub}</span>` : ''}</span>
     ${extra ? `<span class="sval">${extra}</span>` : ''}
-    <span class="schev">‹</span>
+    <span class="schev">${icon('chevL')}</span>
   </button>`;
 }
 
 function settingsHeader(title, back) {
   return back
-    ? `<button class="x" onclick="closeModal()">✕</button>
-       <button type="button" class="sback" onclick="${back}">› بازگشت</button>
+    ? `<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+       <button type="button" class="sback" onclick="${back}">${icon('chevR')} بازگشت</button>
        <h2 style="margin-top:6px">${title}</h2>`
-    : `<button class="x" onclick="closeModal()">✕</button><h2>${title}</h2>`;
+    : `<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button><h2>${title}</h2>`;
 }
 
 export function openSettings() {
@@ -803,18 +805,18 @@ export function openSettings() {
   openModal(`
     ${settingsHeader('تنظیمات')}
     <div class="sgroup">
-      ${settingsRow('🎨', '#8b5cf6', 'ظاهر', 'تم و رنگ برنامه', 'openSettingsAppearance()', theme.name)}
+      ${settingsRow('palette', '#8b5cf6', 'ظاهر', 'تم و رنگ برنامه', 'openSettingsAppearance()', theme.name)}
     </div>
     <div class="sgroup">
       ${settingsRow(
-        '🔐',
+        'shield',
         enc ? '#22c55e' : '#f59e0b',
         'امنیت و حریم خصوصی',
         enc ? 'رمزنگاری فعال · ' + (bioOn ? 'اثر انگشت روشن' : 'اثر انگشت خاموش') : 'رمزنگاری غیرفعال',
         'openSettingsSecurity()'
       )}
       ${settingsRow(
-        '☁️',
+        'cloud',
         '#3d8bfd',
         'گوگل درایو',
         u ? esc(u.email || u.name || 'متصل') : 'همگام‌سازی بین دستگاه‌ها',
@@ -823,8 +825,8 @@ export function openSettings() {
       )}
     </div>
     <div class="sgroup">
-      ${settingsRow('🧾', '#f97316', 'خواندن فاکتور از عکس', 'کلید هوش مصنوعی گوگل', 'openSettingsScan()', gemini ? 'فعال' : 'خاموش')}
-      ${settingsRow('ℹ️', '#64748b', 'دربارهٔ برنامه', 'نسخه ' + APP_VERSION, 'openSettingsAbout()')}
+      ${settingsRow('receipt', '#f97316', 'خواندن فاکتور از عکس', 'کلید هوش مصنوعی گوگل', 'openSettingsScan()', gemini ? 'فعال' : 'خاموش')}
+      ${settingsRow('info', '#64748b', 'دربارهٔ برنامه', 'نسخه ' + APP_VERSION, 'openSettingsAbout()')}
     </div>
   `);
 }
@@ -855,14 +857,14 @@ export function openSettingsSecurity() {
     body += `
     <div class="sgroup">
       <div class="hint">✅ رمزنگاری فعال است — داده‌ها روی گوشی و گوگل‌درایو رمزشده‌اند و فقط با رمز عبور تو باز می‌شوند.</div>
-      ${settingsRow('🔑', '#3d8bfd', 'تغییر رمز عبور', 'روی همهٔ دستگاه‌ها اعمال می‌شود', 'changePassPrompt()')}
-      ${settingsRow('📜', '#a78bfa', 'عبارت بازیابی جدید', 'اگر کاغذ قبلی گم شده', 'rotatePhrasePrompt()')}
+      ${settingsRow('key', '#3d8bfd', 'تغییر رمز عبور', 'روی همهٔ دستگاه‌ها اعمال می‌شود', 'changePassPrompt()')}
+      ${settingsRow('scroll', '#a78bfa', 'عبارت بازیابی جدید', 'اگر کاغذ قبلی گم شده', 'rotatePhrasePrompt()')}
     </div>
     <div class="sgroup">
       ${
         bioOk
           ? settingsRow(
-              '👆',
+              'finger',
               bioOn ? '#22c55e' : '#64748b',
               'ورود با اثر انگشت',
               bioOn ? 'روشن · فقط روی همین دستگاه' : 'خاموش · ورود سریع بدون رمز',
@@ -871,25 +873,25 @@ export function openSettingsSecurity() {
             )
           : '<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>'
       }
-      ${settingsRow('🔒', '#ef4444', 'قفل کردن همین حالا', 'برای بازکردن رمز یا اثر انگشت لازم است', 'closeModal();lockApp()')}
+      ${settingsRow('lock', '#ef4444', 'قفل کردن همین حالا', 'برای بازکردن رمز یا اثر انگشت لازم است', 'closeModal();lockApp()')}
     </div>`;
   } else {
     body += `
     <div class="sgroup">
       <div class="hint">⚠️ داده‌هایت هنوز به‌صورت ساده ذخیره می‌شوند. با فعال‌کردن رمزنگاری، حتی در گوگل‌درایو هم خواندنی نخواهند بود.</div>
-      ${settingsRow('🔐', '#22c55e', 'فعال‌کردن رمزنگاری', 'رمز عبور + عبارت بازیابی', 'openEncryptSetup()')}
+      ${settingsRow('shield', '#22c55e', 'فعال‌کردن رمزنگاری', 'رمز عبور + عبارت بازیابی', 'openEncryptSetup()')}
     </div>
     <div class="sgroup">
       ${
         pinOn
-          ? settingsRow('🔢', '#3d8bfd', 'تغییر رمز ورود', '', 'changePinPrompt()') +
-            settingsRow('🗑️', '#ef4444', 'حذف قفل', '', 'clearPin();openSettingsSecurity()')
-          : settingsRow('🔢', '#3d8bfd', 'فعال‌کردن رمز ورود', 'قفل ساده برای ورود', 'changePinPrompt()')
+          ? settingsRow('key', '#3d8bfd', 'تغییر رمز ورود', '', 'changePinPrompt()') +
+            settingsRow('trash', '#ef4444', 'حذف قفل', '', 'clearPin();openSettingsSecurity()')
+          : settingsRow('key', '#3d8bfd', 'فعال‌کردن رمز ورود', 'قفل ساده برای ورود', 'changePinPrompt()')
       }
       ${
         pinOn && bioOk
           ? settingsRow(
-              '👆',
+              'finger',
               bioOn ? '#22c55e' : '#64748b',
               'ورود با اثر انگشت',
               '',
@@ -916,16 +918,16 @@ export function openSettingsGoogle() {
     body = `
     <div class="sgroup">
       <div class="srow" style="cursor:default">
-        <span class="sic" style="background:#3d8bfd">☁️</span>
+        <span class="sic" style="background:#3d8bfd">${icon('cloud')}</span>
         <span class="smid"><span class="st1">${esc(u.name || 'حساب گوگل')}</span>${u.email ? `<span class="st2">${esc(u.email)}</span>` : ''}</span>
       </div>
     </div>
     <div class="sgroup">
-      ${settingsRow('⬆️', '#22c55e', 'الان در گوگل ذخیره کن', 'ارسال نسخهٔ این دستگاه', 'closeModal();pushToDrive(true)')}
-      ${settingsRow('⬇️', '#3d8bfd', 'دریافت از گوگل', 'گرفتن آخرین نسخه', "closeModal();loadFromDrive(function(){render();toast('دریافت از گوگل انجام شد ✓');},true)")}
+      ${settingsRow('cloudUp', '#22c55e', 'الان در گوگل ذخیره کن', 'ارسال نسخهٔ این دستگاه', 'closeModal();pushToDrive(true)')}
+      ${settingsRow('cloudDown', '#3d8bfd', 'دریافت از گوگل', 'گرفتن آخرین نسخه', "closeModal();loadFromDrive(function(){render();toast('دریافت از گوگل انجام شد ✓');},true)")}
     </div>
     <div class="sgroup">
-      ${settingsRow('🚪', '#ef4444', 'خروج از حساب گوگل', 'همگام‌سازی متوقف می‌شود', 'closeModal();googleSignOut()')}
+      ${settingsRow('logout', '#ef4444', 'خروج از حساب گوگل', 'همگام‌سازی متوقف می‌شود', 'closeModal();googleSignOut()')}
     </div>`;
   }
   openModal(`${settingsHeader('☁️ گوگل درایو', 'openSettings()')}${body}`);
@@ -953,7 +955,7 @@ export function openSettingsAbout() {
   openModal(`
     ${settingsHeader('ℹ️ دربارهٔ برنامه', 'openSettings()')}
     <div style="text-align:center;padding:10px 0 4px">
-      <div class="logo" style="margin:0 auto 10px">💰</div>
+      <div class="logo" style="margin:0 auto 10px">${icon('wallet')}</div>
       <div style="font-weight:800;font-size:16px">مدیریت سرمایه</div>
       <div class="small muted" style="margin-top:4px">نسخه ${APP_VERSION}</div>
     </div>
@@ -977,7 +979,7 @@ function googleUserFromStore() {
 export function changePinPrompt() {
   const digits = sec.isEncrypted() ? '۶ تا ۸ رقم' : '۴ تا ۸ رقم';
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>${sec.isEncrypted() ? 'پین' : 'رمز'} جدید</h2>
     <div class="field"><label>پین جدید (${digits})</label>
       <input class="input" id="pinNew" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>

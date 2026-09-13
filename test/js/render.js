@@ -1,5 +1,7 @@
-import { esc, fmt, fmtT, toFa, store } from './utils.js';
-import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, MONTHS } from './jalali.js';
+import { esc, fmt, fmtT, fmtShort, toFa, store } from './utils.js';
+import { icon, accountIcon, institutionIconName } from './icons.js';
+import { isGoogleLinked, googleSyncOk } from './sync.js';
+import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS } from './jalali.js';
 import { pieSVG } from './forms.js';
 import { renderSyncCard } from './sync.js';
 import * as sec from './securestore.js';
@@ -29,7 +31,6 @@ import {
   loanFlow,
   accountCurrentToman,
   institutionOf,
-  institutionIcon,
 } from './state.js';
 
 export let txMonth = curMonthKey();
@@ -49,7 +50,7 @@ function envelopeBars(mk) {
             : '−' + fmt(-f.net) + ' داده‌ای';
       return `<button type="button" class="pocket" onclick="openPocketLedger('${c.id}','${mk}')">
       <div class="pocket-head">
-        <span class="pocket-ic" style="background:${c.color}22">${c.emoji}</span>
+        <span class="pocket-ic" style="background:${c.color}22;color:${c.color}">${icon('cat_' + c.id)}</span>
         <span class="pocket-name">${c.label}</span>
         <span class="pocket-share" style="color:${c.color}">${netTxt}</span>
       </div>
@@ -62,11 +63,11 @@ function envelopeBars(mk) {
     const width = ceil > 0 ? Math.min(100, Math.round((spent / ceil) * 100)) : spent > 0 ? 100 : 0;
     return `<button type="button" class="pocket ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')">
       <div class="pocket-head">
-        <span class="pocket-ic" style="background:${c.color}22">${c.emoji}</span>
+        <span class="pocket-ic" style="background:${c.color}22;color:${c.color}">${icon('cat_' + c.id)}</span>
         <span class="pocket-name">${c.label}</span>
         <span class="pocket-share">${toFa(c.target)}٪</span>
       </div>
-      <div class="bar"><div style="width:${width}%;background:${over ? 'linear-gradient(90deg,#f59e0b,#ef4444)' : c.color}"></div></div>
+      <div class="bar"><div style="width:${width}%;background:${over ? 'var(--red)' : c.color}"></div></div>
     </button>`;
   }).join('')}</div>`;
 }
@@ -78,58 +79,189 @@ export function togglePocket(el) {
   if (!wasOpen) el.classList.add('open');
 }
 
+// روزهای ماه جلالی (۱-۶: ۳۱، ۷-۱۱: ۳۰، ۱۲: ۲۹/۳۰)
+function jDaysInMonth(y, m) {
+  if (m <= 6) return 31;
+  if (m <= 11) return 30;
+  return toGregorian(y, 12, 30) ? 30 : 29;
+}
+
+function ringSVG(pct, cls) {
+  const r = 36;
+  const c = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(100, pct));
+  return `<div class="ring ${cls || ''}">
+    <svg viewBox="0 0 84 84"><circle class="track" cx="42" cy="42" r="${r}"/><circle class="prog" cx="42" cy="42" r="${r}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - p / 100)).toFixed(1)}"/></svg>
+    <div class="pct">${toFa(Math.round(pct))}٪</div>
+  </div>`;
+}
+
+function homePockets(mk) {
+  return `<div class="pk-scroll">${CATS.map((c) => {
+    if (c.loan) {
+      const f = loanFlow(mk);
+      const has = f.out > 0 || f.in > 0;
+      const txt = !has ? 'بدون گردش' : f.net === 0 ? 'سر به سر' : f.net > 0 ? 'گرفته‌ای' : 'داده‌ای';
+      return `<button type="button" class="pk" onclick="openPocketLedger('${c.id}','${mk}')">
+        <span class="ib sm" style="background:${c.color}22;color:${c.color}">${icon('cat_loan')}</span>
+        <span class="n">${c.label}</span>
+        <span class="a">${has ? fmtShort(Math.abs(f.net)) : '—'}</span>
+        <span class="s">${txt}</span>
+      </button>`;
+    }
+    const spent = catSpent(mk, c.id);
+    const ceil = catCeiling(mk, c.id);
+    const over = c.target === 0 ? spent > 0 : ceil > 0 && spent > ceil;
+    const width = ceil > 0 ? Math.min(100, Math.round((spent / ceil) * 100)) : spent > 0 ? 100 : 0;
+    const left = ceil - spent;
+    const sub = c.target === 0 ? (spent > 0 ? 'کاش نبود' : 'هیچی، عالی') : ceil > 0 ? (left >= 0 ? fmtShort(left) + ' مانده' : fmtShort(-left) + ' بیشتر') : 'بدون سقف';
+    return `<button type="button" class="pk ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')">
+      <span class="ib sm" style="background:${c.color}22;color:${c.color}">${icon('cat_' + c.id)}</span>
+      <span class="n">${c.label}</span>
+      <span class="a">${fmtShort(spent)}</span>
+      <span class="s">${sub}</span>
+      <span class="bar"><div style="width:${width}%;background:${over ? 'var(--red)' : c.color}"></div></span>
+    </button>`;
+  }).join('')}</div>`;
+}
+
+function homeStatusChips() {
+  const chips = [];
+  if (!isGoogleLinked()) chips.push({ cls: 'warn', ic: 'cloud', t: 'بدون همگام‌سازی', on: 'openSettingsGoogle()' });
+  else if (!googleSyncOk()) chips.push({ cls: 'warn', ic: 'cloud', t: 'اتصال گوگل منقضی', on: 'googleSignIn()' });
+  else chips.push({ cls: 'ok', ic: 'cloud', t: 'همگام با درایو', on: 'openSettingsGoogle()' });
+  if (sec.isEncrypted()) chips.push({ cls: 'ok', ic: 'shield', t: 'رمزنگاری فعال', on: 'openSettingsSecurity()' });
+  else if (hasLocalData()) chips.push({ cls: 'warn', ic: 'shield', t: 'رمزنگاری غیرفعال', on: 'openEncryptSetup()' });
+  const nw = cashTotal() + investTotal();
+  chips.push({ cls: '', ic: 'wallet', t: 'خالص دارایی ' + fmtShort(nw), on: "switchTab('accounts')" });
+  const inv = investTotal();
+  if (inv > 0) chips.push({ cls: '', ic: 'trend', t: 'سرمایه ' + fmtShort(inv), on: "switchTab('invest')" });
+  return `<div class="status-row">${chips
+    .map((c) => `<button type="button" class="schip ${c.cls}" onclick="${c.on}">${icon(c.ic)}<span>${c.t}</span></button>`)
+    .join('')}</div>`;
+}
+
+function onboardingCard(mk) {
+  const hasAcct = state.accounts.length > 0;
+  const hasBudget = !!(state.budgets[mk] && state.budgets[mk].amount);
+  const hasTx = state.transactions.length > 0;
+  if (hasAcct && hasBudget && hasTx) return '';
+  const steps = [
+    { done: hasAcct, t: 'یک حساب بساز', d: 'کارت بانکی یا پول نقد', on: 'openAccountForm()' },
+    { done: hasBudget, t: 'بودجهٔ این ماه را بنویس', d: 'چقدر می‌خواهی این ماه خرج کنی؟', on: 'openBudgetForm()' },
+    { done: hasTx, t: 'اولین خرج را ثبت کن', d: 'با دکمهٔ + پایین صفحه', on: 'openTxForm()' },
+  ];
+  return `<div class="card">
+    <div class="card-head"><h3>${icon('sparkle')} شروع سریع</h3><span class="small muted">${toFa(steps.filter((x) => x.done).length)} از ${toFa(3)}</span></div>
+    <div class="onb">${steps
+      .map((st, i) => `<button type="button" class="onb-step ${st.done ? 'done' : ''}" onclick="${st.on}">
+        <span class="n">${st.done ? icon('check') : toFa(i + 1)}</span>
+        <span class="t">${st.t}<span class="d">${st.d}</span></span>${icon('chevL')}
+      </button>`)
+      .join('')}</div>
+  </div>`;
+}
+
+function txRow(t, opts = {}) {
+  const a = accountById(t.accountId);
+  const inv = isInvoice(t);
+  const cat = t.type === 'out' && !inv ? catById(t.cat) : null;
+  const transfer = isTransfer(t);
+  const icName = transfer ? 'swap' : inv ? 'receipt' : t.type === 'in' ? (t.cat === 'loan' ? 'cat_loan' : 'arrowIn') : cat ? 'cat_' + cat.id : 'arrowOut';
+  const color = transfer ? 'var(--purple)' : inv ? 'var(--orange)' : t.type === 'in' ? 'var(--green)' : cat ? cat.color : 'var(--muted)';
+  const title = t.note
+    ? esc(t.note)
+    : transfer
+      ? 'انتقال بین حساب‌ها'
+      : inv
+        ? 'فاکتور'
+        : t.type === 'in'
+          ? (t.cat === 'loan' ? 'قرض / امانت' : 'درآمد')
+          : cat
+            ? cat.label
+            : 'خرج';
+  const unitHint = !inv && t.qty && t.unitPrice ? toFa(t.qty) + (t.unit ? ' ' + esc(t.unit) : '') + ' × ' + fmt(t.unitPrice) : '';
+  const amtClass = transfer ? 'transfer' : t.type;
+  const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
+  const balTxt = opts.bal == null ? '' : `<div class="bal">مانده ${fmt(opts.bal)}</div>`;
+  const badges =
+    (transfer ? '<span class="badge" style="color:var(--purple)">انتقال</span>' : '') +
+    (inv ? '<span class="badge" style="color:var(--orange)">' + toFa((t.lines || []).length) + ' قلم</span>' : '') +
+    (!opts.compact && t.type === 'out' && cat ? '<span class="badge" style="color:' + cat.color + '">' + cat.label + '</span>' : '') +
+    (t.debtId ? '<span class="badge">طلب/بدهی</span>' : '') +
+    (t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:var(--red)">پاسخ داری</span>' : '') +
+    (a && a.currency && a.currency !== 'تومان' ? '<span class="badge">' + esc(a.currency) + '</span>' : '');
+  const item = `<div class="item" data-tx="${t.id}" onclick="openTxForm(findTx('${t.id}'))">
+      <div class="ic" style="background:${color.startsWith('var') ? color.replace(')', '-soft)') : color + '22'};color:${color}">${icon(icName)}</div>
+      <div class="mid">
+        <div class="t1">${title}</div>
+        <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}${unitHint ? ' · ' + unitHint : ''} ${badges}</div>
+      </div>
+      <div class="amt-col"><div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>${balTxt}</div>
+    </div>`;
+  if (opts.noSwipe) return item;
+  return `<div class="swipe" data-tx="${t.id}">
+    <div class="under"><span class="l" style="color:var(--accent)">${icon('edit')} ویرایش</span><span class="r" style="color:var(--red)">حذف ${icon('trash')}</span></div>
+    ${item}
+  </div>`;
+}
+
 export function renderHome() {
   const s = curStats();
   const mk = curMonthKey();
   const hasBudget = !!(state.budgets[mk] && state.budgets[mk].amount);
   const base = s.available > 0 ? s.available : s.budget;
-  const pct = base > 0 ? Math.min(100, Math.round((s.spent / base) * 100)) : 0;
+  const pct = base > 0 ? Math.round((s.spent / base) * 100) : 0;
+  const [jy, jm, jd] = jalaliNow();
+  const daysLeft = Math.max(1, jDaysInMonth(jy, jm) - jd + 1);
+  const perDay = s.remaining > 0 ? Math.floor(s.remaining / daysLeft) : 0;
   let html = '';
 
   html += renderSyncCard();
   html += debtHomeBanner();
+  if (!store.persisted) {
+    html += `<div class="banner">${icon('alert')}<span>حالت پیش‌نمایش: ذخیره دائمی فعال نیست. فایل را روی گوشی باز کن.</span></div>`;
+  }
 
-  if (!sec.isEncrypted() && hasLocalData()) {
-    html += `<div class="card" style="border-color:rgba(245,158,11,.45)">
-      <h3>🔐 داده‌هایت هنوز رمزشده نیستند</h3>
-      <div class="small muted" style="margin-bottom:12px">با فعال‌کردن رمزنگاری، داده‌ها چه روی گوشی چه در گوگل‌درایو فقط با کلید خودت خوانده می‌شوند.</div>
-      <button class="btn primary block" onclick="openEncryptSetup()">فعال‌کردن رمزنگاری</button>
+  // کارت قهرمان
+  const ringCls = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : '';
+  html += `<div class="hero">
+    <div style="min-width:0">
+      <div class="lbl">${icon('wallet')} قابل خرج ${monthLabel(mk)}</div>
+      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}">${fmt(s.remaining)}<small>تومان</small></div>
+      <div class="sub">${
+        !hasBudget
+          ? 'هنوز بودجه‌ای ثبت نشده'
+          : s.remaining > 0
+            ? `تا آخر ماه (${toFa(daysLeft)} روز) روزی <b>${fmt(perDay)}</b> تومان`
+            : 'از بودجه رد شده‌ای'
+      }</div>
+    </div>
+    ${ringSVG(pct, ringCls)}
+    <div class="hero-foot">
+      <div class="kv"><div class="k">بودجه</div><div class="v">${fmtShort(s.budget)}</div></div>
+      <div class="kv"><div class="k">مانده قبلی</div><div class="v">${fmtShort(s.carriedIn)}</div></div>
+      <div class="kv"><div class="k">خرج شده</div><div class="v val red">${fmtShort(s.spent)}</div></div>
+      ${hasBudget ? `<button type="button" class="link" onclick="openBudgetForm()">${icon('edit')}</button>` : `<button type="button" class="btn sm primary" onclick="openBudgetForm()">ثبت بودجه</button>`}
+    </div>
+  </div>`;
+
+  html += homeStatusChips();
+  html += onboardingCard(mk);
+
+  html += `<div class="card" style="padding-bottom:var(--sp-2)">
+    <div class="card-head"><h3>${icon('target')} پاکت‌های این ماه</h3><button type="button" class="link" onclick="switchTab('report')">جزئیات</button></div>
+    ${homePockets(mk)}
+  </div>`;
+
+  // آخرین تراکنش‌ها
+  const recent = sortTxs(state.transactions.slice()).slice(0, 3);
+  if (recent.length) {
+    html += `<div class="card">
+      <div class="card-head"><h3>${icon('list')} آخرین تراکنش‌ها</h3><button type="button" class="link" onclick="switchTab('tx')">همه</button></div>
+      <div class="tx-list">${recent.map((t) => txRow(t, { noSwipe: true, compact: true })).join('')}</div>
     </div>`;
   }
-
-  if (!hasBudget) {
-    html += `<div class="banner warn">⏰ <span>بودجه ${monthLabel(mk)} هنوز ثبت نشده است.</span>
-      <button class="btn sm primary" style="margin-right:auto" onclick="openBudgetForm()">ثبت بودجه</button></div>`;
-  }
-  if (!store.persisted) {
-    html += `<div class="banner" style="border-color:rgba(61,139,253,.4)">ℹ️ <span>حالت پیش‌نمایش: ذخیره دائمی در این حالت فعال نیست. فایل را روی گوشی باز کن تا داده‌ها ذخیره بمانند.</span></div>`;
-  }
-
-  html += `
-  <div class="card">
-    <div class="row" style="align-items:center;margin-bottom:8px">
-      <h3 style="margin:0">خلاصه ${monthLabel(mk)}</h3>
-    </div>
-    <div class="stat" style="background:var(--bg2);border-color:var(--border)">
-      <div class="lbl">باقی‌مانده این ماه</div>
-      <div class="val ${s.remaining >= 0 ? 'green' : 'red'}" style="font-size:26px">${fmtT(s.remaining)}</div>
-      <div class="sub">بودجه ${fmt(s.budget)} + مانده قبلی ${fmt(s.carriedIn)} − خرج ${fmt(s.spent)}</div>
-    </div>
-    <div class="pbar"><div class="${pct >= 100 ? 'over' : ''}" style="width:${pct}%"></div></div>
-    <div class="small muted" style="display:flex;justify-content:space-between"><span>${toFa(pct)}٪ از موجودی ماه خرج شده</span><span>${fmtT(s.spent)}</span></div>
-  </div>
-
-  <div class="card">
-    <h3>پاکت‌های این ماه</h3>
-    <div class="small muted" style="margin-bottom:12px">برای دیدن تراکنش‌های هر پاکت، روی آن بزن.</div>
-    ${envelopeBars(mk)}
-  </div>
-
-  <div class="card" style="background:linear-gradient(135deg,#14203a,#1a1230);border-color:#2a3b5e">
-    <h3 style="color:#c7d6f5">💰 خالص دارایی</h3>
-    <div class="val" style="font-size:28px;color:#fff">${fmtT(cashTotal() + investTotal())}</div>
-    <div class="small" style="color:#93a5c8;margin-top:4px">نقد + سرمایه‌گذاری</div>
-  </div>`;
 
   document.getElementById('homeContent').innerHTML = html;
 }
@@ -138,75 +270,98 @@ export function renderTx() {
   const txs = sortTxs(state.transactions.filter((t) => t.month === txMonth));
   const after = runningBalanceByTxId();
   let html = `<div class="mnav">
-    <button onclick="txShift(-1)">‹</button>
+    <button type="button" onclick="txShift(-1)" aria-label="ماه قبل">${icon('chevR')}</button>
     <div class="mttl">${monthLabel(txMonth)}<div class="small muted">${txMonth === curMonthKey() ? 'ماه جاری' : ''}</div></div>
-    <button onclick="txShift(1)">›</button>
-  </div>
-  <button type="button" class="btn block" style="margin-bottom:12px" onclick="openPaperScan()">📝 ثبت چند تراکنش از عکس کاغذ</button>`;
+    <button type="button" onclick="txShift(1)" aria-label="ماه بعد">${icon('chevL')}</button>
+  </div>`;
 
   if (txs.length === 0) {
-    html += `<div class="empty"><span class="em">💸</span>در این ماه تراکنشی ثبت نشده.<br>با دکمه + پایین صفحه شروع کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>در این ماه تراکنشی ثبت نشده.<br>با دکمهٔ + پایین صفحه شروع کن.</div>`;
   } else {
-    let html2 = '';
+    const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
+    const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
+    html += `<div class="grid2" style="margin-bottom:var(--sp-3)">
+      <div class="stat"><div class="lbl">خرج این ماه</div><div class="val red">${fmt(sumOut)}</div></div>
+      <div class="stat"><div class="lbl">درآمد این ماه</div><div class="val green">${fmt(sumIn)}</div></div>
+    </div>`;
+    // گروه‌بندی بر اساس روز
+    let lastDay = '';
     for (const t of txs) {
-      const a = accountById(t.accountId);
-      const inv = isInvoice(t);
-      const cat = t.type === 'out' && !inv ? catById(t.cat) : null;
-      const transfer = isTransfer(t);
-      const ic = transfer ? '⇄' : inv ? '🧾' : t.type === 'in' ? '💵' : cat ? cat.emoji : '•';
-      const bg = transfer
-        ? 'rgba(167,139,250,.15)'
-        : inv
-          ? 'rgba(245,158,11,.15)'
-          : t.type === 'in'
-            ? 'rgba(34,197,94,.15)'
-            : cat
-              ? 'rgba(255,255,255,.05)'
-              : '';
-      const title = t.note
-        ? esc(t.note)
-        : transfer
-          ? 'انتقال بین حساب‌ها'
-          : inv
-            ? 'فاکتور'
-            : t.type === 'in'
-              ? (t.cat === 'loan' ? 'قرض / امانت' : 'درآمد')
-              : cat
-                ? cat.label
-                : 'خرج';
-      const unitHint =
-        !inv && t.qty && t.unitPrice
-          ? toFa(t.qty) + (t.unit ? ' ' + esc(t.unit) : '') + ' × ' + fmt(t.unitPrice)
-          : '';
-      const amtClass = transfer ? 'transfer' : t.type;
-      const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
-      const bal = after[t.id];
-      const balTxt = bal == null ? '' : `<div class="bal">مانده ${fmt(bal)}</div>`;
-      html2 += `
-      <div class="item" onclick="openTxForm(findTx('${t.id}'))">
-        <div class="ic" style="background:${bg}">${ic}</div>
-        <div class="mid">
-          <div class="t1">${title}</div>
-          <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}
-            ${unitHint ? ' · ' + unitHint : ''}
-            ${transfer ? '<span class="badge" style="color:#a78bfa;border-color:#a78bfa55">انتقال</span>' : ''}
-            ${inv ? '<span class="badge" style="color:#f59e0b;border-color:#f59e0b55">فاکتور · ' + toFa((t.lines || []).length) + ' قلم</span>' : ''}
-            ${t.type === 'out' && cat ? '<span class="badge" style="color:' + cat.color + ';border-color:' + cat.color + '55">' + cat.label + '</span>' : ''}
-            ${t.type === 'in' && t.cat === 'loan' ? '<span class="badge" style="color:#14b8a6;border-color:#14b8a655">🤝 قرض / امانت</span>' : ''}
-            ${t.debtId ? '<span class="badge">از بخش طلب/بدهی</span>' : ''}
-            ${t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:#ef4444;border-color:#ef444455">🤔 پاسخ داری</span>' : ''}
-            ${a && a.currency && a.currency !== 'تومان' ? '<span class="badge">' + esc(a.currency) + '</span>' : ''}
-          </div>
-        </div>
-        <div class="amt-col">
-          <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
-          ${balTxt}
-        </div>
-      </div>`;
+      const day = fmtDate(t.dateISO);
+      if (day !== lastDay) {
+        html += `<div class="small muted" style="margin:var(--sp-3) 4px var(--sp-2);font-weight:700">${day}</div>`;
+        lastDay = day;
+      }
+      html += txRow(t, { bal: after[t.id] });
     }
-    html += html2;
+    html += `<div class="small muted" style="text-align:center;padding:var(--sp-3)">راهنما: کشیدن به چپ = حذف · به راست = ویرایش · نگه‌داشتن = تکرار</div>`;
   }
+  html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openPaperScan()">${icon('scan')} ثبت چند تراکنش از عکس کاغذ</button>`;
   document.getElementById('txContent').innerHTML = html;
+  attachSwipe(document.getElementById('txContent'));
+}
+
+// ── سوایپ روی ردیف تراکنش ──
+function attachSwipe(root) {
+  if (!root) return;
+  root.querySelectorAll('.swipe').forEach((w) => {
+    const item = w.querySelector('.item');
+    const id = w.dataset.tx;
+    let x0 = 0, y0 = 0, dx = 0, active = false, horiz = null, lp = null, fired = false;
+    const reset = () => {
+      w.classList.remove('dragging');
+      item.style.transform = '';
+    };
+    w.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      x0 = e.clientX; y0 = e.clientY; dx = 0; active = true; horiz = null; fired = false;
+      lp = setTimeout(() => {
+        if (horiz) return;
+        fired = true;
+        if (navigator.vibrate) navigator.vibrate(15);
+        const t = findTxLocal(id);
+        if (t) window.openTxForm(null, { repeatOf: t });
+      }, 550);
+    });
+    w.addEventListener('pointermove', (e) => {
+      if (!active) return;
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (horiz === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) {
+        horiz = Math.abs(mx) > Math.abs(my);
+        if (!horiz) { active = false; clearTimeout(lp); reset(); return; }
+        clearTimeout(lp);
+        w.classList.add('dragging');
+        try { w.setPointerCapture(e.pointerId); } catch (err) {}
+      }
+      if (!horiz) return;
+      dx = Math.max(-120, Math.min(120, mx));
+      item.style.transform = `translateX(${dx}px)`;
+      e.preventDefault();
+    }, { passive: false });
+    const end = () => {
+      clearTimeout(lp);
+      if (!active) return;
+      active = false;
+      const d = dx;
+      reset();
+      if (fired) { fired = false; return; }
+      if (horiz && d < -80) window.delTx(id);
+      else if (horiz && d > 80) { const t = findTxLocal(id); if (t) window.openTxForm(t); }
+      if (horiz && Math.abs(d) > 8) {
+        // جلوگیری از کلیک بعد از سوایپ
+        const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+        item.addEventListener('click', stop, { capture: true, once: true });
+        setTimeout(() => item.removeEventListener('click', stop, { capture: true }), 300);
+      }
+    };
+    w.addEventListener('pointerup', end);
+    w.addEventListener('pointercancel', end);
+    w.addEventListener('pointerleave', () => { if (active && !horiz) { clearTimeout(lp); } });
+    w.addEventListener('contextmenu', (e) => e.preventDefault());
+  });
+}
+function findTxLocal(id) {
+  return state.transactions.find((x) => x.id === id);
 }
 
 export function txShift(d) {
@@ -224,9 +379,9 @@ export function renderReport() {
   const slices = CATS.filter((c) => !c.loan).map((c) => ({ v: catSpent(mk, c.id), color: c.color, label: c.label }));
 
   let html = `<div class="mnav">
-    <button onclick="repShift(-1)">‹</button>
+    <button type="button" onclick="repShift(-1)" aria-label="ماه قبل">${icon('chevR')}</button>
     <div class="mttl">${monthLabel(mk)}</div>
-    <button onclick="repShift(1)">›</button>
+    <button type="button" onclick="repShift(1)" aria-label="ماه بعد">${icon('chevL')}</button>
   </div>`;
 
   html += `<div class="card">
@@ -263,16 +418,16 @@ export function renderReport() {
   </div>`;
 
   html += `<div class="card">
-    <h3>🚨 هدررفت‌های این ماه</h3>
+    <h3>${icon('cat_waste')} هدررفت‌های این ماه</h3>
     ${
       wasteItems.length === 0
-        ? '<div class="small muted" style="padding:6px 0">هدررفتی ثبت نشده. عالی! 👏</div>'
+        ? '<div class="small muted" style="padding:6px 0">هدررفتی ثبت نشده. عالی!</div>'
         : wasteItems
             .map((it) => {
               const a = accountById(it.accountId);
               return `
       <div class="item" style="align-items:flex-start" onclick="openTxForm(findTx('${it.txId}'))">
-        <div class="ic" style="background:rgba(239,68,68,.15)">🚨</div>
+        <div class="ic" style="background:var(--red-soft);color:var(--red)">${icon('cat_waste')}</div>
         <div class="mid">
           <div class="t1">${esc(it.title)}${it.invoice ? ' <span class="badge">فاکتور</span>' : ''}</div>
           <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>
@@ -304,15 +459,16 @@ export function renderInvest() {
   const totalBuy = state.investments.reduce((s, i) => s + i.qty * i.buy * rateOf(i.currency), 0);
   const plAll = total - totalBuy;
   let html = `
-  <div class="card" style="background:linear-gradient(135deg,#14203a,#1a1230);border-color:#2a3b5e">
-    <h3 style="color:#c7d6f5">📈 ارزش کل سرمایه‌گذاری</h3>
-    <div class="val" style="font-size:26px;color:#fff">${fmtT(total)}</div>
-    <div class="small" style="margin-top:6px;color:${plAll >= 0 ? '#22c55e' : '#ef4444'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmt(plAll)} تومان</div>
+  <div class="hero" style="grid-template-columns:1fr auto">
+    <div><div class="lbl">${icon('trend')} ارزش کل سرمایه‌گذاری</div>
+    <div class="hero-num">${fmt(total)}<small>تومان</small></div>
+    <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmt(Math.abs(plAll))} تومان</div></div>
+    <span class="ib lg ${plAll >= 0 ? 'green' : 'red'}">${icon('trend')}</span>
   </div>
-  <button class="btn primary block" style="margin-bottom:14px" onclick="openInvestForm()">+ افزودن دارایی</button>`;
+  <button class="btn primary block" style="margin-bottom:var(--sp-3)" onclick="openInvestForm()">${icon('plus')} افزودن دارایی</button>`;
 
   if (state.investments.length === 0) {
-    html += `<div class="empty"><span class="em">📈</span>هنوز دارایی ثبت نکرده‌ای.<br>طلا، ملک، ماشین یا هر سرمایه‌ای را اضافه کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>هنوز دارایی ثبت نکرده‌ای.<br>طلا، ملک، ماشین یا هر سرمایه‌ای را اضافه کن.</div>`;
   } else {
     html += state.investments
       .map((i) => {
@@ -330,9 +486,9 @@ export function renderInvest() {
         </div>
         <div class="small muted" style="margin-bottom:10px">قیمت خرید هر ${esc(i.unit || 'واحد')}: ${fmt(i.buy)} · قیمت امروز: <b style="color:var(--text)">${fmt(i.cur)}</b>${curSuffix}</div>
         <div class="row">
-          <button class="btn sm primary" onclick="editInvestPrice('${i.id}')">📊 قیمت امروز</button>
-          <button class="btn sm" onclick="openInvestForm(findInvest('${i.id}'))">✏️ ویرایش</button>
-          <button class="btn sm danger" onclick="delInvest('${i.id}')">🗑️</button>
+          <button class="btn sm primary" style="flex:1" onclick="editInvestPrice('${i.id}')">${icon('refresh')} قیمت امروز</button>
+          <button class="btn sm icon" onclick="openInvestForm(findInvest('${i.id}'))" aria-label="ویرایش">${icon('edit')}</button>
+          <button class="btn sm icon danger" onclick="delInvest('${i.id}')" aria-label="حذف">${icon('trash')}</button>
         </div>
       </div>`;
       })
@@ -356,7 +512,7 @@ function acctRow(a) {
   const rate = rateOf(a.currency);
   return `<div class="acct-row">
     <div class="row acct-main" style="align-items:center" onclick="openAccountLedger('${a.id}')">
-      <div class="ic" style="background:rgba(61,139,253,.12);width:36px;height:36px;font-size:16px">${a.type === 'ارز دیجیتال' ? '🪙' : a.type === 'نقدی' ? '💵' : a.type === 'کیف پول آنلاین' ? '📱' : '💳'}</div>
+      <div class="ib sm">${icon(accountIcon(a.type))}</div>
       <div style="flex:1;min-width:0">
         <div class="t1" style="font-size:13.5px">${esc(a.name)} ${a.last4 ? `<span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
         <div class="t2">${esc(a.type)} · ${a.currency}${isForeign && rate ? ` (${fmt(rate)} ت/${a.currency})` : ''}</div>
@@ -366,11 +522,11 @@ function acctRow(a) {
         ${isForeign ? `<div class="small muted">≈ ${fmtT(bal * rate)}</div>` : ''}
       </div>
       <div class="acct-actions">
-        <button class="btn sm" onclick="event.stopPropagation();openAccountForm(findAccount('${a.id}'))">✏️</button>
-        <button class="btn sm danger" onclick="event.stopPropagation();delAccount('${a.id}')">🗑️</button>
+        <button class="btn sm icon" onclick="event.stopPropagation();openAccountForm(findAccount('${a.id}'))" aria-label="ویرایش">${icon('edit')}</button>
+        <button class="btn sm icon danger" onclick="event.stopPropagation();delAccount('${a.id}')" aria-label="حذف">${icon('trash')}</button>
       </div>
     </div>
-    ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);border-color:rgba(245,158,11,.4);margin-top:6px">⚠️ نرخ ${a.currency} ثبت نشده؛ در جمع کل حساب نمی‌شود.</div>` : ''}
+    ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);margin-top:6px">نرخ ${a.currency} ثبت نشده؛ در جمع کل حساب نمی‌شود.</div>` : ''}
   </div>`;
 }
 
@@ -378,12 +534,12 @@ export function renderAccounts() {
   const foreign = [...new Set(state.accounts.map((a) => a.currency).filter((c) => c !== 'تومان'))];
   let html = `
   <div class="row" style="margin-bottom:14px">
-    <button class="btn primary" style="flex:1" onclick="openAccountForm()">+ افزودن حساب / کارت</button>
-    <button class="btn" style="flex:1" onclick="openTransferForm()">⇄ انتقال بین حساب‌ها</button>
+    <button class="btn primary" style="flex:1" onclick="openAccountForm()">${icon('plus')} حساب / کارت</button>
+    <button class="btn" style="flex:1" onclick="openTransferForm()">${icon('swap')} انتقال</button>
   </div>`;
 
   if (state.accounts.length === 0) {
-    html += `<div class="empty"><span class="em">💳</span>هنوز حسابی نساخته‌ای.<br>کارت بانکی، پول نقد یا کیف پول ارزی اضافه کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>هنوز حسابی نساخته‌ای.<br>کارت بانکی، پول نقد یا کیف پول ارزی اضافه کن.</div>`;
   } else {
     // گروه‌بندی بر اساس مؤسسه
     const groups = new Map();
@@ -406,10 +562,11 @@ export function renderAccounts() {
       else for (const k of keys) if (groups.get(k).length === 1) openGroups.add(k);
     }
     const total = cashTotal();
-    html += `<div class="card" style="background:linear-gradient(135deg,#14203a,#1a1230);border-color:#2a3b5e;padding:14px">
-      <div class="small" style="color:#93a5c8">جمع همهٔ حساب‌ها</div>
-      <div class="val" style="font-size:24px;color:#fff">${fmtT(total)}</div>
-      <div class="small" style="color:#93a5c8;margin-top:2px">${toFa(state.accounts.length)} حساب در ${toFa(keys.length)} مؤسسه</div>
+    html += `<div class="hero" style="grid-template-columns:1fr auto">
+      <div><div class="lbl">${icon('bank')} جمع همهٔ حساب‌ها</div>
+      <div class="hero-num">${fmt(total)}<small>تومان</small></div>
+      <div class="sub">${toFa(state.accounts.length)} حساب در ${toFa(keys.length)} مؤسسه</div></div>
+      <span class="ib lg">${icon('card')}</span>
     </div>`;
 
     for (const k of keys) {
@@ -425,7 +582,7 @@ export function renderAccounts() {
       const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((sum / total) * 100))) : 0;
       html += `<div class="card acct-group ${open ? 'open' : ''}" style="padding:0;overflow:hidden">
         <button type="button" class="acct-group-head" onclick="toggleAcctGroup('${esc(k).replace(/'/g, '&#39;')}')">
-          <span class="ic" style="background:rgba(61,139,253,.15)">${k === '__none' ? '🗂️' : institutionIcon(accts)}</span>
+          <span class="ib">${icon(k === '__none' ? 'folder' : institutionIconName(accts))}</span>
           <span style="flex:1;min-width:0;text-align:right">
             <span class="t1" style="font-size:14.5px;display:block">${esc(label)}</span>
             <span class="t2" style="display:block">${sub}</span>
@@ -435,17 +592,17 @@ export function renderAccounts() {
             <span class="amt ${sum >= 0 ? 'in' : 'out'}" style="display:block">${fmtT(sum)}</span>
             <span class="small muted">${pct ? toFa(pct) + '٪ از کل' : ''}</span>
           </span>
-          <span class="pocket-chev" style="margin-right:6px">${open ? '▾' : '◂'}</span>
+          <span class="pocket-chev" style="margin-right:6px;display:flex">${icon(open ? 'chevD' : 'chevL')}</span>
         </button>
         ${open ? `<div class="acct-group-body">${accts.map(acctRow).join('')}
-          <button class="btn sm block" style="margin:8px 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">+ حساب جدید در ${k === '__none' ? 'این گروه' : esc(label)}</button>
+          <button class="btn sm block" style="margin:8px 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">${icon('plus')} حساب جدید در ${k === '__none' ? 'این گروه' : esc(label)}</button>
         </div>` : ''}
       </div>`;
     }
   }
 
   if (foreign.length) {
-    html += `<div class="card"><h3>💱 نرخ روز ارز (تومان به ازای هر واحد)</h3>
+    html += `<div class="card"><h3>${icon('coin')} نرخ روز ارز (تومان به ازای هر واحد)</h3>
       <div class="small muted" style="margin-bottom:8px">این نرخ فقط برای محاسبه ارزش تومانیِ حساب‌ها و دارایی کل استفاده می‌شود؛ نرخ هر انتقال بین حساب‌ها را هنگام ثبت همان انتقال جداگانه وارد می‌کنی.</div>
       ${foreign
         .map(
@@ -480,15 +637,13 @@ export function renderAll() {
       if (window.__capLog) window.__capLog(name, err);
     }
   }
-  const menuBtn = document.getElementById('btnMenu');
-  if (menuBtn) menuBtn.classList.toggle('has-alert', overdueCount() > 0);
+  const settingsBtn = document.getElementById('btnSettings');
+  if (settingsBtn) settingsBtn.classList.toggle('has-alert', overdueCount() > 0);
 }
 
 export function setTodayLabel() {
   const [y, m, d] = jalaliNow();
   const txt = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
   const today = document.getElementById('todayLbl');
-  const menu = document.getElementById('menuToday');
   if (today) today.textContent = txt;
-  if (menu) menu.textContent = txt;
 }

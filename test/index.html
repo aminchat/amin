@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" type="image/png" href="../icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=vazirmatn:400,600,700&display=swap">
-<link rel="stylesheet" href="css/app.css?v=1.6.0">
+<link rel="stylesheet" href="css/app.css?v=2.0.0">
 <script>
 window.__capErrors = [];
 window.__capLog = function (where, err) {
@@ -37,17 +37,16 @@ try {
 <body>
 
 <header>
-  <button type="button" class="hdr-btn" id="btnMenu" title="منو" aria-label="منو">☰</button>
   <div class="brand">
-    <div class="logo">💰</div>
+    <div class="logo"></div>
     <div>
       <b id="pageTitle">خانه</b>
       <small id="todayLbl">آزمایشی</small>
     </div>
   </div>
   <div class="hdr-actions">
-    <button type="button" class="hdr-btn" id="btnPrivacy" title="مخفی کردن اعداد">👁</button>
-    <button type="button" class="hdr-btn" id="btnSettings" title="تنظیمات">⚙</button>
+    <button type="button" class="hdr-btn" id="btnPrivacy" title="مخفی کردن اعداد" aria-label="مخفی کردن اعداد"></button>
+    <button type="button" class="hdr-btn" id="btnSettings" title="تنظیمات" aria-label="تنظیمات"></button>
   </div>
 </header>
 <div class="banner warn" style="margin:0;border-radius:0;justify-content:center">نسخه آزمایشی — این صفحه جدا از برنامه اصلی است</div>
@@ -62,37 +61,22 @@ try {
   <section id="tab-report">
     <div id="reportContent"></div>
   </section>
-  <section id="tab-invest">
-    <div id="investContent"></div>
-  </section>
-  <section id="tab-accounts">
+  <section id="tab-assets">
+    <div class="subtabs" id="assetTabs"></div>
     <div id="accountsContent"></div>
-  </section>
-  <section id="tab-debts">
-    <div id="debtsContent"></div>
+    <div id="investContent" style="display:none"></div>
+    <div id="debtsContent" style="display:none"></div>
   </section>
 </main>
 
 <nav id="bottomNav" aria-label="ناوبری">
-  <button type="button" class="bn" data-tab="home"><span class="bni">🏠</span><span class="bnl">خانه</span></button>
-  <button type="button" class="bn" data-tab="tx"><span class="bni">💸</span><span class="bnl">تراکنش</span></button>
-  <button id="fab" title="تراکنش جدید" aria-label="افزودن">+</button>
-  <button type="button" class="bn" data-tab="report"><span class="bni">📊</span><span class="bnl">گزارش</span></button>
-  <button type="button" class="bn" data-tab="accounts"><span class="bni">💳</span><span class="bnl">حساب‌ها</span></button>
+  <button type="button" class="bn" data-tab="home" data-ic="home"><span class="bnl">خانه</span></button>
+  <button type="button" class="bn" data-tab="tx" data-ic="list"><span class="bnl">تراکنش‌ها</span></button>
+  <button id="fab" title="تراکنش جدید" aria-label="افزودن"></button>
+  <button type="button" class="bn" data-tab="report" data-ic="chart"><span class="bnl">گزارش</span></button>
+  <button type="button" class="bn" data-tab="assets" data-ic="wallet"><span class="bnl">دارایی</span></button>
 </nav>
 
-<div id="menuScrim" class="menu-scrim"></div>
-<aside id="sideMenu" class="side-menu" aria-hidden="true">
-  <div class="menu-head">
-    <div class="logo">💰</div>
-    <div>
-      <b>مدیریت سرمایه</b>
-      <small id="menuToday">—</small>
-    </div>
-    <button type="button" class="hdr-btn" id="btnMenuClose" title="بستن">✕</button>
-  </div>
-  <div id="menuList"></div>
-</aside>
 
 <div class="overlay" id="overlay">
   <div class="sheet" id="sheet"></div>
@@ -100,7 +84,7 @@ try {
 
 <div id="lockScreen">
   <div class="lock-box">
-    <div class="logo" style="margin:0 auto 14px">💰</div>
+    <div class="logo" style="margin:0 auto 14px"></div>
     <h1 id="lockTitle">ورود به برنامه</h1>
     <p id="lockSub">رمز را وارد کن</p>
     <input class="input" id="lockPin" type="password" maxlength="64" placeholder="رمز" autocomplete="current-password" name="app-pass" style="text-align:center;margin-bottom:12px">
@@ -112,6 +96,6 @@ try {
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=1.6.0"></script>
+<script type="module" src="js/app.js?v=2.0.0"></script>
 </body>
 </html>

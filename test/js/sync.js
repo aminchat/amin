@@ -1,3 +1,4 @@
+import { icon } from './icons.js';
 import { esc, store, toast } from './utils.js';
 import { render } from './view.js';
 import {
@@ -232,7 +233,7 @@ function requestDriveSignIn() {
 export function openProfileMenu() {
   if (!gUser) return;
   openModalSafe(
-    '<button class="x" onclick="closeModal()">✕</button><h2>حساب کاربری</h2><div class="hint" style="margin:14px 0">' +
+    '<button class="x" onclick="closeModal()" aria-label="بستن">' + icon('x') + '</button><h2>حساب کاربری</h2><div class="hint" style="margin:14px 0">' +
       esc(gUser.name) +
       '<br><span class="small muted">' +
       esc(gUser.email) +
@@ -649,7 +650,7 @@ async function tryRepairMerge(env) {
 
 function openRemotePassModal() {
   openModalSafe(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>🔑 یکی‌کردن دستگاه‌ها</h2>
     <p class="small muted">نسخهٔ داخل گوگل با رمز عبور دیگری ساخته شده — احتمالاً رمزنگاری را روی دستگاه دیگر جداگانه فعال کرده‌ای.
     برای یکی‌کردن داده‌ها، <b>رمز عبوری که روی آن دستگاه ساختی</b> را وارد کن. بعد از یکی‌شدن، همان رمز روی همهٔ دستگاه‌ها معتبر می‌شود.</p>
@@ -823,13 +824,13 @@ export function renderSyncCard() {
   if (gUser) {
     if (tokenRequesting) {
       return (
-        '<div class="card"><h3>☁️ اتصال به گوگل</h3>' +
+        '<div class="card"><h3>' + icon('cloud') + ' اتصال به گوگل</h3>' +
         '<div class="small muted">در حال تمدید اتصال…</div></div>'
       );
     }
     const hint = tokenErrorHint();
     return (
-      '<div class="card"><h3>☁️ اتصال به گوگل</h3>' +
+      '<div class="card"><h3>' + icon('cloud') + ' اتصال به گوگل</h3>' +
       '<div class="small muted" style="margin-bottom:12px">اعتبار اتصال به درایو تمام شده (هر ساعت تمدید می‌شود). ' +
       (hint ? hint : 'با یک ضربه دوباره وصل می‌شود.') +
       '</div>' +
@@ -837,7 +838,7 @@ export function renderSyncCard() {
     );
   }
   return (
-    '<div class="card"><h3>☁️ همگام‌سازی ابری</h3>' +
+    '<div class="card"><h3>' + icon('cloud') + ' همگام‌سازی ابری</h3>' +
     '<div class="small muted" style="margin-bottom:12px">با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.</div>' +
     '<button class="btn primary block" onclick="googleSignIn()">ورود با گوگل</button></div>'
   );

@@ -1,3 +1,4 @@
+import { icon } from './icons.js';
 import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
@@ -64,7 +65,7 @@ export function openDebtForm(d) {
   const acc = accountById(accId);
   const linked = !!(d && d.txId);
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>${d ? 'ویرایش مورد' : 'طلب یا بدهی جدید'}</h2>
     <div class="seg" id="debtKindSeg" style="margin-bottom:14px">
       <button class="${kind === 'in' ? 'on' : ''}" data-k="in" onclick="setDebtKind(this)">طلب من از دیگران</button>
@@ -75,7 +76,7 @@ export function openDebtForm(d) {
     </div>
     <div class="field"><label>از/به کدام حساب؟</label>
       <select class="input" id="dAccount" onchange="syncDebtAmountLabel()">${accountOptionsHtml(accId)}</select>
-      <div class="hint" style="margin-top:6px">با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «🤝 قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. موقع تسویه هم برعکسش ثبت می‌شود.</div>
+      <div class="hint" style="margin-top:6px">با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. موقع تسویه هم برعکسش ثبت می‌شود.</div>
     </div>
     <div class="field"><label id="dAmountLbl">مبلغ (${acc ? esc(acc.currency) : 'تومان'})</label>
       <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 500000" value="${d ? d.amount : ''}">
@@ -263,11 +264,11 @@ function debtRow(d) {
   const soon = !d.settled && n !== null && n > 0 && n <= 3;
   return `
     <div class="item" style="${d.settled ? 'opacity:.62' : ''}">
-      <div class="ic" style="background:${mine ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)'}">${mine ? '📥' : '📤'}</div>
+      <div class="ic" style="background:${mine ? 'var(--green-soft)' : 'var(--red-soft)'};color:${mine ? 'var(--green)' : 'var(--red)'}">${icon(mine ? 'arrowIn' : 'arrowOut')}</div>
       <div class="mid" onclick="openDebtForm(findDebt('${d.id}'))">
         <div class="t1">${esc(d.person)}</div>
         <div class="t2">${mine ? 'طلب من' : 'بدهی من'} · ${dueLabel(d.dueISO)}${d.note ? ' · ' + esc(d.note) : ''}${
-          d.accountId && accountById(d.accountId) ? ' · <span class="badge" style="color:#14b8a6;border-color:#14b8a655">🤝 ' + esc(accountById(d.accountId).name) + '</span>' : ''
+          d.accountId && accountById(d.accountId) ? ' · <span class="badge" style="color:#14b8a6">' + esc(accountById(d.accountId).name) + '</span>' : ''
         }</div>
       </div>
       <div style="text-align:left">
@@ -294,7 +295,7 @@ export function renderDebts() {
       <div class="stat"><div class="lbl">طلب باز</div><div class="val green">${fmt(rec)}</div></div>
       <div class="stat"><div class="lbl">بدهی باز</div><div class="val red">${fmt(pay)}</div></div>
     </div>
-    <button class="btn primary block" style="margin-bottom:12px" onclick="openDebtForm()">+ ثبت طلب یا بدهی</button>
+    <button class="btn primary block" style="margin-bottom:12px" onclick="openDebtForm()">${icon('plus')} ثبت طلب یا بدهی</button>
     ${
       notifyOn
         ? '<div class="hint" style="margin:0 0 12px">یادآوری روشن است. وقتی برنامه را باز کنی، موارد سررسیدشده را می‌گوید.</div>'
@@ -302,7 +303,7 @@ export function renderDebts() {
     }`;
 
   if (!list.length) {
-    html += `<div class="empty"><span class="em">🤝</span>هنوز طلب یا بدهی ثبت نکرده‌ای.<br>مثلاً پولی که به دوستت دادی یا از کسی قرض گرفتی.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('handshake')}</span>هنوز طلب یا بدهی ثبت نکرده‌ای.<br>مثلاً پولی که به دوستت دادی یا از کسی قرض گرفتی.</div>`;
   } else {
     if (open.length) html += open.map(debtRow).join('');
     if (done.length) {
@@ -320,7 +321,7 @@ export function debtHomeBanner() {
   const text = late
     ? toFaSafe(late) + ' مورد سررسید شده یا امروز است'
     : toFaSafe(due.length) + ' مورد تا سه روز دیگر سررسید دارد';
-  return `<div class="banner warn">⏰ <span>${text}.</span>
+  return `<div class="banner warn">${icon('bell')}<span>${text}.</span>
     <button class="btn sm primary" style="margin-right:auto" onclick="switchTab('debts')">ببین</button></div>`;
 }
 
