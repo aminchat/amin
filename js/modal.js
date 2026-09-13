@@ -1,3 +1,4 @@
+import { icon } from './icons.js';
 const overlay = document.getElementById('overlay');
 const sheet = document.getElementById('sheet');
 
@@ -21,7 +22,7 @@ document.addEventListener('keydown', (e) => {
 export function askConfirm(msg, onYes) {
   openModal(`
     <div style="text-align:center;padding:10px 4px">
-      <div style="font-size:38px;margin-bottom:10px">🗑️</div>
+      <span class="ib lg red" style="margin-bottom:12px">${icon('trash')}</span>
       <p style="font-size:15px;margin:0 0 18px">${msg}</p>
       <div class="row">
         <button class="btn" style="flex:1" onclick="closeModal()">انصراف</button>

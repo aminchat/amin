@@ -1,8 +1,9 @@
 import { store, toast } from './utils.js';
+import { icon } from './icons.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
-import { renderAll, setTodayLabel, txShift, repShift, togglePocket } from './render.js';
+import { renderAll, setTodayLabel, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
   enableDebtReminders,
@@ -13,18 +14,42 @@ import {
   saveDebt,
   setDebtKind,
   settleDebt,
+  syncDebtAmountLabel,
 } from './debts.js';
 import {
   applyTheme,
+  bioUnlock,
   changePinPrompt,
+  changePinDo,
+  changePassPrompt,
+  changePassDo,
   clearPin,
   disableBiometric,
   enableBiometric,
+  encryptFinish,
+  encryptStep2,
+  encryptStep3,
   initPrefs,
+  openEncryptSetup,
+  openPinRestoreModal,
   openSettings,
+  openSettingsAppearance,
+  openSettingsSecurity,
+  openSettingsGoogle,
+  openSettingsScan,
+  openSettingsAbout,
+  lockApp,
+  recoveryFinish,
+  recoveryStep2,
+  savePinRestore,
+  rotatePhrasePrompt,
   saveGeminiKey,
   clearGeminiKey,
+  setLockMode,
+  showLockForRemote,
+  startPhraseRecovery,
   submitLockPin,
+  toggleLockMode,
   togglePrivacy,
   tryBiometric,
   unlockApp,
@@ -38,6 +63,7 @@ import {
   pushToDrive,
   refreshFromDrive,
   scheduleSync,
+  submitRemotePass,
   syncOnPageChange,
 } from './sync.js';
 import {
@@ -84,68 +110,64 @@ import {
   toggleCustomCurrency,
   transferAccountsChanged,
   updateTransferPreview,
+  openQuickTx,
+  qaKey,
+  qaSetType,
+  qaSetCat,
+  qaPickAccount,
+  qaChooseAccount,
+  qaMore,
+  qaSave,
 } from './forms.js';
 
 setRender(renderAll);
 setOnSave(scheduleSync);
 
 const TABS = [
-  { id: 'home', lbl: 'خانه', ic: '🏠' },
-  { id: 'tx', lbl: 'تراکنش', ic: '💸' },
-  { id: 'report', lbl: 'گزارش', ic: '📊' },
-  { id: 'invest', lbl: 'سرمایه', ic: '📈' },
-  { id: 'accounts', lbl: 'حساب‌ها', ic: '💳' },
-  { id: 'debts', lbl: 'طلب و بدهی', ic: '🤝' },
+  { id: 'home', lbl: 'خانه' },
+  { id: 'tx', lbl: 'تراکنش‌ها' },
+  { id: 'report', lbl: 'گزارش' },
+  { id: 'assets', lbl: 'دارایی' },
+];
+// زیرصفحه‌های تب «دارایی»
+const ASSET_TABS = [
+  { id: 'accounts', lbl: 'حساب‌ها', ic: 'card', el: 'accountsContent' },
+  { id: 'invest', lbl: 'سرمایه', ic: 'trend', el: 'investContent' },
+  { id: 'debts', lbl: 'طلب و بدهی', ic: 'handshake', el: 'debtsContent' },
 ];
 
 let curTab = 'home';
+let curAsset = 'accounts';
 
-function closeMenu() {
-  document.body.classList.remove('menu-open');
-  const menu = document.getElementById('sideMenu');
-  if (menu) menu.setAttribute('aria-hidden', 'true');
-}
-
-function openMenu() {
-  buildMenu();
-  document.body.classList.add('menu-open');
-  const menu = document.getElementById('sideMenu');
-  if (menu) menu.setAttribute('aria-hidden', 'false');
-}
-
-function toggleMenu() {
-  if (document.body.classList.contains('menu-open')) closeMenu();
-  else openMenu();
-}
-
-function buildMenu() {
+function buildAssetTabs() {
+  const wrap = document.getElementById('assetTabs');
+  if (!wrap) return;
   const late = overdueCount();
-  const menuBtn = document.getElementById('btnMenu');
-  if (menuBtn) menuBtn.classList.toggle('has-alert', late > 0);
-  const list = document.getElementById('menuList');
-  if (!list) return;
-  list.innerHTML =
-    TABS.map((t) => {
-      const badge = t.id === 'debts' && late ? `<span class="badge-n">${late}</span>` : '';
-      return `<button type="button" class="menu-item ${curTab === t.id ? 'on' : ''}" data-tab="${t.id}">
-        <span class="ni">${t.ic}</span>${t.lbl}${badge}
-      </button>`;
-    }).join('') +
-    `<div class="menu-sep"></div>
-     <button type="button" class="menu-item" data-act="settings"><span class="ni">⚙</span>تنظیمات</button>`;
-  list.querySelectorAll('.menu-item').forEach((b) => {
-    b.onclick = () => {
-      if (b.dataset.act === 'settings') {
-        closeMenu();
-        openSettings();
-        return;
-      }
-      switchTab(b.dataset.tab);
-    };
+  wrap.innerHTML = ASSET_TABS.map((t) => {
+    const badge = t.id === 'debts' && late ? `<span class="badge" style="background:var(--red);color:#fff">${late}</span>` : '';
+    return `<button type="button" class="${curAsset === t.id ? 'on' : ''}" data-sub="${t.id}">${icon(t.ic)}<span>${t.lbl}</span>${badge}</button>`;
+  }).join('');
+  wrap.querySelectorAll('button').forEach((b) => (b.onclick = () => setAssetTab(b.dataset.sub)));
+  ASSET_TABS.forEach((t) => {
+    const el = document.getElementById(t.el);
+    if (el) el.style.display = t.id === curAsset ? '' : 'none';
   });
 }
 
+function setAssetTab(id) {
+  if (!ASSET_TABS.some((t) => t.id === id)) return;
+  curAsset = id;
+  buildAssetTabs();
+  const fab = document.getElementById('fab');
+  if (fab) fab.title = id === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
+}
+
 function switchTab(id) {
+  // سازگاری با کدهای قدیمی: accounts / invest / debts → تب دارایی
+  if (ASSET_TABS.some((t) => t.id === id)) {
+    curAsset = id;
+    id = 'assets';
+  }
   if (!TABS.some((t) => t.id === id)) return;
   curTab = id;
   document.querySelectorAll('section').forEach((s) => s.classList.remove('active'));
@@ -155,13 +177,26 @@ function switchTab(id) {
   const tab = TABS.find((t) => t.id === id);
   if (title && tab) title.textContent = tab.lbl;
   const fab = document.getElementById('fab');
-  if (fab) fab.title = id === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
-  const homeBtn = document.getElementById('btnHome');
-  if (homeBtn) homeBtn.style.visibility = id === 'home' ? 'hidden' : '';
-  closeMenu();
-  buildMenu();
+  if (fab) fab.title = id === 'assets' && curAsset === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
+  document.querySelectorAll('#bottomNav .bn').forEach((b) => b.classList.toggle('on', b.dataset.tab === id));
+  buildAssetTabs();
   render();
   syncOnPageChange();
+  window.scrollTo({ top: 0 });
+}
+
+function paintShellIcons() {
+  document.querySelectorAll('#bottomNav .bn[data-ic]').forEach((b) => {
+    if (!b.querySelector('svg')) b.insertAdjacentHTML('afterbegin', icon(b.dataset.ic));
+  });
+  const set = (id, name) => {
+    const el = document.getElementById(id);
+    if (el && !el.querySelector('svg')) el.innerHTML = icon(name);
+  };
+  set('fab', 'plus');
+  set('btnSettings', 'settings');
+  set('btnPrivacy', 'eye');
+  document.querySelectorAll('.logo').forEach((l) => (l.innerHTML = icon('wallet')));
 }
 
 function isLocked() {
@@ -177,10 +212,6 @@ function handleAppBack() {
     closeModal();
     return true;
   }
-  if (document.body.classList.contains('menu-open')) {
-    closeMenu();
-    return true;
-  }
   if (isLocked()) return true;
   if (curTab !== 'home') {
     switchTab('home');
@@ -192,7 +223,7 @@ function handleAppBack() {
 function askLeaveApp() {
   openModal(`
     <div style="text-align:center;padding:10px 4px">
-      <div style="font-size:38px;margin-bottom:10px">🚪</div>
+      <span class="ib lg red" style="margin-bottom:12px">${icon('logout')}</span>
       <p style="font-size:15px;margin:0 0 18px">می‌خوای از برنامه خارج شوی؟</p>
       <div class="row">
         <button class="btn" style="flex:1" onclick="closeModal()">نه، بمون</button>
@@ -237,9 +268,18 @@ function findInvest(id) {
 
 Object.assign(window, {
   switchTab,
+  setAssetTab,
   closeModal,
   openBudgetForm,
   openTxForm,
+  openQuickTx,
+  qaKey,
+  qaSetType,
+  qaSetCat,
+  qaPickAccount,
+  qaChooseAccount,
+  qaMore,
+  qaSave,
   setTxType,
   setTxCat,
   saveTx,
@@ -284,6 +324,7 @@ Object.assign(window, {
   txShift,
   repShift,
   togglePocket,
+  toggleAcctGroup,
   googleSignIn,
   googleSignOut,
   openProfileMenu,
@@ -298,58 +339,76 @@ Object.assign(window, {
   delDebt,
   settleDebt,
   setDebtKind,
+  syncDebtAmountLabel,
   enableDebtReminders,
   render,
   toast,
   applyTheme,
   openSettings,
+  openSettingsAppearance,
+  openSettingsSecurity,
+  openSettingsGoogle,
+  openSettingsScan,
+  openSettingsAbout,
+  lockApp,
   saveGeminiKey,
   clearGeminiKey,
   changePinPrompt,
+  changePinDo,
+  changePassPrompt,
+  changePassDo,
   clearPin,
   enableBiometric,
   disableBiometric,
   submitLockPin,
   tryBiometric,
+  bioUnlock,
   unlockApp,
   leaveApp,
   togglePrivacy,
+  openEncryptSetup,
+  encryptStep2,
+  encryptStep3,
+  encryptFinish,
+  rotatePhrasePrompt,
+  startPhraseRecovery,
+  recoveryStep2,
+  recoveryFinish,
+  openPinRestoreModal,
+  savePinRestore,
+  setLockMode,
+  showLockForRemote,
+  submitRemotePass,
+  toggleLockMode,
 });
 
+paintShellIcons();
 document.getElementById('fab').onclick = () => {
-  if (curTab === 'debts') openDebtForm();
+  if (curTab === 'assets' && curAsset === 'debts') openDebtForm();
   else openTxForm();
 };
-const btnMenu = document.getElementById('btnMenu');
-const btnMenuClose = document.getElementById('btnMenuClose');
-const menuScrim = document.getElementById('menuScrim');
-if (btnMenu) btnMenu.onclick = toggleMenu;
-if (btnMenuClose) btnMenuClose.onclick = closeMenu;
-if (menuScrim) menuScrim.onclick = closeMenu;
-const btnHome = document.getElementById('btnHome');
-if (btnHome) {
-  btnHome.style.visibility = 'hidden';
-  btnHome.onclick = () => switchTab('home');
-}
+document.querySelectorAll('#bottomNav .bn').forEach((b) => {
+  b.onclick = () => switchTab(b.dataset.tab);
+  b.classList.toggle('on', b.dataset.tab === curTab);
+});
 const btnPrivacy = document.getElementById('btnPrivacy');
 const btnSettings = document.getElementById('btnSettings');
 if (btnPrivacy) btnPrivacy.onclick = togglePrivacy;
 if (btnSettings) btnSettings.onclick = openSettings;
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && document.body.classList.contains('menu-open')) closeMenu();
-});
 try {
   setupBackButton();
 } catch (e) {}
 try {
   setTodayLabel();
-  buildMenu();
+  buildAssetTabs();
   render();
   initPrefs();
   notifyDueDebts();
 } catch (err) {
   console.error(err);
   if (window.__capLog) window.__capLog('شروع برنامه', err);
+  const dbg = document.getElementById('lockDebug');
+  if (dbg) dbg.textContent = 'خطا در شروع: ' + ((err && err.message) || err);
   const home = document.getElementById('homeContent');
   if (home) home.innerHTML = '<div class="card">برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.</div>';
 }

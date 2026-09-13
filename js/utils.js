@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '1.1.6';
+export const APP_VERSION = '2.0.0';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -84,15 +84,17 @@ export const store = (() => {
   }
   return {
     get(k) {
+      const key = k;
       try {
-        return ok ? localStorage.getItem(k) : mem[k] ?? null;
+        return ok ? localStorage.getItem(key) : mem[k] ?? null;
       } catch (e) {
         return mem[k] ?? null;
       }
     },
     set(k, v) {
+      const key = k;
       try {
-        if (ok) localStorage.setItem(k, v);
+        if (ok) localStorage.setItem(key, v);
         else mem[k] = v;
       } catch (e) {
         mem[k] = v;
@@ -107,16 +109,33 @@ export function toast(msg) {
   if (!el) {
     el = document.createElement('div');
     el.id = 'toast';
-    el.style.cssText =
-      'position:fixed;bottom:100px;right:50%;transform:translateX(50%);background:#22c55e;color:#04180a;font-weight:700;padding:11px 22px;border-radius:99px;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:.25s;font-size:14px;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis';
     document.body.appendChild(el);
   }
   el.textContent = msg;
-  el.style.opacity = '1';
-  el.style.transform = 'translateX(50%) translateY(0)';
+  // reflow تا انیمیشن هر بار اجرا شود
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
   clearTimeout(el._t);
-  el._t = setTimeout(() => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateX(50%) translateY(12px)';
-  }, 2000);
+  el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// بازخورد لمسی خفیف (اگر دستگاه پشتیبانی کند)
+export function haptic(ms = 10) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  } catch (e) {}
+}
+
+// عدد کوتاه برای کارت‌های خلاصه: ۲٫۴ میلیون / ۸۵۰ هزار
+export function fmtShort(n) {
+  if (isMoneyHidden()) return '••••';
+  n = Number(n) || 0;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '−' : '';
+  const one = (v) => toFa(v.toFixed(v < 10 ? 1 : 0).replace(/\.0$/, '').replace('.', '٫'));
+  if (abs >= 1e9) return sign + one(abs / 1e9) + ' میلیارد';
+  if (abs >= 1e6) return sign + one(abs / 1e6) + ' میلیون';
+  if (abs >= 1e3) return sign + one(abs / 1e3) + ' هزار';
+  return fmt(n);
 }
