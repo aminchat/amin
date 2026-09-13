@@ -402,6 +402,21 @@ export function unlockApp() {
 export function lockApp() {
   if (sec.isEncrypted()) {
     // همیشه می‌توان قفل کرد؛ حالت از قبل تعیین شده
+    // اگر به گوگل وصلیم، همان ابتدا کلیدهای احتمالاً جدید را می‌گیریم تا رمز جدید از اول قبول شود
+    import('./sync.js')
+      .then((sync) => {
+        if (!sync.isGoogleLinked()) return;
+        const dbg = document.getElementById('lockDebug');
+        if (dbg) {
+          dbg.style.color = 'var(--muted)';
+          dbg.textContent = 'در حال همگام‌سازی با گوگل…';
+        }
+        sync.pullRemoteWrapsNow((changed) => {
+          if (dbg && dbg.textContent === 'در حال همگام‌سازی با گوگل…') dbg.textContent = '';
+          if (changed) toast('رمز عبور جدید از دستگاه دیگر دریافت شد ✓');
+        });
+      })
+      .catch(() => {});
   } else if (!hasPin()) {
     return;
   }
@@ -456,16 +471,44 @@ export async function submitLockPin() {
     return;
   }
   if (sec.isEncrypted()) {
+    const btn = document.querySelector('#lockScreen .btn.primary');
+    const setBusy = (b, txt) => {
+      if (btn) {
+        btn.disabled = b;
+        btn.textContent = txt || 'ورود';
+      }
+    };
     try {
       const st = await sec.unlock(val, 'pass');
       finalizeUnlock(st);
-    } catch (e) {
-      pinFailCount++;
-      toast('رمز عبور اشتباه است');
-      if (inp) {
-        inp.value = '';
-        inp.focus();
+      return;
+    } catch (e) {}
+    // رمز به پاکت محلی نخورد. شاید رمز روی دستگاه دیگر عوض شده و این دستگاه هنوز
+    // کلیدهای جدید را از گوگل نگرفته؛ همین حالا می‌گیریم و دوباره امتحان می‌کنیم
+    let retried = false;
+    try {
+      const sync = await import('./sync.js');
+      if (sync.isGoogleLinked()) {
+        setBusy(true, 'بررسی رمز جدید از گوگل…');
+        const changed = await new Promise((res) => sync.pullRemoteWrapsNow(res));
+        if (changed) {
+          retried = true;
+          const st = await sec.unlock(val, 'pass');
+          setBusy(false);
+          finalizeUnlock(st);
+          toast('رمز جدید از دستگاه دیگر دریافت شد ✓');
+          return;
+        }
       }
+    } catch (e) {
+      if (window.__capLog) window.__capLog('lock:remoteRetry', e);
+    }
+    setBusy(false);
+    pinFailCount++;
+    toast(retried ? 'رمز عبور اشتباه است' : 'رمز عبور اشتباه است' + (pinFailCount >= 2 ? ' — اگر تازه روی دستگاه دیگر عوضش کرده‌ای، چند ثانیه صبر کن و دوباره بزن' : ''));
+    if (inp) {
+      inp.value = '';
+      inp.focus();
     }
     return;
   }

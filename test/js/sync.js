@@ -466,6 +466,67 @@ export function loadFromDrive(cb, interactive, quiet) {
   run();
 }
 
+// ─── دریافت فوریِ کلیدهای جدید از درایو (برای صفحهٔ قفل) ──────────────────
+// وقتی رمز روی صفحهٔ قفل رد می‌شود، شاید رمز روی دستگاه دیگر عوض شده و هنوز
+// این دستگاه کلیدهای جدید را نگرفته؛ همین‌جا پاکت را می‌خوانیم و اگر هم‌کلید و
+// جدیدتر بود، کلیدهایش را می‌پذیریم. cb(changed:boolean)
+let wrapsPullInFlight = false;
+export function pullRemoteWrapsNow(cb) {
+  cb = cb || function () {};
+  if (!gUser && !tokenAlive()) return cb(false);
+  if (wrapsPullInFlight) return cb(false);
+  wrapsPullInFlight = true;
+  const finish = function (changed) {
+    wrapsPullInFlight = false;
+    cb(!!changed);
+  };
+  const run = function () {
+    driveFindFile()
+      .then(function (f) {
+        if (!f) return false;
+        return driveRead(f.id).then(function (text) {
+          let remote;
+          try {
+            remote = JSON.parse(text);
+          } catch (e) {
+            return false;
+          }
+          if (!(remote && remote.v === 2 && remote.wraps && remote.data)) return false;
+          if (!sec.isEncrypted()) {
+            sec.adoptRemoteEnvelope(remote);
+            return true;
+          }
+          if (sec.sameKeyAs(remote)) {
+            const changed = sec.adoptRemoteWraps(remote);
+            // اگر دادهٔ دوردست هم جدیدتر است، همان‌جا کل پاکت را می‌پذیریم (پین/اثر انگشت می‌ماند)
+            const remoteAt = (remote.meta && remote.meta.updatedAt) || 0;
+            if (remoteAt > sec.metaUpdatedAt()) sec.adoptRemoteEnvelope(remote);
+            return changed;
+          }
+          // کلید متفاوت: بعد از بازشدن قفل، مسیر «یکی‌کردن» اجرا می‌شود
+          pendingRemoteEnv = remote;
+          return false;
+        });
+      })
+      .then(finish)
+      .catch(function () {
+        finish(false);
+      });
+  };
+  if (!tokenAlive()) {
+    requestAccessToken(function (ok) {
+      if (ok) run();
+      else finish(false);
+    }, false);
+    return;
+  }
+  run();
+}
+
+export function isGoogleLinked() {
+  return !!(gUser || tokenAlive());
+}
+
 // ─── پردازش پاکت رمزشدهٔ دوردست ────────────────────────────────────────────
 async function handleRemoteEnvelope(env, fileId) {
   // دستگاه تازه یا بدون رمزنگاری محلی: پاکت را «قفل‌شده» می‌پذیریم تا

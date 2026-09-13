@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '1.4.2-test';
+export const APP_VERSION = '1.4.3-test';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
