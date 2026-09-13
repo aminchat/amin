@@ -114,7 +114,10 @@ export function persist(stateObj) {
     try {
       envelope.data = await encryptData(dk, JSON.stringify(stateObj));
       envelope.meta = envelope.meta || {};
-      envelope.meta.updatedAt = Date.now();
+      // زمانِ داده از خودِ حالت می‌آید (نه «الان») تا دریافت از گوگل
+      // باعث نشود دو دستگاه مدام همدیگر را «جدیدتر» ببینند
+      envelope.meta.updatedAt =
+        Math.max(stateObj.updatedAt || 0, envelope.meta.updatedAt || 0) || Date.now();
       if (!envelope.meta.kid) envelope.meta.kid = await keyId(dk);
       saveEnvelope();
     } catch (e) {
@@ -150,7 +153,7 @@ export async function enableEncryption(stateObj, passphrase, phrase, pin) {
     v: 2,
     wraps,
     data,
-    meta: { createdAt: now, updatedAt: now, kid: await keyId(key) },
+    meta: { createdAt: now, updatedAt: now, wrapsAt: now, kid: await keyId(key) },
   };
   dk = key;
   sessionPass = passphrase;
@@ -173,6 +176,24 @@ async function keyId(key) {
 export function metaKid() {
   const env = getEnvelope();
   return (env && env.meta && env.meta.kid) || '';
+}
+
+// زمان آخرین تغییر کلیدها (رمز عبور / عبارت بازیابی) — جدا از زمان داده
+export function wrapsAtOf(env) {
+  if (!env || !env.meta) return 0;
+  return env.meta.wrapsAt || env.meta.createdAt || 0;
+}
+export function metaWrapsAt() {
+  return wrapsAtOf(getEnvelope());
+}
+function touchWraps() {
+  envelope.meta = envelope.meta || {};
+  envelope.meta.wrapsAt = Date.now();
+}
+function notifyWrapsChanged() {
+  try {
+    document.dispatchEvent(new CustomEvent('cap:wraps-changed'));
+  } catch (e) {}
 }
 
 export function setSessionKey(key, pass) {
@@ -200,7 +221,9 @@ export async function replacePhraseWrap(phrase) {
   if (!dk || !envelope) return false;
   envelope.wraps = envelope.wraps.filter((w) => w.kind !== 'phrase');
   envelope.wraps.push(await wrapDataKey(dk, normalizePhrase(phrase).join(' '), 'phrase'));
+  touchWraps();
   saveEnvelope();
+  notifyWrapsChanged();
   return true;
 }
 
@@ -209,12 +232,15 @@ export async function changePassphrase(oldPass, newPass) {
   const wrap = findWrap('pass');
   if (!wrap) throw new Error('wrap missing');
   // اعتبارسنجی رمز قدیمی
-  await unwrapDataKey(wrap, oldPass);
-  const key = dk || (await unlockInternalWith(oldPass, 'pass'));
+  const key = dk || (await unwrapDataKey(wrap, oldPass));
+  if (dk) await unwrapDataKey(wrap, oldPass); // اعتبارسنجی رمز قدیمی
   envelope.wraps = envelope.wraps.filter((w) => w.kind !== 'pass');
   envelope.wraps.push(await wrapDataKey(key, newPass, 'pass'));
+  dk = key;
   sessionPass = newPass;
+  touchWraps();
   saveEnvelope();
+  notifyWrapsChanged();
 }
 
 async function unlockInternalWith(secret, kind) {
@@ -234,8 +260,11 @@ export async function recoverWithPhrase(phraseText, newPass) {
   envelope.wraps.push(await wrapDataKey(key, newPass, 'pass'));
   dk = key;
   sessionPass = newPass;
+  touchWraps();
   saveEnvelope();
-  return decryptData(key, envelope.data).then((t) => JSON.parse(t));
+  const st = JSON.parse(await decryptData(key, envelope.data));
+  notifyWrapsChanged();
+  return st;
 }
 
 // رمزگشایی پاکت دوردست با رمز عبور مشخص (برای یکی‌کردن دو دستگاه)
@@ -255,8 +284,25 @@ export async function decryptRemoteWith(remoteEnv, pass) {
   return { state: JSON.parse(text), dk: key };
 }
 
-// رمزگشایی پاکت دوردست (از درایو) با رمز عبورِ نشست
+// آیا پاکت دوردست با همان کلید دادهٔ این دستگاه ساخته شده؟
+export function sameKeyAs(remoteEnv) {
+  const rk = remoteEnv && remoteEnv.meta && remoteEnv.meta.kid;
+  const lk = metaKid();
+  return !!(rk && lk && rk === lk);
+}
+
+// رمزگشایی پاکت دوردست (از درایو):
+// اول با کلید دادهٔ بازشدهٔ همین نشست (اگر کلید یکی باشد نیازی به رمز نیست)،
+// بعد با رمز عبورِ نشست
 export async function decryptRemote(remoteEnv) {
+  if (dk) {
+    try {
+      const text = await decryptData(dk, remoteEnv.data);
+      return { state: JSON.parse(text), dk };
+    } catch (e) {
+      // کلید متفاوت است؛ ادامه با رمز عبور
+    }
+  }
   if (!sessionPass) throw new Error('need-pass');
   const passWrap =
     (remoteEnv.wraps || []).find((w) => w.kind === 'pass') ||
@@ -272,19 +318,54 @@ export async function decryptRemote(remoteEnv) {
   return { state: JSON.parse(text), dk: key };
 }
 
+// فقط کلیدهای (رمز/عبارت) دوردست را می‌گیرد اگر جدیدتر باشند — دادهٔ محلی و پین دست نمی‌خورد.
+// برای وقتی که دستگاه دیگر رمز عبور را عوض کرده ولی دادهٔ این دستگاه جدیدتر است (یا قفل است).
+export function adoptRemoteWraps(remoteEnv) {
+  const env = getEnvelope();
+  if (!env || !remoteEnv || !remoteEnv.wraps) return false;
+  if (!sameKeyAs(remoteEnv)) return false;
+  const rAt = wrapsAtOf(remoteEnv);
+  const lAt = wrapsAtOf(env);
+  if (rAt <= lAt) return false;
+  const pin = env.wraps.find((w) => w.kind === 'pin');
+  env.wraps = remoteEnv.wraps.filter((w) => w.kind !== 'pin');
+  if (pin) env.wraps.push(pin);
+  env.meta = env.meta || {};
+  env.meta.wrapsAt = rAt;
+  envelope = env;
+  saveEnvelope();
+  // رمز عبور حافظه ممکن است دیگر معتبر نباشد (روی دستگاه دیگر عوض شده)
+  sessionPass = null;
+  return true;
+}
+
 // پذیرش پاکت دوردست به‌جای محلی (وقتی دوردست جدیدتر است)
-// پین محلی حفظ می‌شود چون کلید داده در عملیات عادی عوض نمی‌شود؛
-// اما در «یکی‌کردن» دو کلید متفاوت، پینِ قدیمی باطل است (dropPin)
+// - پین محلی حفظ می‌شود مگر کلید داده عوض شده باشد (dropPin)
+// - اگر کلیدهای محلی (رمز/عبارت) جدیدتر از دوردست باشند، همان‌ها می‌مانند
 export function adoptRemoteEnvelope(remoteEnv, opts) {
   const dropPin = !!(opts && opts.dropPin);
+  const local = getEnvelope();
+  const sameKey = !dropPin && local && sameKeyAs(remoteEnv);
   const localPinWrap =
-    !dropPin && envelope && envelope.wraps
-      ? envelope.wraps.find((w) => w.kind === 'pin')
-      : null;
+    !dropPin && local && local.wraps ? local.wraps.find((w) => w.kind === 'pin') : null;
+  const localWrapsAt = sameKey ? wrapsAtOf(local) : 0;
+  const remoteWrapsAt = wrapsAtOf(remoteEnv);
+  const keepLocalWraps = sameKey && localWrapsAt > remoteWrapsAt;
+
   envelope = JSON.parse(JSON.stringify(remoteEnv));
-  envelope.wraps = envelope.wraps.filter((w) => w.kind !== 'pin');
+  envelope.meta = envelope.meta || {};
+  if (keepLocalWraps) {
+    envelope.wraps = local.wraps.filter((w) => w.kind !== 'pin');
+    envelope.meta.wrapsAt = localWrapsAt;
+  } else {
+    envelope.wraps = envelope.wraps.filter((w) => w.kind !== 'pin');
+    if (!envelope.meta.wrapsAt) envelope.meta.wrapsAt = remoteWrapsAt;
+    // کلیدهای دوردست جایگزین شد؛ رمزِ حافظه ممکن است قدیمی باشد
+    if (sameKey && remoteWrapsAt > localWrapsAt) sessionPass = null;
+  }
   if (localPinWrap) envelope.wraps.push(localPinWrap);
   saveEnvelope();
+  return keepLocalWraps;
 }
 
 // جایگزینی دادهٔ داخل پاکت فعلی و نگهداشت پیچیدگی‌ها (بعد از ادغام)

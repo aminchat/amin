@@ -9,7 +9,7 @@ import {
   state,
 } from './state.js';
 import * as sec from './securestore.js';
-import { showLockForRemote, openPinRestoreModal, unlockApp } from './prefs.js';
+import { showLockForRemote, openPinRestoreModal, unlockApp, clearBioRecord } from './prefs.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -427,25 +427,54 @@ async function handleRemoteEnvelope(env, fileId) {
   const remoteKid = env.meta && env.meta.kid;
   const localKid = sec.metaKid();
   const diverged = !!(remoteKid && localKid && remoteKid !== localKid);
+  const sameKey = sec.sameKeyAs(env);
 
   // دو دستگاه جداگانه رمزنگاری فعال کرده‌اند: باید یکی شوند
   if (diverged) {
     return tryRepairMerge(env);
   }
 
+  // کلید داده یکی است → فقط باید ببینیم «کلیدها» (رمز عبور/عبارت) و «داده» کدام جدیدتر است.
+  // این دو مستقل از هم‌اند: مثلاً دستگاه دیگر رمز را عوض کرده ولی این دستگاه تراکنش جدید دارد.
+  let wrapsChanged = false;
+  if (sameKey) {
+    const rW = sec.wrapsAtOf(env);
+    const lW = sec.metaWrapsAt();
+    if (rW > lW) {
+      // رمز عبور روی دستگاه دیگر عوض شده؛ کلیدهای جدید را می‌گیریم (پین این گوشی می‌ماند)
+      wrapsChanged = sec.adoptRemoteWraps(env);
+      if (wrapsChanged) toast('رمز عبور از دستگاه دیگر به‌روز شد ✓');
+    } else if (lW > rW) {
+      // رمز این دستگاه جدیدتر است؛ باید به گوگل برود
+      pendingLocalSave = true;
+    }
+  }
+
   if (remoteAt > localAt) {
-    if (!sec.hasSessionPass()) {
+    if (!sec.isUnlocked()) {
+      if (sameKey) {
+        // همان کلید است؛ پاکت جدید را همین حالا می‌پذیریم — پین/اثر انگشت این گوشی معتبر می‌ماند
+        // و بعد از بازشدن قفل، دادهٔ جدید بارگذاری می‌شود
+        sec.adoptRemoteEnvelope(env);
+        return;
+      }
       pendingRemoteEnv = env;
       showLockForRemote();
       return;
     }
     try {
       const got = await sec.decryptRemote(env);
-      sec.adoptRemoteEnvelope(env);
+      const keptLocalWraps = sec.adoptRemoteEnvelope(env);
       sec.setSessionKey(got.dk);
       replaceState(got.state);
       render();
-      pendingLocalSave = false;
+      if (keptLocalWraps || pendingLocalSave) {
+        // کلیدهای محلی جدیدترند؛ پاکت ادغام‌شده باید دوباره پوش شود
+        pendingLocalSave = true;
+        pushToDrive(false);
+      } else {
+        pendingLocalSave = false;
+      }
       toast('داده‌های جدیدتر از گوگل دریافت شد ✓');
     } catch (e) {
       pendingRemoteEnv = env;
@@ -462,8 +491,8 @@ async function handleRemoteEnvelope(env, fileId) {
   }
 
   // هم‌زمان: ادغام در صورت تفاوت
-  if (!sec.hasSessionPass()) {
-    pendingRemoteEnv = env;
+  if (!sec.isUnlocked()) {
+    if (!sameKey) pendingRemoteEnv = env;
     return;
   }
   try {
@@ -474,6 +503,7 @@ async function handleRemoteEnvelope(env, fileId) {
       render();
       pendingLocalSave = true;
     }
+    if (pendingLocalSave) pushToDrive(false);
   } catch (e) {
     pendingRemoteEnv = env;
     openRemotePassModal();
@@ -488,13 +518,11 @@ async function tryRepairMerge(env) {
     showLockForRemote();
     return;
   }
-  if (sec.hasSessionPass()) {
-    try {
-      const got = await sec.decryptRemote(env);
-      return applyRemoteMerge(env, got);
-    } catch (e) {
-      // رمز این دستگاه به پاکت گوگل نمی‌خورد
-    }
+  try {
+    const got = await sec.decryptRemote(env);
+    return applyRemoteMerge(env, got);
+  } catch (e) {
+    // رمز این دستگاه به پاکت گوگل نمی‌خورد
   }
   pendingRemoteEnv = env;
   openRemotePassModal();
@@ -541,9 +569,11 @@ export async function submitRemotePass() {
 async function applyRemoteMerge(env, got) {
   pendingRemoteEnv = null;
   const merged = mergeStates(state, got.state);
-  // پاکت گوگل (کلید و رمزهایش) معتبر می‌شود؛ پین قدیمی این دستگاه باطل است
+  // پاکت گوگل (کلید و رمزهایش) معتبر می‌شود؛ پین و اثر انگشت قدیمی این دستگاه
+  // با کلید قبلی پیچیده شده بودند و دیگر باز نمی‌کنند → پاک می‌شوند
   sec.adoptRemoteEnvelope(env, { dropPin: true });
   sec.setSessionKey(got.dk);
+  clearBioRecord();
   replaceState(merged);
   if (document.body.classList.contains('locked')) unlockApp();
   render();
@@ -561,10 +591,12 @@ function closeModalSafe() {
 async function processPendingRemote() {
   const env = pendingRemoteEnv;
   if (!env) return;
-  if (!sec.hasSessionPass()) return; // هنوز با رمز عبور باز نشده
+  if (!sec.isUnlocked()) return; // هنوز باز نشده
   try {
     const got = await sec.decryptRemote(env);
     pendingRemoteEnv = null;
+    // اگر پاکت دوردست همان کلید است، کلیدهای جدیدترش (مثلاً رمز تازه) را هم می‌گیریم
+    if (sec.sameKeyAs(env)) sec.adoptRemoteWraps(env);
     let next = got.state;
     if (legacyLocalSnapshot) {
       next = mergeStates(legacyLocalSnapshot, next);
@@ -597,6 +629,14 @@ document.addEventListener('cap:unlocked', function () {
 // بعد از فعال‌شدن رمزنگاری: پوش فوری پاکت رمزشده به درایو
 document.addEventListener('cap:encrypt-on', function () {
   if (gUser || tokenAlive()) pushToDrive(false);
+});
+
+// بعد از تغییر رمز عبور / عبارت بازیابی: کلیدهای جدید باید فوراً به گوگل بروند
+// وگرنه دستگاه دیگر با رمز قدیمی روی آن می‌نویسد و رمز جدید از بین می‌رود
+document.addEventListener('cap:wraps-changed', function () {
+  if (!gUser && !tokenAlive()) return;
+  pendingLocalSave = true;
+  pushToDrive(false);
 });
 
 // محتوایی که در درایو ذخیره می‌شود: پاکت رمزشده یا حالت ساده

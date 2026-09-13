@@ -223,6 +223,11 @@ export function disableBiometric() {
   toast('اثر انگشت خاموش شد');
 }
 
+// وقتی کلید داده عوض می‌شود (یکی‌کردن دو دستگاه) رکورد اثر انگشت بی‌اعتبار است
+export function clearBioRecord() {
+  store.set(BIO_KEY, '');
+}
+
 export function hasBiometric() {
   return !!readBioRecord();
 }
