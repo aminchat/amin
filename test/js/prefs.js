@@ -156,11 +156,26 @@ export async function enableBiometric() {
       authenticatorSelection: {
         authenticatorAttachment: 'platform',
         userVerification: 'required',
+        // برای PRF روی اندروید لازم است اعتبارنامه مقیم باشد
+        residentKey: encrypted ? 'required' : undefined,
+        requireResidentKey: encrypted ? true : undefined,
       },
       timeout: 60000,
     };
     if (encrypted) publicKey.extensions = { prf: { eval: { first: prfInput } } };
-    const cred = await navigator.credentials.create({ publicKey });
+    let cred;
+    try {
+      cred = await navigator.credentials.create({ publicKey });
+    } catch (e) {
+      if (encrypted && (e.name === 'NotSupportedError' || e.name === 'InvalidStateError')) {
+        // دستگاه اعتبارنامهٔ مقیم را قبول نکرد؛ بدون آن تلاش می‌کنیم
+        delete publicKey.authenticatorSelection.residentKey;
+        delete publicKey.authenticatorSelection.requireResidentKey;
+        cred = await navigator.credentials.create({ publicKey });
+      } else {
+        throw e;
+      }
+    }
     if (!cred) return false;
 
     if (encrypted) {
@@ -221,7 +236,13 @@ export async function tryBiometric() {
     if (rec.v === 2 && sec.isEncrypted()) {
       publicKey.extensions = { prf: { eval: { first: unb64(rec.prf) } } };
     }
-    const cred = await navigator.credentials.get({ publicKey });
+    let cred;
+    try {
+      cred = await navigator.credentials.get({ publicKey });
+    } catch (e) {
+      if (window.__capLog) window.__capLog('tryBiometric:get', e);
+      return { ok: false, err: (e && e.name) || 'get' };
+    }
     if (!cred) return { ok: false };
     if (rec.v === 2 && sec.isEncrypted()) {
       let ext = null;
@@ -230,10 +251,15 @@ export async function tryBiometric() {
       } catch (e) {}
       const first = ext && ext.prf && ext.prf.results && ext.prf.results.first;
       if (first) {
-        const kek = await importKekFromRaw(new Uint8Array(first));
-        const key = await unwrapDataKeyWithKek(rec.wrap, kek);
-        const state = await sec.unlockWithKey(key);
-        return { ok: true, state };
+        try {
+          const kek = await importKekFromRaw(new Uint8Array(first));
+          const key = await unwrapDataKeyWithKek(rec.wrap, kek);
+          const state = await sec.unlockWithKey(key);
+          return { ok: true, state };
+        } catch (e) {
+          if (window.__capLog) window.__capLog('tryBiometric:crypto', e);
+          return { ok: false, err: 'crypto', sensorOk: true };
+        }
       }
       return { ok: true, gateOnly: true };
     }
@@ -241,14 +267,20 @@ export async function tryBiometric() {
     return { ok: !!cred };
   } catch (e) {
     if (window.__capLog) window.__capLog('tryBiometric', e);
-    return { ok: false };
+    return { ok: false, err: (e && e.name) || 'unknown' };
   }
 }
 
 export async function bioUnlock() {
   const res = await tryBiometric();
   if (!res || !res.ok) {
-    toast('اثر انگشت تأیید نشد');
+    if (res && res.sensorOk) {
+      toast('اثر انگشت تأیید شد ولی بازکردن داده ناموفق بود');
+    } else if (res && res.err === 'NotAllowedError') {
+      toast('اثر انگشت تأیید نشد');
+    } else {
+      toast('اثر انگشت تأیید نشد' + (res && res.err ? ' (' + res.err + ')' : ''));
+    }
     return;
   }
   if (res.state) {
@@ -261,9 +293,13 @@ export async function bioUnlock() {
       unlockApp();
       return;
     }
-    toast('حالا پین یا رمز عبور را وارد کن');
-    const inp = document.getElementById('lockPin');
-    if (inp) inp.focus();
+    openModal(`
+      <button class="x" onclick="closeModal()">✕</button>
+      <div style="text-align:center;padding:6px 2px">
+        <div style="font-size:34px;margin-bottom:8px">👆</div>
+        <p style="margin:0 0 14px">اثر انگشت تأیید شد، ولی این مرورگر نمی‌تواند داده‌ها را مستقیم با آن باز کند.<br>پین یا رمز عبور را وارد کن.</p>
+        <button class="btn primary block" onclick="closeModal();document.getElementById('lockPin').focus()">باشه</button>
+      </div>`);
     return;
   }
   unlockApp();
@@ -602,22 +638,36 @@ export async function savePinRestore() {
 }
 
 // ─── تغییر رمز عبور / عبارت بازیابی جدید ───────────────────────────────────
-export async function changePassPrompt() {
-  const old = prompt('رمز عبور فعلی:');
-  if (old == null) return;
-  const a = prompt('رمز عبور جدید (حداقل ۸ نویسه):');
-  if (a == null) return;
+export function changePassPrompt() {
+  openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>تغییر رمز عبور</h2>
+    <div class="field"><label>رمز عبور فعلی</label>
+      <input class="input" id="cpOld" type="password" autocomplete="off" dir="ltr"></div>
+    <div class="field"><label>رمز عبور جدید (حداقل ۸ نویسه)</label>
+      <input class="input" id="cpNew" type="password" autocomplete="new-password" dir="ltr"></div>
+    <div class="field"><label>تکرار رمز عبور جدید</label>
+      <input class="input" id="cpNew2" type="password" autocomplete="new-password" dir="ltr"></div>
+    <button class="btn primary block" style="margin-top:12px" onclick="changePassDo()">ذخیره</button>
+  `);
+}
+
+export async function changePassDo() {
+  const old = String((document.getElementById('cpOld') || {}).value || '');
+  const a = String((document.getElementById('cpNew') || {}).value || '');
+  const b = String((document.getElementById('cpNew2') || {}).value || '');
   if (a.length < 8) {
     toast('رمز عبور حداقل ۸ نویسه باشد');
     return;
   }
-  const b = prompt('تکرار رمز عبور جدید:');
   if (a !== b) {
     toast('رمزها یکی نیستند');
     return;
   }
   try {
     await sec.changePassphrase(old, a);
+    closeModal();
+    openSettings();
     toast('رمز عبور عوض شد ✓');
   } catch (e) {
     toast('رمز عبور فعلی اشتباه است');
@@ -733,16 +783,30 @@ function googleSettingsHtml() {
     <button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">خروج از حساب گوگل</button>`;
 }
 
-export async function changePinPrompt() {
+export function changePinPrompt() {
   const digits = sec.isEncrypted() ? '۶ تا ۸ رقم' : '۴ تا ۸ رقم';
-  const a = prompt(`پین جدید (${digits}):`);
-  if (a == null) return;
-  const b = prompt('تکرار پین:');
+  openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>${sec.isEncrypted() ? 'پین' : 'رمز'} جدید</h2>
+    <div class="field"><label>پین جدید (${digits})</label>
+      <input class="input" id="pinNew" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
+    <div class="field"><label>تکرار پین</label>
+      <input class="input" id="pinNew2" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
+    <button class="btn primary block" style="margin-top:12px" onclick="changePinDo()">ذخیره</button>
+  `);
+}
+
+export async function changePinDo() {
+  const a = String((document.getElementById('pinNew') || {}).value || '').trim();
+  const b = String((document.getElementById('pinNew2') || {}).value || '').trim();
   if (a !== b) {
     toast('پین‌ها یکی نیستند');
     return;
   }
-  if (await setPin(a)) openSettings();
+  if (await setPin(a)) {
+    closeModal();
+    openSettings();
+  }
 }
 
 export function initPrefs() {
