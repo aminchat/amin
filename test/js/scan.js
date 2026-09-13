@@ -27,13 +27,13 @@ export function saveGeminiKey() {
   }
   store.set(KEY, v);
   toast('کلید ذخیره شد');
-  if (typeof window.openSettings === 'function') window.openSettings();
+  if (typeof window.openSettingsScan === 'function') window.openSettingsScan();
 }
 
 export function clearGeminiKey() {
   store.set(KEY, '');
   toast('کلید پاک شد');
-  if (typeof window.openSettings === 'function') window.openSettings();
+  if (typeof window.openSettingsScan === 'function') window.openSettingsScan();
 }
 
 function faToEn(s) {

@@ -776,79 +776,190 @@ export async function rotatePhrasePrompt() {
 }
 
 // ─── تنظیمات ───────────────────────────────────────────────────────────────
+// ─── تنظیمات: منوی اصلی + زیرصفحه‌ها (سبک تلگرام) ──────────────────────────
+function settingsRow(icon, color, title, sub, onclick, extra) {
+  return `<button type="button" class="srow" onclick="${onclick}">
+    <span class="sic" style="background:${color}">${icon}</span>
+    <span class="smid"><span class="st1">${title}</span>${sub ? `<span class="st2">${sub}</span>` : ''}</span>
+    ${extra ? `<span class="sval">${extra}</span>` : ''}
+    <span class="schev">‹</span>
+  </button>`;
+}
+
+function settingsHeader(title, back) {
+  return back
+    ? `<button class="x" onclick="closeModal()">✕</button>
+       <button type="button" class="sback" onclick="${back}">› بازگشت</button>
+       <h2 style="margin-top:6px">${title}</h2>`
+    : `<button class="x" onclick="closeModal()">✕</button><h2>${title}</h2>`;
+}
+
 export function openSettings() {
-  const theme = currentTheme();
-  const pinOn = hasPin();
-  const bioOn = hasBiometric();
-  const bioOk = bioAvailable();
   const enc = sec.isEncrypted();
+  const bioOn = hasBiometric();
+  const u = googleUserFromStore();
+  const theme = THEMES.find((t) => t.id === currentTheme()) || THEMES[0];
+  const gemini = !!store.get('capital_gemini_key');
   openModal(`
-    <button class="x" onclick="closeModal()">✕</button>
-    <h2>تنظیمات</h2>
+    ${settingsHeader('تنظیمات')}
+    <div class="sgroup">
+      ${settingsRow('🎨', '#8b5cf6', 'ظاهر', 'تم و رنگ برنامه', 'openSettingsAppearance()', theme.name)}
+    </div>
+    <div class="sgroup">
+      ${settingsRow(
+        '🔐',
+        enc ? '#22c55e' : '#f59e0b',
+        'امنیت و حریم خصوصی',
+        enc ? 'رمزنگاری فعال · ' + (bioOn ? 'اثر انگشت روشن' : 'اثر انگشت خاموش') : 'رمزنگاری غیرفعال',
+        'openSettingsSecurity()'
+      )}
+      ${settingsRow(
+        '☁️',
+        '#3d8bfd',
+        'گوگل درایو',
+        u ? esc(u.email || u.name || 'متصل') : 'همگام‌سازی بین دستگاه‌ها',
+        'openSettingsGoogle()',
+        u ? '' : 'خاموش'
+      )}
+    </div>
+    <div class="sgroup">
+      ${settingsRow('🧾', '#f97316', 'خواندن فاکتور از عکس', 'کلید هوش مصنوعی گوگل', 'openSettingsScan()', gemini ? 'فعال' : 'خاموش')}
+      ${settingsRow('ℹ️', '#64748b', 'دربارهٔ برنامه', 'نسخه ' + APP_VERSION, 'openSettingsAbout()')}
+    </div>
+  `);
+}
+
+export function openSettingsAppearance() {
+  const theme = currentTheme();
+  openModal(`
+    ${settingsHeader('🎨 ظاهر', 'openSettings()')}
     <h3 style="margin:8px 0 10px">تم</h3>
     <div class="theme-grid">
       ${THEMES.map(
-        (t) => `<button type="button" class="theme-swatch ${theme === t.id ? 'on' : ''}" onclick="applyTheme('${t.id}');openSettings()">
+        (t) => `<button type="button" class="theme-swatch ${theme === t.id ? 'on' : ''}" onclick="applyTheme('${t.id}');openSettingsAppearance()">
         <span class="theme-dot" style="background:linear-gradient(135deg,${t.c1},${t.c2})"></span>
         ${t.name}
       </button>`
       ).join('')}
     </div>
-    <div class="divider"></div>
-    <h3 style="margin:8px 0 10px">🔐 امنیت داده‌ها</h3>
-    ${
-      enc
-        ? `<div class="hint" style="margin-bottom:10px">رمزنگاری فعال است — داده‌ها روی گوشی و درایو رمزشده‌اند.</div>
-           <button class="btn block" onclick="changePassPrompt()">تغییر رمز عبور</button>
-           <button class="btn block" style="margin-top:8px" onclick="rotatePhrasePrompt()">عبارت بازیابی جدید (اگر کاغذ گم شده)</button>`
-        : `<p class="small muted">داده‌هایت هنوز به‌صورت ساده ذخیره می‌شوند. با فعال‌کردن رمزنگاری، حتی در گوگل‌درایو هم خواندنی نخواهند بود.</p>
-           <button class="btn primary block" onclick="openEncryptSetup()">فعال‌کردن رمزنگاری</button>`
-    }
-    <div class="divider"></div>
-    <h3 style="margin:8px 0 10px">قفل ورود</h3>
-    ${
-      enc
-        ? `<p class="small muted">برنامه با رمز عبور باز می‌شود. برای ورود سریع روی همین گوشی می‌توانی اثر انگشت را فعال کنی.</p>
-           ${
-             bioOk
-               ? bioOn
-                 ? `<button class="btn block" onclick="disableBiometric();openSettings()">خاموش کردن اثر انگشت</button>`
-                 : `<button class="btn primary block" onclick="enableBiometric().then(()=>openSettings())">فعال‌کردن اثر انگشت</button>`
-               : `<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>`
-           }`
-        : `<p class="small muted">با رمز وارد برنامه می‌شوی. اثر انگشت اختیاری است و روی کرومِ گوشی معمولاً کار می‌کند.</p>
-    ${
-      pinOn
-        ? `<button class="btn block" onclick="changePinPrompt()">تغییر رمز</button>
-           <button class="btn danger block" style="margin-top:8px" onclick="clearPin();openSettings()">حذف قفل</button>`
-        : `<button class="btn primary block" onclick="changePinPrompt()">فعال‌کردن رمز</button>`
-    }
-    ${
-      pinOn && bioOk
-        ? bioOn
-          ? `<button class="btn block" style="margin-top:8px" onclick="disableBiometric();openSettings()">خاموش کردن اثر انگشت</button>`
-          : `<button class="btn block" style="margin-top:8px" onclick="enableBiometric().then(()=>openSettings())">فعال‌کردن اثر انگشت</button>`
-        : pinOn && !bioOk
-          ? `<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>`
+  `);
+}
+
+export function openSettingsSecurity() {
+  const enc = sec.isEncrypted();
+  const pinOn = hasPin();
+  const bioOn = hasBiometric();
+  const bioOk = bioAvailable();
+  let body = '';
+  if (enc) {
+    body += `
+    <div class="sgroup">
+      <div class="hint">✅ رمزنگاری فعال است — داده‌ها روی گوشی و گوگل‌درایو رمزشده‌اند و فقط با رمز عبور تو باز می‌شوند.</div>
+      ${settingsRow('🔑', '#3d8bfd', 'تغییر رمز عبور', 'روی همهٔ دستگاه‌ها اعمال می‌شود', 'changePassPrompt()')}
+      ${settingsRow('📜', '#a78bfa', 'عبارت بازیابی جدید', 'اگر کاغذ قبلی گم شده', 'rotatePhrasePrompt()')}
+    </div>
+    <div class="sgroup">
+      ${
+        bioOk
+          ? settingsRow(
+              '👆',
+              bioOn ? '#22c55e' : '#64748b',
+              'ورود با اثر انگشت',
+              bioOn ? 'روشن · فقط روی همین دستگاه' : 'خاموش · ورود سریع بدون رمز',
+              bioOn ? 'disableBiometric();openSettingsSecurity()' : 'enableBiometric().then(()=>openSettingsSecurity())',
+              bioOn ? 'روشن' : 'خاموش'
+            )
+          : '<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>'
+      }
+      ${settingsRow('🔒', '#ef4444', 'قفل کردن همین حالا', 'برای بازکردن رمز یا اثر انگشت لازم است', 'closeModal();lockApp()')}
+    </div>`;
+  } else {
+    body += `
+    <div class="sgroup">
+      <div class="hint">⚠️ داده‌هایت هنوز به‌صورت ساده ذخیره می‌شوند. با فعال‌کردن رمزنگاری، حتی در گوگل‌درایو هم خواندنی نخواهند بود.</div>
+      ${settingsRow('🔐', '#22c55e', 'فعال‌کردن رمزنگاری', 'رمز عبور + عبارت بازیابی', 'openEncryptSetup()')}
+    </div>
+    <div class="sgroup">
+      ${
+        pinOn
+          ? settingsRow('🔢', '#3d8bfd', 'تغییر رمز ورود', '', 'changePinPrompt()') +
+            settingsRow('🗑️', '#ef4444', 'حذف قفل', '', 'clearPin();openSettingsSecurity()')
+          : settingsRow('🔢', '#3d8bfd', 'فعال‌کردن رمز ورود', 'قفل ساده برای ورود', 'changePinPrompt()')
+      }
+      ${
+        pinOn && bioOk
+          ? settingsRow(
+              '👆',
+              bioOn ? '#22c55e' : '#64748b',
+              'ورود با اثر انگشت',
+              '',
+              bioOn ? 'disableBiometric();openSettingsSecurity()' : 'enableBiometric().then(()=>openSettingsSecurity())',
+              bioOn ? 'روشن' : 'خاموش'
+            )
           : ''
-    }`
-    }
-    ${googleSettingsHtml()}
-    <div class="divider"></div>
-    <h3 style="margin:8px 0 10px">خواندن فاکتور از عکس</h3>
+      }
+    </div>`;
+  }
+  openModal(`${settingsHeader('🔐 امنیت و حریم خصوصی', 'openSettings()')}${body}`);
+}
+
+export function openSettingsGoogle() {
+  const u = googleUserFromStore();
+  let body;
+  if (!u) {
+    body = `
+    <div class="hint" style="margin:0 0 12px">با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.${
+      sec.isEncrypted() ? ' داده‌ها رمزشده می‌روند؛ گوگل نمی‌تواند بخواندشان.' : ''
+    }</div>
+    <button class="btn primary block" onclick="closeModal();googleSignIn()">ورود با گوگل</button>`;
+  } else {
+    body = `
+    <div class="sgroup">
+      <div class="srow" style="cursor:default">
+        <span class="sic" style="background:#3d8bfd">☁️</span>
+        <span class="smid"><span class="st1">${esc(u.name || 'حساب گوگل')}</span>${u.email ? `<span class="st2">${esc(u.email)}</span>` : ''}</span>
+      </div>
+    </div>
+    <div class="sgroup">
+      ${settingsRow('⬆️', '#22c55e', 'الان در گوگل ذخیره کن', 'ارسال نسخهٔ این دستگاه', 'closeModal();pushToDrive(true)')}
+      ${settingsRow('⬇️', '#3d8bfd', 'دریافت از گوگل', 'گرفتن آخرین نسخه', "closeModal();loadFromDrive(function(){render();toast('دریافت از گوگل انجام شد ✓');},true)")}
+    </div>
+    <div class="sgroup">
+      ${settingsRow('🚪', '#ef4444', 'خروج از حساب گوگل', 'همگام‌سازی متوقف می‌شود', 'closeModal();googleSignOut()')}
+    </div>`;
+  }
+  openModal(`${settingsHeader('☁️ گوگل درایو', 'openSettings()')}${body}`);
+}
+
+export function openSettingsScan() {
+  const has = !!store.get('capital_gemini_key');
+  openModal(`
+    ${settingsHeader('🧾 خواندن فاکتور از عکس', 'openSettings()')}
     <p class="small muted">کلید Google AI Studio را این‌جا بگذار. به کسی نشان نده. عکس برای خواندن به گوگل فرستاده می‌شود.</p>
     <p><a class="btn block" href="${geminiHelpHref()}" target="_blank" rel="noopener">چطور کلید بگیرم؟</a></p>
     ${
-      store.get('capital_gemini_key')
-        ? `<div class="hint" style="margin:10px 0">کلید ذخیره شده است.</div>
-           <button class="btn block" onclick="clearGeminiKey()">حذف کلید</button>`
+      has
+        ? `<div class="hint" style="margin:10px 0">✅ کلید ذخیره شده است.</div>
+           <button class="btn danger block" onclick="clearGeminiKey()">حذف کلید</button>`
         : `<div class="field" style="margin-top:12px"><label>کلید API</label>
            <input class="input" id="geminiKey" type="password" autocomplete="off" placeholder="AIza...">
            </div>
            <button class="btn primary block" onclick="saveGeminiKey()">ذخیره کلید</button>`
     }
-    <div class="divider"></div>
-    <p class="small muted" style="text-align:center;margin:4px 0 0">نسخه ${APP_VERSION}</p>
+  `);
+}
+
+export function openSettingsAbout() {
+  openModal(`
+    ${settingsHeader('ℹ️ دربارهٔ برنامه', 'openSettings()')}
+    <div style="text-align:center;padding:10px 0 4px">
+      <div class="logo" style="margin:0 auto 10px">💰</div>
+      <div style="font-weight:800;font-size:16px">مدیریت سرمایه</div>
+      <div class="small muted" style="margin-top:4px">نسخه ${APP_VERSION}</div>
+    </div>
+    <div class="sgroup" style="margin-top:14px">
+      <div class="hint">روش پاکت‌ها: ضروریات ۶۰٪ · سرمایه‌گذاری ۲۰٪ · تفریح ۱۵٪ · نیکوکاری ۵٪ — به‌علاوهٔ «هدررفت» برای صداقت با خودت و «قرض / امانت» که خارج از بودجه است.</div>
+    </div>
   `);
 }
 
@@ -861,18 +972,6 @@ function googleUserFromStore() {
   } catch (e) {
     return null;
   }
-}
-
-function googleSettingsHtml() {
-  const u = googleUserFromStore();
-  if (!u) return '';
-  return `
-    <div class="divider"></div>
-    <h3 style="margin:8px 0 10px">گوگل درایو</h3>
-    <p class="small muted">${esc(u.name || 'حساب گوگل')}${u.email ? '<br>' + esc(u.email) : ''}</p>
-    <button class="btn primary block" onclick="closeModal();pushToDrive(true)">الان در گوگل ذخیره کن</button>
-    <button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast('دریافت از گوگل انجام شد ✓');},true)">دریافت از گوگل</button>
-    <button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">خروج از حساب گوگل</button>`;
 }
 
 export function changePinPrompt() {
