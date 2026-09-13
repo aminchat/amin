@@ -115,6 +115,7 @@ export function persist(stateObj) {
       envelope.data = await encryptData(dk, JSON.stringify(stateObj));
       envelope.meta = envelope.meta || {};
       envelope.meta.updatedAt = Date.now();
+      if (!envelope.meta.kid) envelope.meta.kid = await keyId(dk);
       saveEnvelope();
     } catch (e) {
       logErr('securestore:persist', e);
@@ -149,11 +150,34 @@ export async function enableEncryption(stateObj, passphrase, phrase, pin) {
     v: 2,
     wraps,
     data,
-    meta: { createdAt: now, updatedAt: now },
+    meta: { createdAt: now, updatedAt: now, kid: await keyId(key) },
   };
   dk = key;
   sessionPass = passphrase;
   saveEnvelope();
+}
+
+// شناسهٔ عمومی کلید داده — برای تشخیص اینکه دو پاکت از دو کلید متفاوتند
+async function keyId(key) {
+  try {
+    const raw = await crypto.subtle.exportKey('raw', key);
+    const h = await crypto.subtle.digest('SHA-256', raw);
+    return Array.from(new Uint8Array(h).slice(0, 8))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  } catch (e) {
+    return '';
+  }
+}
+
+export function metaKid() {
+  const env = getEnvelope();
+  return (env && env.meta && env.meta.kid) || '';
+}
+
+export function setSessionKey(key, pass) {
+  dk = key;
+  if (pass != null) sessionPass = pass;
 }
 
 // افزودن/تغییر پیچیدگی پین (فقط وقتی باز است)
@@ -214,6 +238,23 @@ export async function recoverWithPhrase(phraseText, newPass) {
   return decryptData(key, envelope.data).then((t) => JSON.parse(t));
 }
 
+// رمزگشایی پاکت دوردست با رمز عبور مشخص (برای یکی‌کردن دو دستگاه)
+export async function decryptRemoteWith(remoteEnv, pass) {
+  const passWrap =
+    (remoteEnv.wraps || []).find((w) => w.kind === 'pass') ||
+    (remoteEnv.wraps || []).find((w) => w.kind === 'phrase');
+  if (!passWrap) throw new Error('no usable wrap');
+  let key;
+  try {
+    key = await unwrapDataKey(passWrap, pass);
+  } catch (e) {
+    throw new Error('wrong-pass');
+  }
+  const text = await decryptData(key, remoteEnv.data);
+  sessionPass = pass;
+  return { state: JSON.parse(text), dk: key };
+}
+
 // رمزگشایی پاکت دوردست (از درایو) با رمز عبورِ نشست
 export async function decryptRemote(remoteEnv) {
   if (!sessionPass) throw new Error('need-pass');
@@ -232,11 +273,14 @@ export async function decryptRemote(remoteEnv) {
 }
 
 // پذیرش پاکت دوردست به‌جای محلی (وقتی دوردست جدیدتر است)
-// پین محلی حفظ می‌شود: کلید داده در عملیات عادی هرگز عوض نمی‌شود
-// (تغییر رمز/بازیابی همان کلید را نگه می‌دارند)، پس پیچیدگی پین هنوز معتبر است
-export function adoptRemoteEnvelope(remoteEnv) {
+// پین محلی حفظ می‌شود چون کلید داده در عملیات عادی عوض نمی‌شود؛
+// اما در «یکی‌کردن» دو کلید متفاوت، پینِ قدیمی باطل است (dropPin)
+export function adoptRemoteEnvelope(remoteEnv, opts) {
+  const dropPin = !!(opts && opts.dropPin);
   const localPinWrap =
-    envelope && envelope.wraps ? envelope.wraps.find((w) => w.kind === 'pin') : null;
+    !dropPin && envelope && envelope.wraps
+      ? envelope.wraps.find((w) => w.kind === 'pin')
+      : null;
   envelope = JSON.parse(JSON.stringify(remoteEnv));
   envelope.wraps = envelope.wraps.filter((w) => w.kind !== 'pin');
   if (localPinWrap) envelope.wraps.push(localPinWrap);

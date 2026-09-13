@@ -9,7 +9,7 @@ import {
   state,
 } from './state.js';
 import * as sec from './securestore.js';
-import { showLockForRemote, openPinRestoreModal } from './prefs.js';
+import { showLockForRemote, openPinRestoreModal, unlockApp } from './prefs.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -424,6 +424,14 @@ async function handleRemoteEnvelope(env, fileId) {
   }
   const localAt = sec.metaUpdatedAt();
   const remoteAt = (env.meta && env.meta.updatedAt) || 0;
+  const remoteKid = env.meta && env.meta.kid;
+  const localKid = sec.metaKid();
+  const diverged = !!(remoteKid && localKid && remoteKid !== localKid);
+
+  // دو دستگاه جداگانه رمزنگاری فعال کرده‌اند: باید یکی شوند
+  if (diverged) {
+    return tryRepairMerge(env);
+  }
 
   if (remoteAt > localAt) {
     if (!sec.hasSessionPass()) {
@@ -434,13 +442,14 @@ async function handleRemoteEnvelope(env, fileId) {
     try {
       const got = await sec.decryptRemote(env);
       sec.adoptRemoteEnvelope(env);
+      sec.setSessionKey(got.dk);
       replaceState(got.state);
       render();
       pendingLocalSave = false;
       toast('داده‌های جدیدتر از گوگل دریافت شد ✓');
     } catch (e) {
       pendingRemoteEnv = env;
-      showLockForRemote();
+      openRemotePassModal();
     }
     return;
   }
@@ -467,7 +476,86 @@ async function handleRemoteEnvelope(env, fileId) {
     }
   } catch (e) {
     pendingRemoteEnv = env;
+    openRemotePassModal();
   }
+}
+
+// ─── یکی‌کردن دو دستگاهی که جداگانه رمزنگاری فعال کرده‌اند ───────────────
+async function tryRepairMerge(env) {
+  if (!sec.isUnlocked()) {
+    // اول با رمز همین دستگاه باز کن، بعد رمز آن یکی را می‌پرسیم
+    pendingRemoteEnv = env;
+    showLockForRemote();
+    return;
+  }
+  if (sec.hasSessionPass()) {
+    try {
+      const got = await sec.decryptRemote(env);
+      return applyRemoteMerge(env, got);
+    } catch (e) {
+      // رمز این دستگاه به پاکت گوگل نمی‌خورد
+    }
+  }
+  pendingRemoteEnv = env;
+  openRemotePassModal();
+}
+
+function openRemotePassModal() {
+  openModalSafe(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>🔑 یکی‌کردن دستگاه‌ها</h2>
+    <p class="small muted">نسخهٔ داخل گوگل با رمز عبور دیگری ساخته شده — احتمالاً رمزنگاری را روی دستگاه دیگر جداگانه فعال کرده‌ای.
+    برای یکی‌کردن داده‌ها، <b>رمز عبوری که روی آن دستگاه ساختی</b> را وارد کن. بعد از یکی‌شدن، همان رمز روی همهٔ دستگاه‌ها معتبر می‌شود.</p>
+    <div class="field"><label>رمز عبورِ دستگاه دیگر</label>
+      <input class="input" id="remotePass" type="password" dir="ltr" autocomplete="off"></div>
+    <div id="remotePassErr" class="hint" style="display:none;color:#fb7185"></div>
+    <button class="btn primary block" style="margin-top:12px" onclick="submitRemotePass()">یکی‌کردن داده‌ها</button>
+    <button class="btn block" style="margin-top:8px" onclick="closeModal()">بعداً</button>
+  `);
+}
+
+export async function submitRemotePass() {
+  const env = pendingRemoteEnv;
+  if (!env) {
+    closeModalSafe();
+    return;
+  }
+  const val = String((document.getElementById('remotePass') || {}).value || '');
+  if (!val) {
+    toast('رمز عبور را وارد کن');
+    return;
+  }
+  try {
+    const got = await sec.decryptRemoteWith(env, val);
+    await applyRemoteMerge(env, got);
+    closeModalSafe();
+  } catch (e) {
+    const err = document.getElementById('remotePassErr');
+    if (err) {
+      err.style.display = '';
+      err.textContent = 'این رمز به داده‌های گوگل نخورد؛ رمز همان دستگاه دیگر را وارد کن.';
+    }
+  }
+}
+
+async function applyRemoteMerge(env, got) {
+  pendingRemoteEnv = null;
+  const merged = mergeStates(state, got.state);
+  // پاکت گوگل (کلید و رمزهایش) معتبر می‌شود؛ پین قدیمی این دستگاه باطل است
+  sec.adoptRemoteEnvelope(env, { dropPin: true });
+  sec.setSessionKey(got.dk);
+  replaceState(merged);
+  if (document.body.classList.contains('locked')) unlockApp();
+  render();
+  pendingLocalSave = true;
+  pinRestoreAsked = false;
+  toast('داده‌ها یکی شد ✓ از این پس با این رمز باز می‌شود');
+  pushToDrive(false);
+  askRestorePin();
+}
+
+function closeModalSafe() {
+  import('./modal.js').then((m) => m.closeModal());
 }
 
 async function processPendingRemote() {
@@ -487,8 +575,8 @@ async function processPendingRemote() {
     render();
     toast('داده‌ها از گوگل باز شد ✓');
   } catch (e) {
-    pendingRemoteEnv = null;
-    toast('دریافت تغییرات گوگل با این رمز نشد');
+    // رمز این دستگاه به نسخهٔ گوگل نمی‌خورد → پرسیدن رمز دستگاه دیگر
+    openRemotePassModal();
   }
 }
 

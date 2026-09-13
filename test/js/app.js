@@ -41,6 +41,7 @@ import {
   showLockForRemote,
   startPhraseRecovery,
   submitLockPin,
+  submitRemotePass,
   toggleLockMode,
   togglePrivacy,
   tryBiometric,
