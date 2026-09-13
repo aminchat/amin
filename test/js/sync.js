@@ -9,7 +9,7 @@ import {
   state,
 } from './state.js';
 import * as sec from './securestore.js';
-import { showLockForRemote } from './prefs.js';
+import { showLockForRemote, openPinRestoreModal } from './prefs.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -496,19 +496,7 @@ function askRestorePin() {
   if (pinRestoreAsked) return;
   if (!sec.isEncrypted() || sec.hasWrap('pin')) return;
   pinRestoreAsked = true;
-  setTimeout(() => {
-    const pin = prompt('برای ورود سریع‌تر روی این گوشی، پین ۶ تا ۸ رقمی بگذار (یا خالی بگذار):');
-    if (pin == null || !pin) return;
-    if (!/^\d{6,8}$/.test(pin)) {
-      toast('پین باید ۶ تا ۸ رقم باشد؛ بعداً از تنظیمات می‌توانی بگذاری');
-      pinRestoreAsked = false;
-      return;
-    }
-    sec.setPinWrap(pin).then((ok) => {
-      if (ok) toast('پین ذخیره شد ✓');
-      else pinRestoreAsked = false;
-    });
-  }, 600);
+  setTimeout(() => openPinRestoreModal(), 600);
 }
 
 // بعد از باز شدن قفل: رسیدگی به دوردستِ معطل، پوش‌های مانده و پیشنهاد پین

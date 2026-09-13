@@ -164,30 +164,36 @@ export async function enableBiometric() {
     if (!cred) return false;
 
     if (encrypted) {
-      const prfRes =
-        cred.response &&
-        cred.getClientExtensionResults &&
-        cred.getClientExtensionResults().prf;
-      const first = prfRes && prfRes.results && prfRes.results.first;
-      if (!first) {
-        toast('این مرورگر اثر انگشتِ رمزشده را پشتیبانی نمی‌کند');
-        return false;
+      let ext = null;
+      try {
+        ext = cred.getClientExtensionResults && cred.getClientExtensionResults();
+      } catch (e) {}
+      const first = ext && ext.prf && ext.prf.results && ext.prf.results.first;
+      if (first) {
+        if (!sec.isUnlocked()) return false;
+        const kek = await importKekFromRaw(new Uint8Array(first));
+        const wrap = await wrapDataKeyWithKek(sec.getDataKey(), kek);
+        store.set(
+          BIO_KEY,
+          JSON.stringify({ v: 2, id: b64(cred.rawId), prf: b64(prfInput), wrap })
+        );
+        toast('ورود با اثر انگشت فعال شد ✓');
+        return true;
       }
-      if (!sec.isUnlocked()) return false;
-      const kek = await importKekFromRaw(new Uint8Array(first));
-      const wrap = await wrapDataKeyWithKek(sec.getDataKey(), kek);
-      store.set(
-        BIO_KEY,
-        JSON.stringify({ v: 2, id: b64(cred.rawId), prf: b64(prfInput), wrap })
-      );
-      toast('ورود با اثر انگشت فعال شد ✓');
+      // مرورگر PRF ندارد: حالت ساده — اثر انگشت فقط قفل صفحه را باز می‌کند
+      store.set(BIO_KEY, b64(cred.rawId));
+      toast('اثر انگشت فعال شد (این مرورگر حالت پیشرفته ندارد؛ گاهی پین هم لازم است)');
       return true;
     }
     store.set(BIO_KEY, b64(cred.rawId));
     toast('ورود با اثر انگشت فعال شد');
     return true;
   } catch (e) {
-    toast('فعال‌سازی اثر انگشت انجام نشد');
+    if (window.__capLog) window.__capLog('enableBiometric', e);
+    const name = (e && e.name) || '';
+    if (name === 'NotAllowedError') toast('اجازهٔ اثر انگشت داده نشد');
+    else if (name === 'NotSupportedError') toast('این دستگاه این نوع اثر انگشت را پشتیبانی نمی‌کند');
+    else toast('فعال‌سازی اثر انگشت انجام نشد (' + name + ')');
     return false;
   }
 }
@@ -218,16 +224,23 @@ export async function tryBiometric() {
     const cred = await navigator.credentials.get({ publicKey });
     if (!cred) return { ok: false };
     if (rec.v === 2 && sec.isEncrypted()) {
-      const res = cred.getClientExtensionResults().prf;
-      const first = res && res.results && res.results.first;
-      if (!first) return { ok: false };
-      const kek = await importKekFromRaw(new Uint8Array(first));
-      const key = await unwrapDataKeyWithKek(rec.wrap, kek);
-      const state = await sec.unlockWithKey(key);
-      return { ok: true, state };
+      let ext = null;
+      try {
+        ext = cred.getClientExtensionResults();
+      } catch (e) {}
+      const first = ext && ext.prf && ext.prf.results && ext.prf.results.first;
+      if (first) {
+        const kek = await importKekFromRaw(new Uint8Array(first));
+        const key = await unwrapDataKeyWithKek(rec.wrap, kek);
+        const state = await sec.unlockWithKey(key);
+        return { ok: true, state };
+      }
+      return { ok: true, gateOnly: true };
     }
+    if (sec.isEncrypted()) return { ok: true, gateOnly: true };
     return { ok: !!cred };
   } catch (e) {
+    if (window.__capLog) window.__capLog('tryBiometric', e);
     return { ok: false };
   }
 }
@@ -238,8 +251,22 @@ export async function bioUnlock() {
     toast('اثر انگشت تأیید نشد');
     return;
   }
-  if (res.state) finalizeUnlock(res.state);
-  else unlockApp();
+  if (res.state) {
+    finalizeUnlock(res.state);
+    return;
+  }
+  if (res.gateOnly && sec.isEncrypted()) {
+    if (sec.isUnlocked()) {
+      // نشست هنوز کلید را در حافظه دارد؛ فقط صفحه باز می‌شود
+      unlockApp();
+      return;
+    }
+    toast('حالا پین یا رمز عبور را وارد کن');
+    const inp = document.getElementById('lockPin');
+    if (inp) inp.focus();
+    return;
+  }
+  unlockApp();
 }
 
 // ─── صفحهٔ قفل: دو حالت پین / رمز عبور ─────────────────────────────────────
@@ -346,7 +373,10 @@ export async function submitLockPin() {
 }
 
 // ─── فراموشی رمز عبور: بازیابی با عبارت بازیابی ───────────────────────────
+let recPhraseValue = '';
+
 export function startPhraseRecovery() {
+  recPhraseValue = '';
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
     <h2>بازیابی با عبارت بازیابی</h2>
@@ -373,6 +403,8 @@ export async function recoveryStep2() {
     }
     return;
   }
+  // عبارت برای مرحلهٔ بعد نگه داشته می‌شود چون اینپوت از صفحه می‌رود
+  recPhraseValue = normalizePhrase(val).join(' ');
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
     <h2>رمز عبور جدید</h2>
@@ -386,9 +418,13 @@ export async function recoveryStep2() {
 }
 
 export async function recoveryFinish() {
-  const phrase = (document.getElementById('recPhrase') || {}).value || '';
+  const phrase = recPhraseValue;
   const a = (document.getElementById('recPass') || {}).value || '';
   const b = (document.getElementById('recPass2') || {}).value || '';
+  if (!phrase) {
+    startPhraseRecovery();
+    return;
+  }
   if (a.length < 8) {
     toast('رمز عبور حداقل ۸ نویسه باشد');
     return;
@@ -399,11 +435,13 @@ export async function recoveryFinish() {
   }
   try {
     const st = await sec.recoverWithPhrase(phrase, a);
+    recPhraseValue = '';
     closeModal();
     finalizeUnlock(st);
     toast('رمز عبور جدید ذخیره شد ✓');
   } catch (e) {
-    toast('عبارت بازیابی درست نیست');
+    if (window.__capLog) window.__capLog('recoveryFinish', e);
+    toast('بازیابی انجام نشد؛ دوباره تلاش کن');
   }
 }
 
@@ -532,6 +570,34 @@ export async function encryptFinish(skipPin) {
   } catch (e) {
     if (window.__capLog) window.__capLog('فعال‌سازی رمزنگاری', e);
     toast('مشکلی پیش آمد؛ دوباره تلاش کن');
+  }
+}
+
+// ─── پیشنهاد پین بعد از ورود با رمز عبور (مودال، چون prompt در PWA نیست) ──
+export function openPinRestoreModal() {
+  openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>🔢 ورود سریع روی این گوشی</h2>
+    <p class="small muted">رمز عبور روی همهٔ دستگاه‌ها یکی است، اما پین فقط برای همین گوشی است.
+    برای ورود سریع می‌توانی یک پین ۶ تا ۸ رقمی بگذاری.</p>
+    <div class="field"><label>پین جدید</label>
+      <input class="input" id="pinRestore" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
+    <button class="btn primary block" style="margin-top:12px" onclick="savePinRestore()">ذخیره پین</button>
+    <button class="btn block" style="margin-top:8px" onclick="closeModal()">فعلاً نه، با رمز عبور ادامه می‌دهم</button>
+  `);
+}
+
+export async function savePinRestore() {
+  const v = String((document.getElementById('pinRestore') || {}).value || '').trim();
+  if (!/^\d{6,8}$/.test(v)) {
+    toast('پین باید ۶ تا ۸ رقم باشد');
+    return;
+  }
+  const ok = await sec.setPinWrap(v);
+  if (ok) {
+    closeModal();
+    setLockMode('pin');
+    toast('پین ذخیره شد ✓');
   }
 }
 

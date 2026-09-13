@@ -232,9 +232,14 @@ export async function decryptRemote(remoteEnv) {
 }
 
 // پذیرش پاکت دوردست به‌جای محلی (وقتی دوردست جدیدتر است)
+// پین محلی حفظ می‌شود: کلید داده در عملیات عادی هرگز عوض نمی‌شود
+// (تغییر رمز/بازیابی همان کلید را نگه می‌دارند)، پس پیچیدگی پین هنوز معتبر است
 export function adoptRemoteEnvelope(remoteEnv) {
+  const localPinWrap =
+    envelope && envelope.wraps ? envelope.wraps.find((w) => w.kind === 'pin') : null;
   envelope = JSON.parse(JSON.stringify(remoteEnv));
   envelope.wraps = envelope.wraps.filter((w) => w.kind !== 'pin');
+  if (localPinWrap) envelope.wraps.push(localPinWrap);
   saveEnvelope();
 }
 
