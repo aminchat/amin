@@ -459,8 +459,8 @@ export function renderInvest() {
   const totalBuy = state.investments.reduce((s, i) => s + i.qty * i.buy * rateOf(i.currency), 0);
   const plAll = total - totalBuy;
   let html = `
-  <div class="hero" style="grid-template-columns:1fr auto">
-    <div><div class="lbl">${icon('trend')} ارزش کل سرمایه‌گذاری</div>
+  <div class="hero">
+    <div style="min-width:0"><div class="lbl">${icon('trend')} ارزش کل سرمایه‌گذاری</div>
     <div class="hero-num">${fmt(total)}<small>تومان</small></div>
     <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmt(Math.abs(plAll))} تومان</div></div>
     <span class="ib lg ${plAll >= 0 ? 'green' : 'red'}">${icon('trend')}</span>
@@ -562,8 +562,8 @@ export function renderAccounts() {
       else for (const k of keys) if (groups.get(k).length === 1) openGroups.add(k);
     }
     const total = cashTotal();
-    html += `<div class="hero" style="grid-template-columns:1fr auto">
-      <div><div class="lbl">${icon('bank')} جمع همهٔ حساب‌ها</div>
+    html += `<div class="hero">
+      <div style="min-width:0"><div class="lbl">${icon('bank')} جمع همهٔ حساب‌ها</div>
       <div class="hero-num">${fmt(total)}<small>تومان</small></div>
       <div class="sub">${toFa(state.accounts.length)} حساب در ${toFa(keys.length)} مؤسسه</div></div>
       <span class="ib lg">${icon('card')}</span>
@@ -630,7 +630,8 @@ export function fitNumbers(root) {
     const min = Math.max(12, base * 0.5);
     let size = base;
     let guard = 0;
-    while (el.scrollWidth > el.clientWidth + 1 && size > min && guard++ < 24) {
+    const limit = () => Math.min(el.clientWidth, el.parentElement ? el.parentElement.clientWidth : Infinity);
+    while (el.scrollWidth > limit() + 1 && size > min && guard++ < 24) {
       size -= 1;
       el.style.fontSize = size + 'px';
     }
