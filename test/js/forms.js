@@ -6,6 +6,7 @@ import { render } from './view.js';
 import {
   ACCT_TYPES,
   CATS,
+  KNOWN_BANKS,
   accountById,
   accountCurrent,
   addCustomCurrency,
@@ -884,14 +885,23 @@ export function delTx(id) {
   });
 }
 
-export function openAccountForm(a) {
+export function openAccountForm(a, presetBank) {
   editingAcctId = a ? a.id : null;
   const isEdit = !!a;
+  if (!a && presetBank) a = { bank: presetBank, name: '', type: ACCT_TYPES[0], currency: 'تومان', initial: '' , __preset: true };
+  if (a && a.__preset) { editingAcctId = null; }
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
-    <h2>${isEdit ? 'ویرایش حساب' : 'حساب جدید'}</h2>
-    <div class="field"><label>نام حساب</label>
-      <input class="input" id="aName" placeholder="مثلاً کارت ملت" value="${a ? esc(a.name) : ''}">
+    <h2>${isEdit && !a.__preset ? 'ویرایش حساب' : 'حساب جدید'}</h2>
+    <div class="field"><label>بانک / صرافی / مؤسسه</label>
+      <input class="input" id="aBank" list="bankList" placeholder="مثلاً بانک ملت، نوبیتکس، نقد" value="${a ? esc(a.bank || '') : ''}" autocomplete="off">
+      <datalist id="bankList">${[...new Set([...state.accounts.map((x) => x.bank).filter(Boolean), ...KNOWN_BANKS])]
+        .map((b) => `<option value="${esc(b)}"></option>`)
+        .join('')}</datalist>
+      <div class="small muted" style="margin-top:6px">حساب‌های یک مؤسسه در صفحهٔ حساب‌ها یک‌کاسه نشان داده می‌شوند.</div>
+    </div>
+    <div class="field"><label>نام حساب / کارت</label>
+      <input class="input" id="aName" placeholder="مثلاً کارت حقوق، حساب پس‌انداز" value="${a ? esc(a.name) : ''}">
     </div>
     <div class="field"><label>نوع</label>
       <select class="input" id="aType">
@@ -913,7 +923,7 @@ export function openAccountForm(a) {
     <div class="field"><label>موجودی اولیه</label>
       <input class="input" id="aInit" type="number" step="any" inputmode="decimal" placeholder="۰" value="${a ? a.initial : ''}">
     </div>
-    <button class="btn primary block" onclick="saveAccount()">${isEdit ? 'ذخیره' : 'افزودن حساب'}</button>
+    <button class="btn primary block" onclick="saveAccount()">${isEdit && !a.__preset ? 'ذخیره' : 'افزودن حساب'}</button>
   `);
 }
 
@@ -930,6 +940,7 @@ export function saveAccount() {
   }
   const data = {
     name,
+    bank: (document.getElementById('aBank').value || '').trim(),
     type: document.getElementById('aType').value,
     currency,
     last4: document.getElementById('aLast4').value.trim(),

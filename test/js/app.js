@@ -2,7 +2,7 @@ import { store, toast } from './utils.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
-import { renderAll, setTodayLabel, txShift, repShift, togglePocket } from './render.js';
+import { renderAll, setTodayLabel, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
   enableDebtReminders,
@@ -309,6 +309,7 @@ Object.assign(window, {
   txShift,
   repShift,
   togglePocket,
+  toggleAcctGroup,
   googleSignIn,
   googleSignOut,
   openProfileMenu,

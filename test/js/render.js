@@ -27,6 +27,9 @@ import {
   catSpent,
   catCeiling,
   loanFlow,
+  accountCurrentToman,
+  institutionOf,
+  institutionIcon,
 } from './state.js';
 
 export let txMonth = curMonthKey();
@@ -338,6 +341,39 @@ export function renderInvest() {
   document.getElementById('investContent').innerHTML = html;
 }
 
+const openGroups = new Set();
+let groupsInit = false;
+
+export function toggleAcctGroup(key) {
+  if (openGroups.has(key)) openGroups.delete(key);
+  else openGroups.add(key);
+  renderAccounts();
+}
+
+function acctRow(a) {
+  const bal = accountCurrent(a);
+  const isForeign = a.currency !== 'تومان';
+  const rate = rateOf(a.currency);
+  return `<div class="acct-row">
+    <div class="row acct-main" style="align-items:center" onclick="openAccountLedger('${a.id}')">
+      <div class="ic" style="background:rgba(61,139,253,.12);width:36px;height:36px;font-size:16px">${a.type === 'ارز دیجیتال' ? '🪙' : a.type === 'نقدی' ? '💵' : a.type === 'کیف پول آنلاین' ? '📱' : '💳'}</div>
+      <div style="flex:1;min-width:0">
+        <div class="t1" style="font-size:13.5px">${esc(a.name)} ${a.last4 ? `<span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
+        <div class="t2">${esc(a.type)} · ${a.currency}${isForeign && rate ? ` (${fmt(rate)} ت/${a.currency})` : ''}</div>
+      </div>
+      <div style="text-align:left">
+        <div class="amt ${bal >= 0 ? 'in' : 'out'}">${fmt(bal)}</div>
+        ${isForeign ? `<div class="small muted">≈ ${fmtT(bal * rate)}</div>` : ''}
+      </div>
+      <div class="acct-actions">
+        <button class="btn sm" onclick="event.stopPropagation();openAccountForm(findAccount('${a.id}'))">✏️</button>
+        <button class="btn sm danger" onclick="event.stopPropagation();delAccount('${a.id}')">🗑️</button>
+      </div>
+    </div>
+    ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);border-color:rgba(245,158,11,.4);margin-top:6px">⚠️ نرخ ${a.currency} ثبت نشده؛ در جمع کل حساب نمی‌شود.</div>` : ''}
+  </div>`;
+}
+
 export function renderAccounts() {
   const foreign = [...new Set(state.accounts.map((a) => a.currency).filter((c) => c !== 'تومان'))];
   let html = `
@@ -349,31 +385,63 @@ export function renderAccounts() {
   if (state.accounts.length === 0) {
     html += `<div class="empty"><span class="em">💳</span>هنوز حسابی نساخته‌ای.<br>کارت بانکی، پول نقد یا کیف پول ارزی اضافه کن.</div>`;
   } else {
-    html += state.accounts
-      .map((a) => {
-        const bal = accountCurrent(a);
-        const isForeign = a.currency !== 'تومان';
-        const rate = rateOf(a.currency);
-        return `<div class="card acct-card" style="padding:14px">
-        <div class="row acct-main" style="align-items:center" onclick="openAccountLedger('${a.id}')">
-          <div class="ic" style="background:rgba(61,139,253,.15)">💳</div>
-          <div style="flex:1">
-            <div class="t1" style="font-size:14px">${esc(a.name)} ${a.last4 ? `<span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
-            <div class="t2">${esc(a.type)} · ${a.currency}${isForeign && rate ? ` (${fmt(rate)} ت/${a.currency})` : ''}</div>
-          </div>
-          <div style="text-align:left">
-            <div class="amt ${bal >= 0 ? 'in' : 'out'}">${fmt(bal)}</div>
-            ${isForeign ? `<div class="small muted">≈ ${fmtT(bal * rate)}</div>` : `<div class="small muted">تومان</div>`}
-          </div>
-        </div>
-        ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);border-color:rgba(245,158,11,.4)">⚠️ نرخ ${a.currency} ثبت نشده؛ در جمع کل حساب نمی‌شود.</div>` : ''}
-        <div class="row" style="margin-top:10px">
-          <button class="btn sm" onclick="openAccountForm(findAccount('${a.id}'))">✏️ ویرایش</button>
-          <button class="btn sm danger" onclick="delAccount('${a.id}')">🗑️</button>
-        </div>
+    // گروه‌بندی بر اساس مؤسسه
+    const groups = new Map();
+    for (const a of state.accounts) {
+      const k = institutionOf(a) || '__none';
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(a);
+    }
+    const keys = [...groups.keys()].sort((x, y) => {
+      if (x === '__none') return 1;
+      if (y === '__none') return -1;
+      const tx = groups.get(x).reduce((s, a) => s + accountCurrentToman(a), 0);
+      const ty = groups.get(y).reduce((s, a) => s + accountCurrentToman(a), 0);
+      return ty - tx;
+    });
+    if (!groupsInit) {
+      groupsInit = true;
+      // پیش‌فرض: گروه‌های تک‌حسابی باز، بقیه بسته (اگر فقط یک گروه هست، باز)
+      if (keys.length === 1) openGroups.add(keys[0]);
+      else for (const k of keys) if (groups.get(k).length === 1) openGroups.add(k);
+    }
+    const total = cashTotal();
+    html += `<div class="card" style="background:linear-gradient(135deg,#14203a,#1a1230);border-color:#2a3b5e;padding:14px">
+      <div class="small" style="color:#93a5c8">جمع همهٔ حساب‌ها</div>
+      <div class="val" style="font-size:24px;color:#fff">${fmtT(total)}</div>
+      <div class="small" style="color:#93a5c8;margin-top:2px">${toFa(state.accounts.length)} حساب در ${toFa(keys.length)} مؤسسه</div>
+    </div>`;
+
+    for (const k of keys) {
+      const accts = groups.get(k);
+      const label = k === '__none' ? 'بدون مؤسسه' : k;
+      const sum = accts.reduce((s, a) => s + accountCurrentToman(a), 0);
+      const open = openGroups.has(k);
+      const curs = [...new Set(accts.map((a) => a.currency))];
+      const sub =
+        toFa(accts.length) +
+        (accts.length === 1 ? ' حساب' : ' حساب') +
+        (curs.length > 1 ? ' · ' + curs.join('، ') : curs[0] !== 'تومان' ? ' · ' + curs[0] : '');
+      const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((sum / total) * 100))) : 0;
+      html += `<div class="card acct-group ${open ? 'open' : ''}" style="padding:0;overflow:hidden">
+        <button type="button" class="acct-group-head" onclick="toggleAcctGroup('${esc(k).replace(/'/g, '&#39;')}')">
+          <span class="ic" style="background:rgba(61,139,253,.15)">${k === '__none' ? '🗂️' : institutionIcon(accts)}</span>
+          <span style="flex:1;min-width:0;text-align:right">
+            <span class="t1" style="font-size:14.5px;display:block">${esc(label)}</span>
+            <span class="t2" style="display:block">${sub}</span>
+            <span class="bar" style="margin-top:6px;height:4px"><span style="display:block;height:100%;width:${pct}%;background:var(--accent);border-radius:99px"></span></span>
+          </span>
+          <span style="text-align:left">
+            <span class="amt ${sum >= 0 ? 'in' : 'out'}" style="display:block">${fmtT(sum)}</span>
+            <span class="small muted">${pct ? toFa(pct) + '٪ از کل' : ''}</span>
+          </span>
+          <span class="pocket-chev" style="margin-right:6px">${open ? '▾' : '◂'}</span>
+        </button>
+        ${open ? `<div class="acct-group-body">${accts.map(acctRow).join('')}
+          <button class="btn sm block" style="margin:8px 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">+ حساب جدید در ${k === '__none' ? 'این گروه' : esc(label)}</button>
+        </div>` : ''}
       </div>`;
-      })
-      .join('');
+    }
   }
 
   if (foreign.length) {
