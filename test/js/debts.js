@@ -3,7 +3,7 @@ import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
-import { save, state, accountById, LOAN_CAT } from './state.js';
+import { save, state, accountById, rateOf, LOAN_CAT } from './state.js';
 
 const NOTIFY_DAY_KEY = 'capital_debt_notify_day';
 let editingDebtId = null;
@@ -257,8 +257,34 @@ function sortDebts(list) {
   });
 }
 
+// واحد پول یک مورد = واحد حسابش (بدون حساب → تومان)
+function debtCurrency(d) {
+  const a = d.accountId && accountById(d.accountId);
+  return (a && a.currency) || 'تومان';
+}
+// معادل تومانی؛ اگر نرخ ثبت نشده باشد null
+function debtToman(d) {
+  const cur = debtCurrency(d);
+  if (cur === 'تومان') return d.amount || 0;
+  const r = rateOf(cur);
+  return r ? (d.amount || 0) * r : null;
+}
+function sumToman(list) {
+  let sum = 0;
+  const missing = new Set();
+  for (const d of list) {
+    const v = debtToman(d);
+    if (v == null) missing.add(debtCurrency(d));
+    else sum += v;
+  }
+  return { sum, missing: [...missing] };
+}
+
 function debtRow(d) {
   const mine = d.kind === 'in';
+  const cur = debtCurrency(d);
+  const foreign = cur !== 'تومان';
+  const tm = foreign ? debtToman(d) : null;
   const n = daysUntilDue(d.dueISO);
   const hot = !d.settled && n !== null && n <= 0;
   const soon = !d.settled && n !== null && n > 0 && n <= 3;
@@ -272,7 +298,8 @@ function debtRow(d) {
         }</div>
       </div>
       <div style="text-align:left">
-        <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${fmt(d.amount)}</div>
+        <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${fmt(d.amount)}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
+        ${foreign ? `<div class="small muted">${tm == null ? 'نرخ ' + esc(cur) + ' ثبت نشده' : '≈ ' + fmt(tm) + ' تومان'}</div>` : ''}
         <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? 'برگردان' : 'تسویه'}</button>
       </div>
     </div>
@@ -286,15 +313,36 @@ export function renderDebts() {
   const list = sortDebts(allDebts());
   const open = list.filter((d) => !d.settled);
   const done = list.filter((d) => d.settled);
-  const rec = open.filter((d) => d.kind === 'in').reduce((s, d) => s + (d.amount || 0), 0);
-  const pay = open.filter((d) => d.kind === 'out').reduce((s, d) => s + (d.amount || 0), 0);
+  const recT = sumToman(open.filter((d) => d.kind === 'in'));
+  const payT = sumToman(open.filter((d) => d.kind === 'out'));
+  const rec = recT.sum;
+  const pay = payT.sum;
+  const missing = [...new Set([...recT.missing, ...payT.missing])];
+  // ریز جمع به تفکیک واحد پول (فقط وقتی ارز خارجی هست)
+  const byCur = {};
+  for (const d of open) {
+    const c = debtCurrency(d);
+    byCur[c] = byCur[c] || { in: 0, out: 0 };
+    byCur[c][d.kind === 'in' ? 'in' : 'out'] += d.amount || 0;
+  }
+  const curs = Object.keys(byCur);
+  const breakdown =
+    curs.length > 1 || (curs.length === 1 && curs[0] !== 'تومان')
+      ? `<div class="hint" style="margin:0 0 12px">به تفکیک واحد: ${curs
+          .map((c) => `<b>${esc(c)}</b> طلب ${fmt(byCur[c].in)} / بدهی ${fmt(byCur[c].out)}`)
+          .join(' · ')}</div>`
+      : '';
+  const missingHint = missing.length
+    ? `<div class="hint" style="color:var(--orange);margin:0 0 12px">نرخ ${missing.map(esc).join('، ')} ثبت نشده؛ این موارد در جمع تومانی حساب نشده‌اند. نرخ را از بخش حساب‌ها وارد کن.</div>`
+    : '';
   const notifyOn = typeof Notification !== 'undefined' && Notification.permission === 'granted';
 
   let html = `
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">طلب باز</div><div class="val green">${fmt(rec)}</div></div>
-      <div class="stat"><div class="lbl">بدهی باز</div><div class="val red">${fmt(pay)}</div></div>
+      <div class="stat"><div class="lbl">طلب باز</div><div class="val green">${fmt(rec)}</div><div class="sub">معادل تومان</div></div>
+      <div class="stat"><div class="lbl">بدهی باز</div><div class="val red">${fmt(pay)}</div><div class="sub">معادل تومان</div></div>
     </div>
+    ${breakdown}${missingHint}
     <button class="btn primary block" style="margin-bottom:12px" onclick="openDebtForm()">${icon('plus')} ثبت طلب یا بدهی</button>
     ${
       notifyOn
