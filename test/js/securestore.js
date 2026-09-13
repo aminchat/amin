@@ -188,7 +188,9 @@ export function metaWrapsAt() {
 }
 function touchWraps() {
   envelope.meta = envelope.meta || {};
-  envelope.meta.wrapsAt = Date.now();
+  // همیشه از مقدار قبلی بزرگ‌تر باشد — حتی اگر ساعت این دستگاه از دستگاه دیگر عقب‌تر باشد،
+  // تغییری که بعد از دریافتِ کلیدهای آن دستگاه انجام شده، «جدیدتر» شمرده می‌شود
+  envelope.meta.wrapsAt = Math.max(Date.now(), wrapsAtOf(envelope) + 1);
 }
 function notifyWrapsChanged() {
   try {
@@ -380,5 +382,8 @@ export function __debug() {
     hasEnv: !!envelope,
     wraps: envelope ? envelope.wraps.map((w) => w.kind) : [],
     hasSessionPass: !!sessionPass,
+    kid: metaKid(),
+    wrapsAt: metaWrapsAt(),
+    updatedAt: metaUpdatedAt(),
   };
 }

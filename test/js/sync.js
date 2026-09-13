@@ -636,7 +636,10 @@ document.addEventListener('cap:encrypt-on', function () {
 document.addEventListener('cap:wraps-changed', function () {
   if (!gUser && !tokenAlive()) return;
   pendingLocalSave = true;
-  pushToDrive(false);
+  pushToDrive(false, function (ok) {
+    if (ok) toast('رمز جدید در گوگل ذخیره شد ✓ دستگاه‌های دیگر هم به‌روز می‌شوند');
+    else toast('رمز جدید هنوز به گوگل نرفته؛ از منوی حساب «الان در گوگل ذخیره کن» را بزن');
+  });
 });
 
 // محتوایی که در درایو ذخیره می‌شود: پاکت رمزشده یا حالت ساده
@@ -655,10 +658,15 @@ export function scheduleSync() {
   pushToDrive(false);
 }
 
-export function pushToDrive(interactive) {
-  if (sec.isEncrypted() && !sec.isUnlocked()) return;
+export function pushToDrive(interactive, onDone) {
+  if (sec.isEncrypted() && !sec.isUnlocked()) {
+    if (onDone) onDone(false);
+    return;
+  }
+  let pushOk = false;
   const finish = function () {
     pushInFlight = false;
+    if (onDone) onDone(pushOk);
   };
   const run = function () {
     pushInFlight = true;
@@ -674,6 +682,7 @@ export function pushToDrive(interactive) {
       })
       .then(function () {
         pendingLocalSave = false;
+        pushOk = true;
         if (interactive) toast('در Google Drive ذخیره شد ✓');
       })
       .catch(function () {
