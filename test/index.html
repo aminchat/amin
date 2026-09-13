@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" type="image/png" href="../icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=vazirmatn:400,600,700&display=swap">
-<link rel="stylesheet" href="css/app.css?v=1.5.1">
+<link rel="stylesheet" href="css/app.css?v=1.6.0">
 <script>
 window.__capErrors = [];
 window.__capLog = function (where, err) {
@@ -46,7 +46,6 @@ try {
     </div>
   </div>
   <div class="hdr-actions">
-    <button type="button" class="hdr-btn" id="btnHome" title="خانه" aria-label="خانه">🏠</button>
     <button type="button" class="hdr-btn" id="btnPrivacy" title="مخفی کردن اعداد">👁</button>
     <button type="button" class="hdr-btn" id="btnSettings" title="تنظیمات">⚙</button>
   </div>
@@ -74,7 +73,13 @@ try {
   </section>
 </main>
 
-<button id="fab" title="تراکنش جدید">+</button>
+<nav id="bottomNav" aria-label="ناوبری">
+  <button type="button" class="bn" data-tab="home"><span class="bni">🏠</span><span class="bnl">خانه</span></button>
+  <button type="button" class="bn" data-tab="tx"><span class="bni">💸</span><span class="bnl">تراکنش</span></button>
+  <button id="fab" title="تراکنش جدید" aria-label="افزودن">+</button>
+  <button type="button" class="bn" data-tab="report"><span class="bni">📊</span><span class="bnl">گزارش</span></button>
+  <button type="button" class="bn" data-tab="accounts"><span class="bni">💳</span><span class="bnl">حساب‌ها</span></button>
+</nav>
 
 <div id="menuScrim" class="menu-scrim"></div>
 <aside id="sideMenu" class="side-menu" aria-hidden="true">
@@ -107,6 +112,6 @@ try {
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=1.5.1"></script>
+<script type="module" src="js/app.js?v=1.6.0"></script>
 </body>
 </html>

@@ -181,8 +181,7 @@ function switchTab(id) {
   if (title && tab) title.textContent = tab.lbl;
   const fab = document.getElementById('fab');
   if (fab) fab.title = id === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
-  const homeBtn = document.getElementById('btnHome');
-  if (homeBtn) homeBtn.style.visibility = id === 'home' ? 'hidden' : '';
+  document.querySelectorAll('#bottomNav .bn').forEach((b) => b.classList.toggle('on', b.dataset.tab === id));
   closeMenu();
   buildMenu();
   render();
@@ -377,11 +376,10 @@ const menuScrim = document.getElementById('menuScrim');
 if (btnMenu) btnMenu.onclick = toggleMenu;
 if (btnMenuClose) btnMenuClose.onclick = closeMenu;
 if (menuScrim) menuScrim.onclick = closeMenu;
-const btnHome = document.getElementById('btnHome');
-if (btnHome) {
-  btnHome.style.visibility = 'hidden';
-  btnHome.onclick = () => switchTab('home');
-}
+document.querySelectorAll('#bottomNav .bn').forEach((b) => {
+  b.onclick = () => switchTab(b.dataset.tab);
+  b.classList.toggle('on', b.dataset.tab === curTab);
+});
 const btnPrivacy = document.getElementById('btnPrivacy');
 const btnSettings = document.getElementById('btnSettings');
 if (btnPrivacy) btnPrivacy.onclick = togglePrivacy;
