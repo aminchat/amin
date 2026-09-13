@@ -3,7 +3,7 @@ import { icon } from './icons.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
-import { renderAll, setTodayLabel, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
+import { renderAll, fitNumbers, setTodayLabel, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
   enableDebtReminders,
@@ -160,6 +160,7 @@ function setAssetTab(id) {
   buildAssetTabs();
   const fab = document.getElementById('fab');
   if (fab) fab.title = id === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
+  fitNumbers();
 }
 
 function switchTab(id) {

@@ -620,6 +620,30 @@ export function renderAccounts() {
   document.getElementById('accountsContent').innerHTML = html;
 }
 
+// اعداد بزرگ (.hero-num / .stat .val) اگر از کادر بیرون بزنند، خودکار کوچک می‌شوند
+export function fitNumbers(root) {
+  const els = (root || document).querySelectorAll('.hero-num, .stat .val, .kbd-display');
+  els.forEach((el) => {
+    el.style.fontSize = '';
+    if (!el.offsetParent) return; // مخفی
+    const base = parseFloat(getComputedStyle(el).fontSize) || 16;
+    const min = Math.max(12, base * 0.5);
+    let size = base;
+    let guard = 0;
+    while (el.scrollWidth > el.clientWidth + 1 && size > min && guard++ < 24) {
+      size -= 1;
+      el.style.fontSize = size + 'px';
+    }
+  });
+}
+let fitTimer = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(() => fitNumbers(), 120);
+  });
+}
+
 export function renderAll() {
   const steps = [
     ['خانه', renderHome],
@@ -637,6 +661,7 @@ export function renderAll() {
       if (window.__capLog) window.__capLog(name, err);
     }
   }
+  fitNumbers();
   const settingsBtn = document.getElementById('btnSettings');
   if (settingsBtn) settingsBtn.classList.toggle('has-alert', overdueCount() > 0);
 }
