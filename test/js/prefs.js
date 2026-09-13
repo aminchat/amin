@@ -184,20 +184,25 @@ export async function enableBiometric() {
         ext = cred.getClientExtensionResults && cred.getClientExtensionResults();
       } catch (e) {}
       const first = ext && ext.prf && ext.prf.results && ext.prf.results.first;
+      if (!sec.isUnlocked()) return false;
+      // کلید پشتیبان محلی: ورود تک‌لمسی حتی اگر مرورگر PRF ندهد
+      const ds = randBytes(32);
+      const dsKek = await importKekFromRaw(ds);
+      const dsWrap = await wrapDataKeyWithKek(sec.getDataKey(), dsKek);
       if (first) {
-        if (!sec.isUnlocked()) return false;
         const kek = await importKekFromRaw(new Uint8Array(first));
         const wrap = await wrapDataKeyWithKek(sec.getDataKey(), kek);
         store.set(
           BIO_KEY,
-          JSON.stringify({ v: 2, id: b64(cred.rawId), prf: b64(prfInput), wrap })
+          JSON.stringify({ v: 2, id: b64(cred.rawId), prf: b64(prfInput), wrap, dsWrap, ds: b64(ds) })
         );
-        toast('ورود با اثر انگشت فعال شد ✓');
-        return true;
+      } else {
+        store.set(
+          BIO_KEY,
+          JSON.stringify({ v: 3, id: b64(cred.rawId), dsWrap, ds: b64(ds) })
+        );
       }
-      // مرورگر PRF ندارد: حالت ساده — اثر انگشت فقط قفل صفحه را باز می‌کند
-      store.set(BIO_KEY, b64(cred.rawId));
-      toast('اثر انگشت فعال شد (این مرورگر حالت پیشرفته ندارد؛ گاهی پین هم لازم است)');
+      toast('ورود با اثر انگشت فعال شد ✓');
       return true;
     }
     store.set(BIO_KEY, b64(cred.rawId));
@@ -244,30 +249,65 @@ export async function tryBiometric() {
       return { ok: false, err: (e && e.name) || 'get' };
     }
     if (!cred) return { ok: false };
-    if (rec.v === 2 && sec.isEncrypted()) {
-      let ext = null;
-      try {
-        ext = cred.getClientExtensionResults();
-      } catch (e) {}
-      const first = ext && ext.prf && ext.prf.results && ext.prf.results.first;
-      if (first) {
+    if (sec.isEncrypted() && rec.v >= 2) {
+      // ۱) اتصال قوی با PRF
+      if (rec.v === 2) {
+        let ext = null;
         try {
-          const kek = await importKekFromRaw(new Uint8Array(first));
-          const key = await unwrapDataKeyWithKek(rec.wrap, kek);
-          const state = await sec.unlockWithKey(key);
-          return { ok: true, state };
+          ext = cred.getClientExtensionResults();
+        } catch (e) {}
+        const first = ext && ext.prf && ext.prf.results && ext.prf.results.first;
+        if (first) {
+          try {
+            const kek = await importKekFromRaw(new Uint8Array(first));
+            const key = await unwrapDataKeyWithKek(rec.wrap, kek);
+            return { ok: true, state: await sec.unlockWithKey(key) };
+          } catch (e) {
+            if (window.__capLog) window.__capLog('tryBiometric:prf', e);
+          }
+        }
+      }
+      // ۲) کلید پشتیبان محلی — ورود تک‌لمسی مثل بقیهٔ اپ‌ها
+      if (rec.dsWrap && rec.ds) {
+        try {
+          const kek = await importKekFromRaw(unb64(rec.ds));
+          const key = await unwrapDataKeyWithKek(rec.dsWrap, kek);
+          return { ok: true, state: await sec.unlockWithKey(key) };
         } catch (e) {
-          if (window.__capLog) window.__capLog('tryBiometric:crypto', e);
-          return { ok: false, err: 'crypto', sensorOk: true };
+          if (window.__capLog) window.__capLog('tryBiometric:ds', e);
         }
       }
       return { ok: true, gateOnly: true };
     }
-    if (sec.isEncrypted()) return { ok: true, gateOnly: true };
+    if (sec.isEncrypted()) {
+      // رکورد قدیمی: اولین فرصت که نشست باز بود ارتقا می‌دهیم
+      if (sec.isUnlocked()) upgradeBioRecord();
+      return { ok: true, gateOnly: true };
+    }
     return { ok: !!cred };
   } catch (e) {
     if (window.__capLog) window.__capLog('tryBiometric', e);
     return { ok: false, err: (e && e.name) || 'unknown' };
+  }
+}
+
+// ارتقای رکوردهای قدیمی اثر انگشت به حالت تک‌لمسی (بدون نیاز به ثبت دوباره)
+export async function upgradeBioRecord() {
+  try {
+    const rec = readBioRecord();
+    if (!rec || !sec.isEncrypted() || !sec.isUnlocked()) return;
+    if (rec.v === 1 || (rec.v === 2 && !rec.dsWrap)) {
+      const ds = randBytes(32);
+      const kek = await importKekFromRaw(ds);
+      const dsWrap = await wrapDataKeyWithKek(sec.getDataKey(), kek);
+      const next =
+        rec.v === 2
+          ? Object.assign({}, rec, { dsWrap, ds: b64(ds) })
+          : { v: 3, id: rec.id, dsWrap, ds: b64(ds) };
+      store.set(BIO_KEY, JSON.stringify(next));
+    }
+  } catch (e) {
+    if (window.__capLog) window.__capLog('upgradeBioRecord', e);
   }
 }
 
@@ -375,6 +415,7 @@ function finalizeUnlock(st) {
   pinFailCount = 0;
   render();
   unlockApp();
+  upgradeBioRecord();
   document.dispatchEvent(new CustomEvent('cap:unlocked'));
 }
 
@@ -723,7 +764,7 @@ export function openSettings() {
     <h3 style="margin:8px 0 10px">قفل ورود</h3>
     <p class="small muted">${
       enc
-        ? 'پین برای ورود سریع روی همین گوشی است؛ کلید اصلی همان رمز عبور است.'
+        ? 'پین و اثر انگشت برای ورود سریع روی همین گوشی هستند (مثل بقیهٔ اپ‌ها، با یک لمس)؛ کلید اصلی همان رمز عبور است.'
         : 'با رمز وارد برنامه می‌شوی. اثر انگشت اختیاری است و روی کرومِ گوشی معمولاً کار می‌کند.'
     }</p>
     ${
