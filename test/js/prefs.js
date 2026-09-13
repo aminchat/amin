@@ -88,7 +88,7 @@ function readBioRecord() {
   if (raw.charAt(0) === '{') {
     try {
       const rec = JSON.parse(raw);
-      return rec && rec.v === 2 ? rec : null;
+      return rec && (rec.v === 2 || rec.v === 3) && rec.id ? rec : null;
     } catch (e) {
       return null;
     }
@@ -126,6 +126,19 @@ export async function enableBiometric() {
     return false;
   }
   const encrypted = sec.isEncrypted();
+  if (encrypted && !sec.isUnlocked()) {
+    toast('اول با رمز عبور وارد شو، بعد اثر انگشت را فعال کن');
+    return false;
+  }
+  try {
+    if (
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable &&
+      !(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())
+    ) {
+      toast('روی این دستگاه اثر انگشت/قفل صفحه برای مرورگر فعال نیست');
+      return false;
+    }
+  } catch (e) {}
   const prfInput = crypto.getRandomValues(new Uint8Array(32));
   try {
     const publicKey = {
@@ -198,9 +211,11 @@ export async function enableBiometric() {
   } catch (e) {
     if (window.__capLog) window.__capLog('enableBiometric', e);
     const name = (e && e.name) || '';
-    if (name === 'NotAllowedError') toast('اجازهٔ اثر انگشت داده نشد');
+    if (name === 'NotAllowedError') toast('اجازهٔ اثر انگشت داده نشد یا زمان تمام شد');
     else if (name === 'NotSupportedError') toast('این دستگاه این نوع اثر انگشت را پشتیبانی نمی‌کند');
-    else toast('فعال‌سازی اثر انگشت انجام نشد (' + name + ')');
+    else if (name === 'SecurityError') toast('این آدرس اجازهٔ اثر انگشت ندارد (باید https باشد)');
+    else if (name === 'InvalidStateError') toast('قبلاً روی این دستگاه ثبت شده؛ اول خاموشش کن و دوباره فعال کن');
+    else toast('فعال‌سازی اثر انگشت انجام نشد (' + (name || (e && e.message) || '?') + ')');
     return false;
   }
 }
@@ -267,6 +282,9 @@ export async function tryBiometric() {
           return { ok: true, state: await sec.unlockWithKey(key) };
         } catch (e) {
           if (window.__capLog) window.__capLog('tryBiometric:ds', e);
+          // رکورد با کلید قدیمی (بعد از بازیابی/ادغام) — دیگر باز نمی‌کند؛ پاکش می‌کنیم
+          store.set(BIO_KEY, '');
+          return { ok: true, stale: true };
         }
       }
       return { ok: true, gateOnly: true };
@@ -303,9 +321,23 @@ export async function upgradeBioRecord() {
   }
 }
 
-export async function bioUnlock() {
-  const res = await tryBiometric();
+let bioBusy = false;
+export async function bioUnlock(auto) {
+  if (bioBusy) return;
+  bioBusy = true;
+  let res;
+  try {
+    res = await tryBiometric();
+  } finally {
+    bioBusy = false;
+  }
   if (!res || !res.ok) {
+    if (auto && res && res.err === 'NotAllowedError') {
+      // کاربر لغو کرد؛ بی‌صدا به رمز عبور برمی‌گردیم
+      const inp = document.getElementById('lockPin');
+      if (inp) inp.focus();
+      return;
+    }
     if (res && res.sensorOk) {
       toast('اثر انگشت تأیید شد ولی بازکردن داده ناموفق بود');
     } else if (res && res.err === 'NotAllowedError') {
@@ -317,6 +349,11 @@ export async function bioUnlock() {
   }
   if (res.state) {
     finalizeUnlock(res.state);
+    return;
+  }
+  if (res.stale) {
+    setLockMode('pass');
+    toast('اثر انگشت با کلید قدیمی ثبت شده بود؛ با رمز عبور وارد شو و دوباره فعالش کن');
     return;
   }
   if (res.gateOnly && sec.isEncrypted()) {
@@ -404,11 +441,26 @@ export function lockApp() {
   document.body.classList.add('locked');
   if (lock) lock.classList.add('show');
   const bioBtn = document.getElementById('lockBio');
-  if (bioBtn)
-    bioBtn.style.display = hasBiometric() && (sec.isEncrypted() || hasPin()) ? '' : 'none';
+  const bioOn = hasBiometric() && (sec.isEncrypted() || hasPin());
+  if (bioBtn) bioBtn.style.display = bioOn ? '' : 'none';
+  if (bioOn && document.visibilityState === 'visible') {
+    // مثل بقیهٔ اپ‌ها: خودکار اثر انگشت را می‌پرسد؛ اگر کاربر لغو کند، رمز عبور می‌ماند
+    autoBioPrompt();
+  } else {
+    setTimeout(() => {
+      if (pin) pin.focus();
+    }, 80);
+  }
+}
+
+let autoBioAt = 0;
+function autoBioPrompt() {
+  if (Date.now() - autoBioAt < 1500) return;
+  autoBioAt = Date.now();
   setTimeout(() => {
-    if (pin) pin.focus();
-  }, 80);
+    if (!document.body.classList.contains('locked')) return;
+    bioUnlock(true);
+  }, 250);
 }
 
 export function showLockForRemote() {
