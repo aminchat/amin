@@ -41,6 +41,7 @@ import {
   showLockForRemote,
   startPhraseRecovery,
   submitLockPin,
+  toggleLockMode,
   togglePrivacy,
   tryBiometric,
   unlockApp,
@@ -346,6 +347,7 @@ Object.assign(window, {
   savePinRestore,
   setLockMode,
   showLockForRemote,
+  toggleLockMode,
 });
 
 document.getElementById('fab').onclick = () => {

@@ -363,10 +363,12 @@ export function setLockMode(mode, sub) {
   if (lbl)
     lbl.textContent =
       sub ||
-      (mode === 'pass' ? 'رمز عبور را وارد کن تا داده‌ها باز شود' : 'رمز ورود (پین) را وارد کن');
+      (mode === 'pass'
+        ? 'رمز عبور را وارد کن (در همهٔ دستگاه‌هایت یکسان است)'
+        : 'پینِ این گوشی را وارد کن');
   if (inp) {
     inp.value = '';
-    inp.placeholder = mode === 'pass' ? 'رمز عبور' : 'رمز';
+    inp.placeholder = mode === 'pass' ? 'رمز عبور' : 'پین';
     inp.maxLength = mode === 'pass' ? 64 : 8;
     inp.setAttribute('inputmode', mode === 'pass' ? 'text' : 'numeric');
     inp.setAttribute('pattern', mode === 'pass' ? '.*' : '[0-9]*');
@@ -374,6 +376,27 @@ export function setLockMode(mode, sub) {
   if (bio) bio.style.display = mode === 'pin' && hasBiometric() && hasPin() ? '' : 'none';
   const forgot = document.getElementById('lockForgot');
   if (forgot) forgot.style.display = sec.isEncrypted() ? '' : 'none';
+  const sw = document.getElementById('lockSwitch');
+  if (sw) {
+    if (!sec.isEncrypted()) sw.style.display = 'none';
+    else if (mode === 'pin') {
+      sw.style.display = '';
+      sw.textContent = 'ورود با رمز عبورِ مشترک';
+    } else if (hasPin()) {
+      sw.style.display = '';
+      sw.textContent = 'بازگشت به پین این گوشی';
+    } else {
+      sw.style.display = 'none';
+    }
+  }
+}
+
+export function toggleLockMode() {
+  pinFailCount = 0;
+  if (lockMode === 'pin') setLockMode('pass');
+  else if (hasPin()) setLockMode('pin');
+  const inp = document.getElementById('lockPin');
+  if (inp) inp.focus();
 }
 
 export function unlockApp() {
@@ -406,7 +429,7 @@ export function lockApp() {
 }
 
 export function showLockForRemote() {
-  setLockMode('pass', 'برای دریافت داده‌ها، رمز عبور حساب را وارد کن');
+  setLockMode('pass', 'رمز عبور را وارد کن تا داده‌ها از گوگل باز شود (در همهٔ دستگاه‌ها یکسان است)');
   lockApp();
 }
 
@@ -864,6 +887,8 @@ export function initPrefs() {
     });
   const forgot = document.getElementById('lockForgot');
   if (forgot) forgot.onclick = () => startPhraseRecovery();
+  const sw = document.getElementById('lockSwitch');
+  if (sw) sw.onclick = () => toggleLockMode();
   if (sec.isEncrypted()) {
     setLockMode(sec.hasWrap('pin') ? 'pin' : 'pass');
     lockApp();
