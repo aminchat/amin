@@ -139,15 +139,16 @@ export async function enableBiometric() {
       return false;
     }
   } catch (e) {}
-  const prfInput = crypto.getRandomValues(new Uint8Array(32));
   try {
+    // فقط یک اعتبارنامهٔ سادهٔ پلتفرم برای «تأیید هویت با اثر انگشت» — نه passkey.
+    // (residentKey/discoverable باعث می‌شد کروم بخواهد passkey در Google Password Manager بسازد)
     const publicKey = {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
       rp: { name: 'مدیریت سرمایه', id: location.hostname },
       user: {
         id: crypto.getRandomValues(new Uint8Array(16)),
-        name: 'owner',
-        displayName: 'صاحب برنامه',
+        name: 'capital-app',
+        displayName: 'مدیریت سرمایه',
       },
       pubKeyCredParams: [
         { type: 'public-key', alg: -7 },
@@ -156,52 +157,22 @@ export async function enableBiometric() {
       authenticatorSelection: {
         authenticatorAttachment: 'platform',
         userVerification: 'required',
-        // برای PRF روی اندروید لازم است اعتبارنامه مقیم باشد
-        residentKey: encrypted ? 'required' : undefined,
-        requireResidentKey: encrypted ? true : undefined,
+        residentKey: 'discouraged',
+        requireResidentKey: false,
       },
+      attestation: 'none',
       timeout: 60000,
     };
-    if (encrypted) publicKey.extensions = { prf: { eval: { first: prfInput } } };
-    let cred;
-    try {
-      cred = await navigator.credentials.create({ publicKey });
-    } catch (e) {
-      if (encrypted && (e.name === 'NotSupportedError' || e.name === 'InvalidStateError')) {
-        // دستگاه اعتبارنامهٔ مقیم را قبول نکرد؛ بدون آن تلاش می‌کنیم
-        delete publicKey.authenticatorSelection.residentKey;
-        delete publicKey.authenticatorSelection.requireResidentKey;
-        cred = await navigator.credentials.create({ publicKey });
-      } else {
-        throw e;
-      }
-    }
+    const cred = await navigator.credentials.create({ publicKey });
     if (!cred) return false;
 
     if (encrypted) {
-      let ext = null;
-      try {
-        ext = cred.getClientExtensionResults && cred.getClientExtensionResults();
-      } catch (e) {}
-      const first = ext && ext.prf && ext.prf.results && ext.prf.results.first;
       if (!sec.isUnlocked()) return false;
-      // کلید پشتیبان محلی: ورود تک‌لمسی حتی اگر مرورگر PRF ندهد
+      // کلید داده با یک راز محلیِ تصادفی پیچیده می‌شود؛ اثر انگشت دروازهٔ استفاده از آن است
       const ds = randBytes(32);
       const dsKek = await importKekFromRaw(ds);
       const dsWrap = await wrapDataKeyWithKek(sec.getDataKey(), dsKek);
-      if (first) {
-        const kek = await importKekFromRaw(new Uint8Array(first));
-        const wrap = await wrapDataKeyWithKek(sec.getDataKey(), kek);
-        store.set(
-          BIO_KEY,
-          JSON.stringify({ v: 2, id: b64(cred.rawId), prf: b64(prfInput), wrap, dsWrap, ds: b64(ds) })
-        );
-      } else {
-        store.set(
-          BIO_KEY,
-          JSON.stringify({ v: 3, id: b64(cred.rawId), dsWrap, ds: b64(ds) })
-        );
-      }
+      store.set(BIO_KEY, JSON.stringify({ v: 3, id: b64(cred.rawId), dsWrap, ds: b64(ds) }));
       toast('ورود با اثر انگشت فعال شد ✓');
       return true;
     }
