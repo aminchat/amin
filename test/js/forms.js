@@ -11,6 +11,7 @@ import {
   addCustomCurrency,
   allCurrencies,
   catById,
+  loanFlow,
   catCeiling,
   catSpent,
   isInvoice,
@@ -98,6 +99,15 @@ export function openTxForm(tx, opts) {
     openTransferForm(tx);
     return;
   }
+  if (tx && tx.debtId) {
+    // تراکنشِ وصل به طلب/بدهی از خودِ آن بخش ویرایش می‌شود تا هماهنگ بماند
+    const d = (state.debts || []).find((x) => x.id === tx.debtId);
+    if (d) {
+      import('./debts.js').then((m) => m.openDebtForm(d));
+      toast('این تراکنش از بخش طلب/بدهی ساخته شده؛ همان‌جا ویرایشش کن');
+      return;
+    }
+  }
 
   editingTxId = tx ? tx.id : null;
   const isEdit = !!tx;
@@ -169,6 +179,12 @@ export function openTxForm(tx, opts) {
     <div class="field" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
       <label>دسته‌بندی خرج</label>
       <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
+    </div>
+    <div class="field" id="txLoanInWrap" style="${type === 'in' && txMode === 'simple' ? '' : 'display:none'}">
+      <label class="row" style="gap:8px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="txLoanIn" ${tx && tx.type === 'in' && tx.cat === 'loan' ? 'checked' : (presetCat === 'loan' && type === 'in' ? 'checked' : '')}>
+        <span>🤝 این پول قرضی/امانتی است (درآمد واقعی نیست)</span>
+      </label>
     </div>
     <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
       <label>🤔 اگر این خرج را نمی‌کردی، چه می‌شد؟</label>
@@ -266,6 +282,8 @@ export function setTxType(btn) {
     });
   }
   applyTxModeUi();
+  const lw = document.getElementById('txLoanInWrap');
+  if (lw) lw.style.display = t === 'in' && txMode === 'simple' ? '' : 'none';
   if (t === 'in') {
     const rw = document.getElementById('txReflectWrap');
     if (rw) rw.style.display = 'none';
@@ -825,7 +843,8 @@ export function saveTx() {
       return;
     }
     const activeCat = document.querySelector('#txCats .chip.on');
-    cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
+    const loanIn = document.getElementById('txLoanIn');
+    cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : loanIn && loanIn.checked ? 'loan' : null;
     const rf = document.getElementById('txReflect');
     reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
   }
@@ -1017,7 +1036,7 @@ export function openPocketLedger(catId, mk) {
   const items = pocketItems(mk, catId);
   const rows =
     items.length === 0
-      ? `<div class="empty" style="padding:22px 8px"><span class="em">${c.emoji}</span>خرجی در این پاکت برای ${monthLabel(mk)} ثبت نشده.</div>`
+      ? `<div class="empty" style="padding:22px 8px"><span class="em">${c.emoji}</span>${c.loan ? 'گردشی' : 'خرجی'} در این پاکت برای ${monthLabel(mk)} ثبت نشده.</div>`
       : items
           .map((it) => {
             const a = accountById(it.accountId);
@@ -1026,10 +1045,28 @@ export function openPocketLedger(catId, mk) {
                 <div class="t1">${esc(it.title)}${it.invoice ? ' <span class="badge">فاکتور</span>' : ''}</div>
                 <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>
               </div>
-              <div class="amt out">−${fmt(it.amount)}</div>
+              <div class="amt ${it.inflow ? 'in' : 'out'}">${it.inflow ? '+' : '−'}${fmt(it.amount)}</div>
             </div>`;
           })
           .join('');
+  if (c.loan) {
+    const f = loanFlow(mk);
+    openModal(`
+    <button class="x" onclick="closeModal()">✕</button>
+    <h2>${c.emoji} ${c.label}</h2>
+    <p class="small muted">پولی که قرض می‌دهی یا می‌گیری خرج یا درآمد واقعی نیست؛ این‌جا جدا نگه داشته می‌شود و وارد پاکت‌های دیگر و بودجهٔ ماه نمی‌شود.</p>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="stat"><div class="lbl">داده‌ام (قرض دادن / پس دادن)</div><div class="val red">${fmt(f.out)}</div></div>
+      <div class="stat"><div class="lbl">گرفته‌ام (قرض گرفتن / برگشت طلب)</div><div class="val green">${fmt(f.in)}</div></div>
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ثبت طلب/بدهی</button>
+      <button class="btn sm" style="flex:1" onclick="openTxForm(null,{cat:'loan'})">+ تراکنش دستی</button>
+    </div>
+    <div style="max-height:44vh;overflow:auto">${rows}</div>
+  `);
+    return;
+  }
   openModal(`
     <button class="x" onclick="closeModal()">✕</button>
     <h2>${c.emoji} ${c.label}</h2>
@@ -1046,6 +1083,14 @@ export function openPocketLedger(catId, mk) {
 export function delAccount(id) {
   const hasTx = state.transactions.some((t) => t.accountId === id);
   askConfirm(hasTx ? 'این حساب و تراکنش‌های مربوط به آن حذف می‌شود. ادامه می‌دهی؟' : 'این حساب حذف شود؟', () => {
+    for (const d of state.debts || []) {
+      if (d.accountId === id) {
+        d.accountId = '';
+        d.txId = null;
+        d.settleTxId = null;
+        d.updatedAt = Date.now();
+      }
+    }
     const pairs = new Set(
       state.transactions.filter((t) => t.accountId === id && t.pair).map((t) => t.pair)
     );

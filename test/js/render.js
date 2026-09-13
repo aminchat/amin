@@ -26,6 +26,7 @@ import {
   budgetOf,
   catSpent,
   catCeiling,
+  loanFlow,
 } from './state.js';
 
 export let txMonth = curMonthKey();
@@ -33,6 +34,25 @@ export let repMonth = curMonthKey();
 
 function envelopeBars(mk) {
   return `<div class="pockets">${CATS.map((c) => {
+    if (c.loan) {
+      const f = loanFlow(mk);
+      const has = f.out > 0 || f.in > 0;
+      const netTxt = !has
+        ? 'بدون گردش'
+        : f.net === 0
+          ? 'سر به سر'
+          : f.net > 0
+            ? '+' + fmt(f.net) + ' گرفته‌ای'
+            : '−' + fmt(-f.net) + ' داده‌ای';
+      return `<button type="button" class="pocket" onclick="openPocketLedger('${c.id}','${mk}')">
+      <div class="pocket-head">
+        <span class="pocket-ic" style="background:${c.color}22">${c.emoji}</span>
+        <span class="pocket-name">${c.label}</span>
+        <span class="pocket-share" style="color:${c.color}">${netTxt}</span>
+      </div>
+      <div class="small muted" style="margin-top:6px">خارج از بودجه · داده: ${fmt(f.out)} · گرفته/برگشتی: ${fmt(f.in)}</div>
+    </button>`;
+    }
     const spent = catSpent(mk, c.id);
     const ceil = catCeiling(mk, c.id);
     const over = c.target === 0 ? spent > 0 : ceil > 0 && spent > ceil;
@@ -147,7 +167,7 @@ export function renderTx() {
           : inv
             ? 'فاکتور'
             : t.type === 'in'
-              ? 'درآمد'
+              ? (t.cat === 'loan' ? 'قرض / امانت' : 'درآمد')
               : cat
                 ? cat.label
                 : 'خرج';
@@ -169,6 +189,8 @@ export function renderTx() {
             ${transfer ? '<span class="badge" style="color:#a78bfa;border-color:#a78bfa55">انتقال</span>' : ''}
             ${inv ? '<span class="badge" style="color:#f59e0b;border-color:#f59e0b55">فاکتور · ' + toFa((t.lines || []).length) + ' قلم</span>' : ''}
             ${t.type === 'out' && cat ? '<span class="badge" style="color:' + cat.color + ';border-color:' + cat.color + '55">' + cat.label + '</span>' : ''}
+            ${t.type === 'in' && t.cat === 'loan' ? '<span class="badge" style="color:#14b8a6;border-color:#14b8a655">🤝 قرض / امانت</span>' : ''}
+            ${t.debtId ? '<span class="badge">از بخش طلب/بدهی</span>' : ''}
             ${t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:#ef4444;border-color:#ef444455">🤔 پاسخ داری</span>' : ''}
             ${a && a.currency && a.currency !== 'تومان' ? '<span class="badge">' + esc(a.currency) + '</span>' : ''}
           </div>
@@ -196,7 +218,7 @@ export function renderReport() {
   const totalSpent = cm.spent;
   const totalIncome = cm.income;
   const wasteItems = pocketItems(mk, 'waste');
-  const slices = CATS.map((c) => ({ v: catSpent(mk, c.id), color: c.color, label: c.label }));
+  const slices = CATS.filter((c) => !c.loan).map((c) => ({ v: catSpent(mk, c.id), color: c.color, label: c.label }));
 
   let html = `<div class="mnav">
     <button onclick="repShift(-1)">‹</button>

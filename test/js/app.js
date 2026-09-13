@@ -13,6 +13,7 @@ import {
   saveDebt,
   setDebtKind,
   settleDebt,
+  syncDebtAmountLabel,
 } from './debts.js';
 import {
   applyTheme,
@@ -316,6 +317,7 @@ Object.assign(window, {
   delDebt,
   settleDebt,
   setDebtKind,
+  syncDebtAmountLabel,
   enableDebtReminders,
   render,
   toast,

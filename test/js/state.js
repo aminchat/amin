@@ -10,7 +10,16 @@ export const CATS = [
   { id: 'fun', label: 'تفریح', color: '#f59e0b', target: 15, emoji: '🎮' },
   { id: 'charity', label: 'نیکوکاری', color: '#a78bfa', target: 5, emoji: '🤲' },
   { id: 'waste', label: 'هدررفت', color: '#ef4444', target: 0, emoji: '🚨' },
+  // پاکت قرض/امانت: جابه‌جایی پول است نه خرج/درآمد واقعی؛ سقف ندارد و در بودجهٔ ماه حساب نمی‌شود
+  { id: 'loan', label: 'قرض / امانت', color: '#14b8a6', target: 0, emoji: '🤝', loan: true },
 ];
+
+export const LOAN_CAT = 'loan';
+
+// آیا این تراکنش (یا قلم فاکتور) مربوط به پاکت قرض است؟
+export function isLoanTx(t) {
+  return !!(t && t.cat === LOAN_CAT && !isTransfer(t));
+}
 
 export const catById = (id) => CATS.find((c) => c.id === id);
 export const ACCT_TYPES = ['کارت بانکی', 'نقدی', 'ارز دیجیتال', 'کیف پول آنلاین', 'سایر'];
@@ -171,10 +180,37 @@ export function runningBalanceByTxId() {
   return after;
 }
 
+// خرج واقعی ماه — بدون تراکنش‌های قرض (و بدون اقلامِ قرض در فاکتورها)
 export function spentIn(mk) {
-  return state.transactions
-    .filter((t) => t.month === mk && t.type === 'out')
-    .reduce((s, t) => s + txAmountToman(t), 0);
+  let s = 0;
+  for (const t of state.transactions) {
+    if (t.month !== mk || t.type !== 'out') continue;
+    if (isInvoice(t)) {
+      const rate = rateOf(accountById(t.accountId)?.currency);
+      for (const line of t.lines) if (line.cat !== LOAN_CAT) s += (line.amount || 0) * rate;
+    } else if (!isLoanTx(t)) {
+      s += txAmountToman(t);
+    }
+  }
+  return s;
+}
+
+// گردش پاکت قرض در ماه: داده‌شده (out) و گرفته‌شده/برگشتی (in)
+export function loanFlow(mk) {
+  let out = 0;
+  let inn = 0;
+  for (const t of state.transactions) {
+    if (t.month !== mk || isTransfer(t)) continue;
+    if (t.type === 'out') {
+      if (isInvoice(t)) {
+        const rate = rateOf(accountById(t.accountId)?.currency);
+        for (const line of t.lines) if (line.cat === LOAN_CAT) out += (line.amount || 0) * rate;
+      } else if (isLoanTx(t)) out += txAmountToman(t);
+    } else if (t.type === 'in' && isLoanTx(t)) {
+      inn += txAmountToman(t);
+    }
+  }
+  return { out, in: inn, net: inn - out };
 }
 
 export function budgetOf(mk) {
@@ -199,7 +235,21 @@ export function catSpent(mk, catId) {
 export function pocketItems(mk, catId) {
   const items = [];
   for (const t of state.transactions) {
-    if (t.month !== mk || t.type !== 'out') continue;
+    if (t.month !== mk || isTransfer(t)) continue;
+    if (t.type === 'in') {
+      if (catId === LOAN_CAT && isLoanTx(t))
+        items.push({
+          txId: t.id,
+          amount: t.amount || 0,
+          title: t.note || 'قرض گرفته/برگشت طلب',
+          dateISO: t.dateISO,
+          accountId: t.accountId,
+          invoice: false,
+          inflow: true,
+        });
+      continue;
+    }
+    if (t.type !== 'out') continue;
     if (isInvoice(t)) {
       for (const line of t.lines) {
         if (line.cat !== catId) continue;
@@ -232,9 +282,10 @@ export function catCeiling(mk, catId) {
   return Math.round((budgetOf(mk) * target) / 100);
 }
 
+// درآمد واقعی ماه — بدون پول قرضی/برگشتی
 export function incomeIn(mk) {
   return state.transactions
-    .filter((t) => t.month === mk && t.type === 'in')
+    .filter((t) => t.month === mk && t.type === 'in' && !isLoanTx(t))
     .reduce((s, t) => s + txAmountToman(t), 0);
 }
 
