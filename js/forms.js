@@ -188,6 +188,19 @@ export function openTxForm(tx, opts) {
       <label>دسته‌بندی خرج</label>
       <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
     </div>
+    <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
+      <label>اگر این خرج را نمی‌کردی، چه می‌شد؟</label>
+      <textarea class="input" id="txReflect" placeholder="مثلاً: می‌توانستم همان پول را پس‌انداز کنم...">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
+    </div>
+    <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
+      <div class="hint" style="margin:0 0 10px">اول مبلغ کل را بزن، بعد اقلام را وارد کن. هر قلم پاکت خودش را دارد. جمع اقلام باید با مبلغ کل یکی شود. از حساب فقط همان مبلغ کل کم می‌شود.</div>
+      <div id="txLines"></div>
+      <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
+      <div class="row" style="margin-bottom:12px">
+        <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">${icon('plus')} قلم</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">مانده را «سایر» کن</button>
+      </div>
+    </div>
     <div class="field"><label>توضیح (اختیاری)</label>
       <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? 'مثلاً: فروشگاه رفاه' : 'مثلاً: خرید هفتگی'}" value="${tx ? esc(tx.note || '') : esc(pre.note || '')}">
     </div>
