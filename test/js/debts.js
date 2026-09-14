@@ -3,7 +3,7 @@ import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
-import { save, state, accountById, rateOf, LOAN_CAT } from './state.js';
+import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT } from './state.js';
 
 const NOTIFY_DAY_KEY = 'capital_debt_notify_day';
 let editingDebtId = null;
@@ -52,9 +52,7 @@ function lastDebtAccountId() {
 }
 
 function accountOptionsHtml(selectedId) {
-  const opts = state.accounts
-    .map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${esc(a.name)} · ${esc(a.currency)}</option>`)
-    .join('');
+  const opts = accountOptGroups(selectedId);
   return `<option value="" ${!selectedId ? 'selected' : ''}>— بدون اتصال به حساب (فقط یادداشت) —</option>${opts}`;
 }
 

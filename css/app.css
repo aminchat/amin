@@ -558,7 +558,9 @@ body.locked #bottomNav{display:none}
 .qa-cat.on .ib{background:var(--c);color:#fff}
 .qa-meta{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
 .qa-meta .btn{flex:1;justify-content:space-between;font-weight:600;color:var(--muted)}
-.qa-meta .btn b{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.qa-meta .btn b{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+select.input optgroup{font-weight:700;color:var(--muted);background:var(--card)}
+select.input option{color:var(--text);background:var(--card);font-weight:500}
 .qa-more{border-top:1px solid var(--border-soft);margin-top:var(--sp-3);padding-top:var(--sp-3)}
 .qa-submit{margin-top:var(--sp-3);display:flex;gap:var(--sp-2)}
 .qa-submit .btn{flex:1;min-height:52px;font-size:var(--fs-md)}

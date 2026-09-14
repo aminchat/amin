@@ -23,6 +23,9 @@ import {
   save,
   sortTxs,
   state,
+  accountGroups,
+  accountOptGroups,
+  institutionOf,
 } from './state.js';
 
 const LAST_ACCT_KEY = 'capital_last_account';
@@ -137,12 +140,7 @@ export function openTxForm(tx, opts) {
   const selectedAccountId = tx ? tx.accountId : pre.accountId || lastAccountId();
   const selectedAccount = accountById(selectedAccountId);
   const amountCur = selectedAccount ? selectedAccount.currency : 'تومان';
-  const acctOpts = state.accounts
-    .map(
-      (a) =>
-        `<option value="${a.id}" ${a.id === selectedAccountId ? 'selected' : ''}>${esc(a.name)} · ${esc(a.currency)}</option>`
-    )
-    .join('');
+  const acctOpts = accountOptGroups(selectedAccountId);
   const defaultCat = tx && !isInvoice(tx) ? (tx.cat === 'loan' ? 'need' : tx.cat) : presetCat || 'need';
   const showReflect = !!(defaultCat === 'waste' && type === 'out' && txMode === 'simple');
 
@@ -524,12 +522,7 @@ export async function onPaperPhoto(inp) {
 }
 
 function paperAcctOpts(selected) {
-  return state.accounts
-    .map(
-      (a) =>
-        `<option value="${a.id}" ${a.id === selected ? 'selected' : ''}>${esc(a.name)} · ${esc(a.currency)}</option>`
-    )
-    .join('');
+  return accountOptGroups(selected);
 }
 
 export function openPaperReview() {
@@ -884,6 +877,11 @@ function amountWords(n) {
   return toFa(n) + ' تومان';
 }
 
+function acctLabel(a) {
+  const inst = institutionOf(a);
+  return inst && inst !== a.name ? inst + ' · ' + a.name : a.name;
+}
+
 export function openQuickTx(opts) {
   const rep = opts.repeatOf || null;
   qa.amount = rep ? String(rep.amount || '') : opts.amount ? String(opts.amount) : '';
@@ -919,7 +917,7 @@ export function openQuickTx(opts) {
       <button type="button" class="fn del" onclick="qaKey('del')" aria-label="پاک کردن">${icon('back')}</button>
     </div>
     <div class="qa-meta">
-      <button type="button" class="btn sm" id="qaAcctBtn" onclick="qaPickAccount()">${icon('card')}<b id="qaAcctName">${acct ? esc(acct.name) : '—'}</b></button>
+      <button type="button" class="btn sm" id="qaAcctBtn" onclick="qaPickAccount()">${icon('card')}<b id="qaAcctName">${acct ? esc(acctLabel(acct)) : '—'}</b></button>
       <button type="button" class="btn sm" onclick="qaMore()">${icon('edit')}<b>یادداشت، تاریخ، فاکتور…</b></button>
     </div>
     <div class="qa-submit">
@@ -984,12 +982,18 @@ export function qaPickAccount() {
   const list = state.accounts;
   if (list.length <= 1) return;
   const wrap = document.getElementById('qaAcctBtn');
-  const html = `<div class="card" style="margin:0 0 var(--sp-2);padding:var(--sp-2)" id="qaAcctList">${list
-    .map(
-      (a) => `<button type="button" class="srow" style="min-height:44px" onclick="qaChooseAccount('${a.id}')">
+  const row = (a) => `<button type="button" class="srow" style="min-height:44px" onclick="qaChooseAccount('${a.id}')">
         <span class="ib sm">${icon(a.type === 'ارز دیجیتال' ? 'coin' : a.type === 'نقدی' ? 'cash' : a.type === 'کیف پول آنلاین' ? 'phone' : 'card')}</span>
-        <span class="smid"><span class="st1">${esc(a.name)}</span><span class="st2">${esc(a.currency)}</span></span>
-        ${a.id === qa.accountId ? icon('check') : ''}</button>`
+        <span class="smid"><span class="st1">${esc(a.name)}</span><span class="st2">${esc(a.type)} · ${esc(a.currency)}</span></span>
+        ${a.id === qa.accountId ? icon('check') : ''}</button>`;
+  const gs = accountGroups(list);
+  const grouped = gs.length > 1 || (gs[0] && gs[0].key !== '__none');
+  const html = `<div class="card" style="margin:0 0 var(--sp-2);padding:var(--sp-2);max-height:40vh;overflow:auto" id="qaAcctList">${gs
+    .map(
+      (g) =>
+        (grouped
+          ? `<div class="small muted" style="display:flex;align-items:center;gap:6px;padding:8px 8px 4px;font-weight:700">${icon(g.key === '__none' ? 'folder' : 'bank')} ${esc(g.label)}</div>`
+          : '') + g.accts.map(row).join('')
     )
     .join('')}</div>`;
   const existing = document.getElementById('qaAcctList');
@@ -1002,7 +1006,7 @@ export function qaChooseAccount(id) {
   const a = accountById(id);
   const nm = document.getElementById('qaAcctName');
   const cu = document.getElementById('qaCur');
-  if (nm && a) nm.textContent = a.name;
+  if (nm && a) nm.textContent = acctLabel(a);
   if (cu && a) cu.textContent = a.currency;
   const l = document.getElementById('qaAcctList');
   if (l) l.remove();
@@ -1499,9 +1503,7 @@ export function openTransferForm(tx) {
     if (fa && out.fromRate) transferStoredRates[fa.currency] = out.fromRate;
     if (ta && out.toRate) transferStoredRates[ta.currency] = out.toRate;
   }
-  const opts = state.accounts
-    .map((a) => `<option value="${a.id}">${esc(a.name)} · ${a.currency}</option>`)
-    .join('');
+  const opts = accountOptGroups('');
   openModal(`<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>${pair ? 'ویرایش انتقال' : 'انتقال بین حساب‌ها'}</h2>
     <div class="hint" style="margin-bottom:12px">این انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.</div>

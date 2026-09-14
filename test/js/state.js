@@ -36,6 +36,44 @@ export const KNOWN_BANKS = [
   'نقد', 'صرافی', 'خانه',
 ];
 
+// حساب‌ها گروه‌بندی‌شده بر اساس مؤسسه: [{key,label,accts}] (بدون مؤسسه در آخر)
+export function accountGroups(list) {
+  const accts = list || state.accounts;
+  const groups = new Map();
+  for (const a of accts) {
+    const k = institutionOf(a) || '__none';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(a);
+  }
+  const keys = [...groups.keys()].sort((x, y) => {
+    if (x === '__none') return 1;
+    if (y === '__none') return -1;
+    return x.localeCompare(y, 'fa');
+  });
+  return keys.map((k) => ({ key: k, label: k === '__none' ? 'سایر' : k, accts: groups.get(k) }));
+}
+
+// <option>های select حساب، دسته‌بندی‌شده با <optgroup> بر اساس مؤسسه
+export function accountOptGroups(selectedId, list) {
+  const escq = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const gs = accountGroups(list);
+  if (gs.length <= 1 && gs[0] && gs[0].key === '__none') {
+    return gs[0].accts
+      .map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escq(a.name)} · ${escq(a.currency)}</option>`)
+      .join('');
+  }
+  return gs
+    .map(
+      (g) =>
+        `<optgroup label="${escq(g.label)}">` +
+        g.accts
+          .map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escq(a.name)} · ${escq(a.currency)}</option>`)
+          .join('') +
+        `</optgroup>`
+    )
+    .join('');
+}
+
 export function institutionOf(a) {
   return (a && a.bank && String(a.bank).trim()) || '';
 }
