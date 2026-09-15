@@ -228,12 +228,12 @@ export function renderHome() {
   html += `<div class="hero">
     <div style="min-width:0">
       <div class="lbl">${icon('wallet')} قابل خرج ${monthLabel(mk)}</div>
-      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}">${fmt(s.remaining)}<small>تومان</small></div>
+      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}">${fmtShort(s.remaining)}<small>تومان</small></div>
       <div class="sub">${
         !hasBudget
           ? 'هنوز بودجه‌ای ثبت نشده'
           : s.remaining > 0
-            ? `تا آخر ماه (${toFa(daysLeft)} روز) روزی <b>${fmt(perDay)}</b> تومان`
+            ? `تا آخر ماه (${toFa(daysLeft)} روز) روزی <b>${fmtShort(perDay)}</b> تومان`
             : 'از بودجه رد شده‌ای'
       }</div>
     </div>

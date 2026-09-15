@@ -1,5 +1,5 @@
 import { icon } from './icons.js';
-import { esc, fmt, store, toast, uid, todayISO } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO } from './utils.js';
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -296,8 +296,8 @@ function debtRow(d) {
         }</div>
       </div>
       <div style="text-align:left">
-        <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${fmt(d.amount)}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
-        ${foreign ? `<div class="small muted">${tm == null ? 'نرخ ' + esc(cur) + ' ثبت نشده' : '≈ ' + fmt(tm) + ' تومان'}</div>` : ''}
+        <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${foreign ? fmt(d.amount) : fmtShort(d.amount)}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
+        ${foreign ? `<div class="small muted">${tm == null ? 'نرخ ' + esc(cur) + ' ثبت نشده' : '≈ ' + fmtShort(tm) + ' تومان'}</div>` : ''}
         <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? 'برگردان' : 'تسویه'}</button>
       </div>
     </div>
@@ -327,7 +327,7 @@ export function renderDebts() {
   const breakdown =
     curs.length > 1 || (curs.length === 1 && curs[0] !== 'تومان')
       ? `<div class="hint" style="margin:0 0 12px">به تفکیک واحد: ${curs
-          .map((c) => `<b>${esc(c)}</b> طلب ${fmt(byCur[c].in)} / بدهی ${fmt(byCur[c].out)}`)
+          .map((c) => `<b>${esc(c)}</b> طلب ${c === 'تومان' ? fmtShort(byCur[c].in) : fmt(byCur[c].in)} / بدهی ${c === 'تومان' ? fmtShort(byCur[c].out) : fmt(byCur[c].out)}`)
           .join(' · ')}</div>`
       : '';
   const missingHint = missing.length
@@ -337,8 +337,8 @@ export function renderDebts() {
 
   let html = `
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">طلب باز</div><div class="val green">${fmt(rec)}</div><div class="sub">معادل تومان</div></div>
-      <div class="stat"><div class="lbl">بدهی باز</div><div class="val red">${fmt(pay)}</div><div class="sub">معادل تومان</div></div>
+      <div class="stat"><div class="lbl">طلب باز</div><div class="val green">${fmtShort(rec)}</div><div class="sub">معادل تومان</div></div>
+      <div class="stat"><div class="lbl">بدهی باز</div><div class="val red">${fmtShort(pay)}</div><div class="sub">معادل تومان</div></div>
     </div>
     ${breakdown}${missingHint}
     <button class="btn primary block" style="margin-bottom:12px" onclick="openDebtForm()">${icon('plus')} ثبت طلب یا بدهی</button>
