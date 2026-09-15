@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="icon" type="image/png" href="../icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=vazirmatn:400,600,700&display=swap">
-<link rel="stylesheet" href="css/app.css?v=2.3.2">
+<link rel="stylesheet" href="css/app.css?v=2.4.0">
 <script>
 window.__capErrors = [];
 window.__capLog = function (where, err) {
@@ -62,10 +62,14 @@ try {
     <div id="reportContent"></div>
   </section>
   <section id="tab-assets">
-    <div class="subtabs" id="assetTabs"></div>
-    <div id="accountsContent"></div>
-    <div id="investContent" style="display:none"></div>
-    <div id="debtsContent" style="display:none"></div>
+    <div id="assetsOverview"></div>
+    <div id="assetsView" style="display:none">
+      <div class="viewbar" id="assetsViewBar"></div>
+      <div id="accountsContent" style="display:none"></div>
+      <div id="investContent" style="display:none"></div>
+      <div id="debtsContent" style="display:none"></div>
+      <div id="installmentsContent" style="display:none"></div>
+    </div>
   </section>
 </main>
 
@@ -96,6 +100,6 @@ try {
   </div>
 </div>
 
-<script type="module" src="js/app.js?v=2.3.2"></script>
+<script type="module" src="js/app.js?v=2.4.0"></script>
 </body>
 </html>

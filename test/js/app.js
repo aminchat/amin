@@ -40,6 +40,7 @@ import {
   openSettingsSecurity,
   openSettingsGoogle,
   openSettingsScan,
+  openSettingsRates,
   openSettingsAbout,
   lockApp,
   recoveryFinish,
@@ -132,46 +133,56 @@ const TABS = [
   { id: 'report', lbl: 'گزارش' },
   { id: 'assets', lbl: 'دارایی' },
 ];
-// زیرصفحه‌های تب «دارایی»
-const ASSET_TABS = [
-  { id: 'accounts', lbl: 'حساب‌ها', ic: 'card', el: 'accountsContent' },
-  { id: 'invest', lbl: 'سرمایه', ic: 'trend', el: 'investContent' },
-  { id: 'debts', lbl: 'طلب و بدهی', ic: 'handshake', el: 'debtsContent' },
-];
+// زیرصفحه‌های تب «دارایی» (بعد از صفحهٔ مرور)
+const ASSET_VIEWS = {
+  accounts: { lbl: 'حساب‌ها', el: 'accountsContent', acts: () => `<button class="btn sm icon" title="انتقال" onclick="openTransferForm()">${icon('swap')}</button><button class="btn sm icon primary" title="حساب جدید" onclick="openAccountForm()">${icon('plus')}</button>` },
+  invest: { lbl: 'سرمایه', el: 'investContent', acts: () => `<button class="btn sm icon primary" title="دارایی جدید" onclick="openInvestForm()">${icon('plus')}</button>` },
+  debts: { lbl: 'طلب و بدهی', el: 'debtsContent', acts: () => `<button class="btn sm icon primary" title="مورد جدید" onclick="openDebtForm()">${icon('plus')}</button>` },
+  installments: { lbl: 'اقساط', el: 'installmentsContent', acts: () => `<button class="btn sm icon primary" title="قسط جدید" onclick="openPlanForm()">${icon('plus')}</button>` },
+};
 
 let curTab = 'home';
-let curAsset = 'accounts';
+let curAsset = ''; // '' = صفحهٔ مرور
 
-function buildAssetTabs() {
-  const wrap = document.getElementById('assetTabs');
-  if (!wrap) return;
-  const late = overdueCount();
-  wrap.innerHTML = ASSET_TABS.map((t) => {
-    const badge = t.id === 'debts' && late ? `<span class="badge" style="background:var(--red);color:#fff">${late}</span>` : '';
-    return `<button type="button" class="${curAsset === t.id ? 'on' : ''}" data-sub="${t.id}">${icon(t.ic)}<span>${t.lbl}</span>${badge}</button>`;
-  }).join('');
-  wrap.querySelectorAll('button').forEach((b) => (b.onclick = () => setAssetTab(b.dataset.sub)));
-  ASSET_TABS.forEach((t) => {
-    const el = document.getElementById(t.el);
-    if (el) el.style.display = t.id === curAsset ? '' : 'none';
+function paintAssetView() {
+  const ov = document.getElementById('assetsOverview');
+  const view = document.getElementById('assetsView');
+  const bar = document.getElementById('assetsViewBar');
+  if (!ov || !view) return;
+  const v = ASSET_VIEWS[curAsset];
+  ov.style.display = v ? 'none' : '';
+  view.style.display = v ? '' : 'none';
+  Object.entries(ASSET_VIEWS).forEach(([k, d]) => {
+    const el = document.getElementById(d.el);
+    if (el) el.style.display = k === curAsset ? '' : 'none';
   });
-}
-
-function setAssetTab(id) {
-  if (!ASSET_TABS.some((t) => t.id === id)) return;
-  curAsset = id;
-  buildAssetTabs();
+  if (bar) {
+    bar.innerHTML = v
+      ? `<button type="button" class="back" onclick="setAssetTab('')" aria-label="بازگشت">${icon('chevR')}</button><h2>${v.lbl}</h2><div class="acts">${v.acts()}</div>`
+      : '';
+  }
+  const title = document.getElementById('pageTitle');
+  if (title && curTab === 'assets') title.textContent = v ? v.lbl : 'دارایی';
   const fab = document.getElementById('fab');
-  if (fab) fab.title = id === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
+  if (fab) fab.title = curAsset === 'debts' ? 'طلب یا بدهی جدید' : curAsset === 'installments' ? 'قسط جدید' : 'تراکنش جدید';
   fitNumbers();
 }
 
+function setAssetTab(id) {
+  curAsset = ASSET_VIEWS[id] ? id : '';
+  paintAssetView();
+  window.scrollTo({ top: 0 });
+}
+function buildAssetTabs() {
+  paintAssetView();
+}
+
 function switchTab(id) {
-  // سازگاری با کدهای قدیمی: accounts / invest / debts → تب دارایی
-  if (ASSET_TABS.some((t) => t.id === id)) {
+  // سازگاری با کدهای قدیمی: accounts / invest / debts / installments → تب دارایی
+  if (ASSET_VIEWS[id]) {
     curAsset = id;
     id = 'assets';
-  }
+  } else if (id === 'assets') curAsset = '';
   if (!TABS.some((t) => t.id === id)) return;
   curTab = id;
   document.querySelectorAll('section').forEach((s) => s.classList.remove('active'));
@@ -180,10 +191,8 @@ function switchTab(id) {
   const title = document.getElementById('pageTitle');
   const tab = TABS.find((t) => t.id === id);
   if (title && tab) title.textContent = tab.lbl;
-  const fab = document.getElementById('fab');
-  if (fab) fab.title = id === 'assets' && curAsset === 'debts' ? 'طلب یا بدهی جدید' : 'تراکنش جدید';
   document.querySelectorAll('#bottomNav .bn').forEach((b) => b.classList.toggle('on', b.dataset.tab === id));
-  buildAssetTabs();
+  paintAssetView();
   render();
   syncOnPageChange();
   window.scrollTo({ top: 0 });
@@ -217,6 +226,10 @@ function handleAppBack() {
     return true;
   }
   if (isLocked()) return true;
+  if (curTab === 'assets' && curAsset) {
+    setAssetTab('');
+    return true;
+  }
   if (curTab !== 'home') {
     switchTab('home');
     return true;
@@ -370,6 +383,7 @@ Object.assign(window, {
   openSettingsSecurity,
   openSettingsGoogle,
   openSettingsScan,
+  openSettingsRates,
   openSettingsAbout,
   lockApp,
   saveGeminiKey,
@@ -406,6 +420,7 @@ Object.assign(window, {
 paintShellIcons();
 document.getElementById('fab').onclick = () => {
   if (curTab === 'assets' && curAsset === 'debts') openDebtForm();
+  else if (curTab === 'assets' && curAsset === 'installments') inst.openPlanForm();
   else openTxForm();
 };
 document.querySelectorAll('#bottomNav .bn').forEach((b) => {

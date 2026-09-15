@@ -3,7 +3,7 @@ import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
-import { state, replaceState } from './state.js';
+import { state, replaceState, save, allCurrencies, rateOf } from './state.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -825,6 +825,7 @@ export function openSettings() {
       )}
     </div>
     <div class="sgroup">
+      ${settingsRow('coin', '#0ea5e9', 'نرخ ارز', ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('receipt', '#f97316', 'خواندن فاکتور از عکس', 'کلید هوش مصنوعی گوگل', 'openSettingsScan()', gemini ? 'فعال' : 'خاموش')}
       ${settingsRow('info', '#64748b', 'دربارهٔ برنامه', 'نسخه ' + APP_VERSION, 'openSettingsAbout()')}
     </div>
@@ -931,6 +932,39 @@ export function openSettingsGoogle() {
     </div>`;
   }
   openModal(`${settingsHeader('☁️ گوگل درایو', 'openSettings()')}${body}`);
+}
+
+// ─── نرخ ارز ───
+function usedCurrencies() {
+  const used = new Set();
+  for (const a of state.accounts) if (a.currency && a.currency !== 'تومان') used.add(a.currency);
+  for (const i of state.investments || []) if (i.currency && i.currency !== 'تومان') used.add(i.currency);
+  for (const c of Object.keys(state.rates || {})) used.add(c);
+  return [...used];
+}
+function ratesSummary() {
+  const used = usedCurrencies();
+  if (!used.length) return 'برای حساب‌ها و دارایی‌های ارزی';
+  const missing = used.filter((c) => !rateOf(c));
+  return missing.length ? 'نرخ ' + missing.join('، ') + ' ثبت نشده' : used.map((c) => c + ' ' + toFaNum(rateOf(c))).join(' · ');
+}
+function toFaNum(n) {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',').replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+export function openSettingsRates() {
+  const used = usedCurrencies();
+  const others = allCurrencies().filter((c) => c !== 'تومان' && !used.includes(c));
+  const row = (c) => `<div class="srow" style="cursor:default">
+      <span class="sic" style="background:${rateOf(c) ? '#0ea5e9' : '#f59e0b'}">${icon('coin')}</span>
+      <span class="smid"><span class="st1">${esc(c)}</span><span class="st2">${rateOf(c) ? 'هر واحد ' + toFaNum(rateOf(c)) + ' تومان' : 'ثبت نشده'}</span></span>
+      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="تومان" onchange="saveRateFrom('${esc(c)}')">
+    </div>`;
+  openModal(`
+    ${settingsHeader('نرخ ارز', 'openSettings()')}
+    <p class="small muted">تومان به ازای هر واحد. فقط برای محاسبهٔ ارزش تومانیِ حساب‌ها، دارایی‌ها و طلب/بدهی‌های ارزی استفاده می‌شود؛ نرخ هر انتقال را موقع همان انتقال جدا وارد می‌کنی.</p>
+    ${used.length ? `<div class="sgroup">${used.map(row).join('')}</div>` : '<div class="hint">هنوز حساب یا دارایی ارزی نداری.</div>'}
+    ${others.length ? `<h3 class="muted" style="margin:14px 0 6px">سایر واحدها</h3><div class="sgroup">${others.map(row).join('')}</div>` : ''}
+  `);
 }
 
 export function openSettingsScan() {

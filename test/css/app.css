@@ -505,10 +505,25 @@ body.locked{overflow:hidden}
 .acct-actions{display:flex;gap:4px;margin-right:4px}
 
 /* دارایی: سگمنت بالای صفحه */
-.subtabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:4px;margin-bottom:var(--sp-3);position:sticky;top:calc(64px + env(safe-area-inset-top));z-index:5}
-.subtabs button{flex:1;min-height:38px;border-radius:var(--r-sm);color:var(--muted);font-size:var(--fs-sm);font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
-.subtabs button .i{width:16px;height:16px}
-.subtabs button.on{background:var(--accent-soft);color:var(--accent)}
+/* دارایی: مرور + زیرصفحه‌ها */
+.viewbar{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-3);min-height:40px}
+.viewbar .back{width:40px;height:40px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;color:var(--accent);background:var(--accent-soft)}
+.viewbar .back .i{width:20px;height:20px}
+.viewbar h2{font-size:var(--fs-lg);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.viewbar .acts{display:flex;gap:var(--sp-1)}
+.viewbar .acts .btn{min-height:40px}
+.entry{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:64px;padding:var(--sp-3) var(--sp-4);background:transparent;color:var(--text);text-align:right;border-bottom:1px solid var(--border-soft);position:relative}
+.entry:last-child{border-bottom:0}
+.entry:active{background:var(--press)}
+.entry .mid{flex:1;min-width:0}
+.entry .t1{font-size:var(--fs-md);font-weight:700}
+.entry .t2{font-size:var(--fs-xs);color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .num{font-size:var(--fs-md);font-weight:800;white-space:nowrap}
+.entry .num .small{font-weight:600}
+.entry .chev{color:var(--faint);display:flex}
+.entry .dot-alert{position:absolute;top:12px;right:52px;width:8px;height:8px;border-radius:50%;background:var(--red)}
+.acts-row{display:flex;gap:var(--sp-2);margin-bottom:var(--sp-3)}
+.acts-row .btn{flex:1}
 
 /* ═══ نوار پایینی شناور ═══ */
 #bottomNav{

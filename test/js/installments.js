@@ -683,8 +683,34 @@ function planCard(p) {
       <div class="amt-col"><div class="amt out">${fmtShort(st.remain)}</div><div class="bal">مانده</div></div>
     </div>
     <div class="pbar" style="margin:10px 0 8px"><div style="width:${pct}%;background:${st.overdue ? 'var(--red)' : 'var(--accent)'}"></div></div>
-    ${nxt && !st.done ? `<button class="btn sm block" onclick="openPayRow('${p.id}','${nxt.id}')">${icon('check')} پرداخت ${nxt.kind === 'interest' ? 'سود' : 'قسط'} ${fmtShort(rowTotal(nxt))}</button>` : ''}
+    ${nxt && !st.done && n <= 7 ? `<button class="btn sm block" onclick="openPayRow('${p.id}','${nxt.id}')">${icon('check')} پرداخت ${nxt.kind === 'interest' ? 'سود' : 'قسط'} ${fmtShort(rowTotal(nxt))}</button>` : ''}
   </div>`;
+}
+
+export function renderInstallments() {
+  const box = document.getElementById('installmentsContent');
+  if (!box) return;
+  const plans = allPlans().slice().sort((a, b) => {
+    const sa = planStats(a), sb = planStats(b);
+    if (sa.done !== sb.done) return sa.done ? 1 : -1;
+    return (sa.next ? sa.next.dueISO : '9').localeCompare(sb.next ? sb.next.dueISO : '9');
+  });
+  const remain = totalRemaining();
+  const paidAll = allPlans().reduce((s, p) => s + planStats(p).paidSum, 0);
+  const intAll = allPlans().reduce((s, p) => s + planStats(p).interestAll, 0);
+  let html = '';
+  if (plans.length) {
+    html += `<div class="hero">
+      <div style="min-width:0"><div class="lbl">${icon('calendar')} ماندهٔ اقساط</div>
+      <div class="hero-num">${fmtShort(remain)}<small>تومان</small></div>
+      <div class="sub">پرداخت‌شده ${fmtShort(paidAll)} · سود کل ${fmtShort(intAll)}</div></div>
+      <span class="ib lg ${overdueInstallments() ? 'red' : ''}">${icon('calendar')}</span>
+    </div>`;
+    html += plans.map(planCard).join('');
+  } else {
+    html += `<div class="empty"><span class="ib lg muted">${icon('calendar')}</span>وام یا خرید قسطی ثبت نکرده‌ای.<br>با دکمهٔ + بالا یا پایین صفحه شروع کن.</div>`;
+  }
+  box.innerHTML = html;
 }
 
 export function installmentsSection() {

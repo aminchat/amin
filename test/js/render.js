@@ -6,7 +6,8 @@ import { pieSVG } from './forms.js';
 import { renderSyncCard } from './sync.js';
 import * as sec from './securestore.js';
 import { debtHomeBanner, overdueCount, renderDebts } from './debts.js';
-import { installmentHomeCard, totalRemaining, monthInstallments } from './installments.js';
+import { installmentHomeCard, totalRemaining, monthInstallments, renderInstallments, overdueInstallments } from './installments.js';
+import { debtRemaining } from './debts.js';
 import {
   CATS,
   accountById,
@@ -469,10 +470,10 @@ export function renderInvest() {
     <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmtShort(Math.abs(plAll))} تومان</div></div>
     <span class="ib lg ${plAll >= 0 ? 'green' : 'red'}">${icon('trend')}</span>
   </div>
-  <button class="btn primary block" style="margin-bottom:var(--sp-3)" onclick="openInvestForm()">${icon('plus')} افزودن دارایی</button>`;
+`;
 
   if (state.investments.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>هنوز دارایی ثبت نکرده‌ای.<br>طلا، ملک، ماشین یا هر سرمایه‌ای را اضافه کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>هنوز دارایی ثبت نکرده‌ای.<br>طلا، ملک، ماشین یا هر سرمایه‌ای را با دکمهٔ + بالا اضافه کن.</div>`;
   } else {
     html += state.investments
       .map((i) => {
@@ -480,20 +481,16 @@ export function renderInvest() {
         const pl = investProfit(i);
         const curSuffix = i.currency !== 'تومان' ? ` (${fmt(rateOf(i.currency))} ت/${i.currency})` : '';
         return `<div class="card" style="padding:14px">
-        <div class="row" style="align-items:center;margin-bottom:6px">
+        <div class="row" style="align-items:center;margin-bottom:6px;cursor:pointer" onclick="openInvestForm(findInvest('${i.id}'))">
           <div style="flex:1"><b>${esc(i.name)}</b> <span class="badge">${toFa(i.qty)} ${esc(i.unit || '')}</span></div>
-          <div class="small muted">${i.currency}</div>
+          <div class="small muted">${i.currency}</div><span class="schev">${icon('chevL')}</span>
         </div>
         <div class="grid2" style="margin:10px 0">
           <div class="stat"><div class="lbl">ارزش فعلی</div><div class="val accent">${i.currency !== 'تومان' ? fmt(val) : fmtShort(val)}</div><div class="sub">${i.currency !== 'تومان' ? '≈ ' + fmtShort(val * rateOf(i.currency)) + ' تومان' : 'تومان'}</div></div>
           <div class="stat"><div class="lbl">سود / زیان</div><div class="val ${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? '+' : '−'}${i.currency !== 'تومان' ? fmt(Math.abs(pl)) : fmtShort(Math.abs(pl))}</div><div class="sub">از زمان خرید</div></div>
         </div>
         <div class="small muted" style="margin-bottom:10px">قیمت خرید هر ${esc(i.unit || 'واحد')}: ${fmt(i.buy)} · قیمت امروز: <b style="color:var(--text)">${fmt(i.cur)}</b>${curSuffix}</div>
-        <div class="row">
-          <button class="btn sm primary" style="flex:1" onclick="editInvestPrice('${i.id}')">${icon('refresh')} قیمت امروز</button>
-          <button class="btn sm icon" onclick="openInvestForm(findInvest('${i.id}'))" aria-label="ویرایش">${icon('edit')}</button>
-          <button class="btn sm icon danger" onclick="delInvest('${i.id}')" aria-label="حذف">${icon('trash')}</button>
-        </div>
+        <button class="btn sm block" onclick="editInvestPrice('${i.id}')">${icon('refresh')} به‌روزرسانی قیمت امروز</button>
       </div>`;
       })
       .join('');
@@ -530,20 +527,16 @@ function acctRow(a) {
         <button class="btn sm icon danger" onclick="event.stopPropagation();delAccount('${a.id}')" aria-label="حذف">${icon('trash')}</button>
       </div>
     </div>
-    ${isForeign && !rate ? `<div class="hint" style="color:var(--orange);margin-top:6px">نرخ ${a.currency} ثبت نشده؛ در جمع کل حساب نمی‌شود.</div>` : ''}
+    ${isForeign && !rate ? `` : ''}
   </div>`;
 }
 
 export function renderAccounts() {
   const foreign = [...new Set(state.accounts.map((a) => a.currency).filter((c) => c !== 'تومان'))];
-  let html = `
-  <div class="row" style="margin-bottom:14px">
-    <button class="btn primary" style="flex:1" onclick="openAccountForm()">${icon('plus')} حساب / کارت</button>
-    <button class="btn" style="flex:1" onclick="openTransferForm()">${icon('swap')} انتقال</button>
-  </div>`;
+  let html = '';
 
   if (state.accounts.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>هنوز حسابی نساخته‌ای.<br>کارت بانکی، پول نقد یا کیف پول ارزی اضافه کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>هنوز حسابی نساخته‌ای.<br>با دکمهٔ + بالای صفحه شروع کن.<br><br>کارت بانکی، پول نقد یا کیف پول ارزی اضافه کن.</div>`;
   } else {
     // گروه‌بندی بر اساس مؤسسه
     const groups = new Map();
@@ -605,22 +598,10 @@ export function renderAccounts() {
     }
   }
 
-  if (foreign.length) {
-    html += `<div class="card"><h3>${icon('coin')} نرخ روز ارز (تومان به ازای هر واحد)</h3>
-      <div class="small muted" style="margin-bottom:8px">این نرخ فقط برای محاسبه ارزش تومانیِ حساب‌ها و دارایی کل استفاده می‌شود؛ نرخ هر انتقال بین حساب‌ها را هنگام ثبت همان انتقال جداگانه وارد می‌کنی.</div>
-      ${foreign
-        .map(
-          (c) => `
-        <div class="row" style="align-items:center;margin-bottom:8px">
-          <b style="min-width:64px">${esc(c)}</b>
-          <input class="input" style="flex:1" id="rate_${c}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="مثلاً 90000">
-          <button class="btn sm primary" onclick="saveRateFrom('${c}')">ذخیره</button>
-        </div>`
-        )
-        .join('')}
-    </div>`;
+  const missingRate = foreign.filter((c) => !rateOf(c));
+  if (missingRate.length) {
+    html += `<div class="hint" style="color:var(--orange)">نرخ ${missingRate.map(esc).join('، ')} ثبت نشده؛ این حساب‌ها در جمع تومانی نیستند. <button type="button" class="link" style="padding:0 4px" onclick="openSettingsRates()">ثبت نرخ</button></div>`;
   }
-
   document.getElementById('accountsContent').innerHTML = html;
 }
 
@@ -649,6 +630,47 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// صفحهٔ مرور تب «دارایی»
+export function renderAssetsOverview() {
+  const box = document.getElementById('assetsOverview');
+  if (!box) return;
+  const cash = cashTotal();
+  const inv = investTotal();
+  const nw = cash + inv;
+  const debts = (state.debts || []).filter((d) => !d.settled);
+  const rec = debts.filter((d) => d.kind === 'in').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || 'تومان'), 0);
+  const pay = debts.filter((d) => d.kind === 'out').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || 'تومان'), 0);
+  const inst = totalRemaining();
+  const oblig = pay + inst;
+  const lateDebts = overdueCount() - overdueInstallments();
+  const lateInst = overdueInstallments();
+  const plans = (state.installments || []).length;
+  const entry = (id, ic, cls, t1, t2, num, alert) =>
+    `<button type="button" class="entry" onclick="setAssetTab('${id}')">
+      <span class="ib ${cls}">${icon(ic)}</span>${alert ? '<span class="dot-alert"></span>' : ''}
+      <span class="mid"><span class="t1">${t1}</span><span class="t2">${t2}</span></span>
+      <span class="num">${num}</span><span class="chev">${icon('chevL')}</span>
+    </button>`;
+  box.innerHTML = `
+    <div class="hero">
+      <div style="min-width:0"><div class="lbl">${icon('wallet')} خالص دارایی</div>
+      <div class="hero-num">${fmtShort(nw)}<small>تومان</small></div>
+      <div class="sub">نقد ${fmtShort(cash)} · سرمایه ${fmtShort(inv)}</div></div>
+      <span class="ib lg">${icon('wallet')}</span>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      ${entry('accounts', 'card', '', 'حساب‌ها', toFa(state.accounts.length) + ' حساب', fmtShort(cash))}
+      ${entry('invest', 'trend', 'green', 'سرمایه', toFa(state.investments.length) + ' دارایی', fmtShort(inv))}
+      ${entry('debts', 'handshake', 'purple', 'طلب و بدهی', debts.length ? toFa(debts.length) + ' مورد باز' : 'موردی باز نیست', `<span style="color:var(--green)">+${fmtShort(rec)}</span> <span class="small muted">/</span> <span style="color:var(--red)">−${fmtShort(pay)}</span>`, lateDebts > 0)}
+      ${entry('installments', 'calendar', 'orange', 'اقساط', plans ? toFa(plans) + ' طرح' : 'وام یا خرید قسطی نداری', plans ? fmtShort(inst) : '—', lateInst > 0)}
+    </div>
+    ${oblig > 0 ? `<div class="card" style="display:flex;align-items:center;gap:var(--sp-3)">
+      <span class="ib red">${icon('alert')}</span>
+      <div style="flex:1"><div class="t1">تعهدات</div><div class="t2">بدهی ${fmtShort(pay)} + ماندهٔ اقساط ${fmtShort(inst)} — جدا از خالص دارایی</div></div>
+      <div class="amt out">${fmtShort(oblig)}</div>
+    </div>` : ''}`;
+}
+
 export function renderAll() {
   const steps = [
     ['خانه', renderHome],
@@ -657,6 +679,8 @@ export function renderAll() {
     ['سرمایه', renderInvest],
     ['حساب‌ها', renderAccounts],
     ['طلب و بدهی', renderDebts],
+    ['اقساط', renderInstallments],
+    ['دارایی', renderAssetsOverview],
   ];
   for (const [name, fn] of steps) {
     try {

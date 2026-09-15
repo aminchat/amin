@@ -4,7 +4,7 @@ import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT } from './state.js';
-import { installmentsSection, overdueInstallments } from './installments.js';
+import { overdueInstallments } from './installments.js';
 
 const NOTIFY_DAY_KEY = 'capital_debt_notify_day';
 let editingDebtId = null;
@@ -441,22 +441,22 @@ export function renderDebts() {
           .join(' · ')}</div>`
       : '';
   const missingHint = missing.length
-    ? `<div class="hint" style="color:var(--orange);margin:0 0 12px">نرخ ${missing.map(esc).join('، ')} ثبت نشده؛ این موارد در جمع تومانی حساب نشده‌اند. نرخ را از بخش حساب‌ها وارد کن.</div>`
+    ? `<div class="hint" style="color:var(--orange);margin:0 0 12px">نرخ ${missing.map(esc).join('، ')} ثبت نشده؛ این موارد در جمع تومانی حساب نشده‌اند. نرخ را از تنظیمات ← نرخ ارز وارد کن.</div>`
     : '';
   const notifyOn = typeof Notification !== 'undefined' && Notification.permission === 'granted';
 
+  const net = rec - pay;
   let html = `
-    <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">طلب باز</div><div class="val green">${fmtShort(rec)}</div><div class="sub">معادل تومان</div></div>
-      <div class="stat"><div class="lbl">بدهی باز</div><div class="val red">${fmtShort(pay)}</div><div class="sub">معادل تومان</div></div>
+    <div class="hero">
+      <div style="min-width:0"><div class="lbl">${icon('handshake')} خالص طلب و بدهی</div>
+      <div class="hero-num ${net < 0 ? 'val red' : ''}">${fmtShort(net)}<small>تومان</small></div>
+      <div class="sub"><span style="color:var(--green)">طلب ${fmtShort(rec)}</span> · <span style="color:var(--red)">بدهی ${fmtShort(pay)}</span>${
+        breakdown ? ` · <button type="button" class="link" style="padding:0 4px" onclick="document.getElementById('debtBreak').style.display=''">جزئیات</button>` : ''
+      }</div></div>
+      <span class="ib lg ${net < 0 ? 'red' : 'green'}">${icon(net < 0 ? 'arrowOut' : 'arrowIn')}</span>
     </div>
-    ${breakdown}${missingHint}
-    <button class="btn primary block" style="margin-bottom:12px" onclick="openDebtForm()">${icon('plus')} ثبت طلب یا بدهی</button>
-    ${
-      notifyOn
-        ? '<div class="hint" style="margin:0 0 12px">یادآوری روشن است. وقتی برنامه را باز کنی، موارد سررسیدشده را می‌گوید.</div>'
-        : '<button class="btn block" style="margin-bottom:12px" onclick="enableDebtReminders()">یادآوری را روشن کن</button>'
-    }`;
+    <div id="debtBreak" style="display:none">${breakdown}</div>
+    ${missingHint}`;
 
   if (!list.length) {
     html += `<div class="empty"><span class="ib lg muted">${icon('handshake')}</span>هنوز طلب یا بدهی ثبت نکرده‌ای.<br>مثلاً پولی که به دوستت دادی یا از کسی قرض گرفتی.</div>`;
@@ -467,7 +467,6 @@ export function renderDebts() {
       html += done.map(debtRow).join('');
     }
   }
-  html += installmentsSection();
   box.innerHTML = html;
 }
 
