@@ -205,7 +205,7 @@ section.active{display:block}
 }
 .hero .lbl{font-size:var(--fs-sm);color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
 .hero-num{font-size:var(--fs-2xl);font-weight:800;letter-spacing:-.5px;line-height:1.1;margin:var(--sp-1) 0;white-space:nowrap;overflow:hidden;max-width:100%;display:block}
-.hero-num small{font-size:var(--fs-sm);font-weight:600;color:var(--muted);margin-right:4px;letter-spacing:0}
+.hero-num small{font-size:var(--fs-sm);font-weight:600;color:var(--muted);margin-right:8px;letter-spacing:0}
 .hero .sub{font-size:var(--fs-xs);color:var(--muted)}
 .hero .sub b{color:var(--text)}
 .ring{width:84px;height:84px;position:relative;flex-shrink:0}

@@ -1,4 +1,4 @@
-import { esc, fmt, store, toast, uid, todayISO, haptic, toFa } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
 import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
@@ -1266,8 +1266,8 @@ export function openPocketLedger(catId, mk) {
     <h2>${c.emoji} ${c.label}</h2>
     <p class="small muted">پولی که قرض می‌دهی یا می‌گیری خرج یا درآمد واقعی نیست؛ این‌جا جدا نگه داشته می‌شود و وارد پاکت‌های دیگر و بودجهٔ ماه نمی‌شود.</p>
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">داده‌ام (قرض دادن / پس دادن)</div><div class="val red">${fmt(f.out)}</div></div>
-      <div class="stat"><div class="lbl">گرفته‌ام (قرض گرفتن / برگشت طلب)</div><div class="val green">${fmt(f.in)}</div></div>
+      <div class="stat"><div class="lbl">داده‌ام (قرض دادن / پس دادن)</div><div class="val red">${fmtShort(f.out)}</div></div>
+      <div class="stat"><div class="lbl">گرفته‌ام (قرض گرفتن / برگشت طلب)</div><div class="val green">${fmtShort(f.in)}</div></div>
     </div>
     <div class="row" style="margin-bottom:12px">
       <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ثبت طلب / بدهی</button>

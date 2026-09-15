@@ -702,7 +702,7 @@ export function renderInstallments() {
   if (plans.length) {
     html += `<div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('calendar')} ماندهٔ اقساط</div>
-      <div class="hero-num">${fmtShort(remain)}<small>تومان</small></div>
+      <div class="hero-num">${fmtShort(remain)}</div>
       <div class="sub">پرداخت‌شده ${fmtShort(paidAll)} · سود کل ${fmtShort(intAll)}</div></div>
       <span class="ib lg ${overdueInstallments() ? 'red' : ''}">${icon('calendar')}</span>
     </div>`;
@@ -737,7 +737,7 @@ export function installmentHomeCard() {
     <div class="row" style="align-items:center;gap:var(--sp-3)">
       <span class="ib ${lateN ? 'red' : 'orange'}">${icon('bell')}</span>
       <div style="flex:1;min-width:0">
-        <div class="t1">${rowLabel(first.plan, first.row)} · ${fmtShort(rowTotal(first.row))} تومان</div>
+        <div class="t1">${rowLabel(first.plan, first.row)} · ${fmtShort(rowTotal(first.row))}</div>
         <div class="t2">${first.days < 0 ? '<span style="color:var(--red)">' + toFa(-first.days) + ' روز عقب‌افتاده</span>' : first.days === 0 ? 'امروز سررسید است' : toFa(first.days) + ' روز دیگر'}${more ? ' · ' + toFa(more) + ' مورد دیگر' : ''}</div>
       </div>
     </div>

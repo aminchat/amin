@@ -449,7 +449,7 @@ export function renderDebts() {
   let html = `
     <div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('handshake')} خالص طلب و بدهی</div>
-      <div class="hero-num ${net < 0 ? 'val red' : ''}">${fmtShort(net)}<small>تومان</small></div>
+      <div class="hero-num ${net < 0 ? 'val red' : ''}">${fmtShort(net)}</div>
       <div class="sub"><span style="color:var(--green)">طلب ${fmtShort(rec)}</span> · <span style="color:var(--red)">بدهی ${fmtShort(pay)}</span>${
         breakdown ? ` · <button type="button" class="link" style="padding:0 4px" onclick="document.getElementById('debtBreak').style.display=''">جزئیات</button>` : ''
       }</div></div>

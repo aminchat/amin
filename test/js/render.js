@@ -233,12 +233,12 @@ export function renderHome() {
   html += `<div class="hero">
     <div style="min-width:0">
       <div class="lbl">${icon('wallet')} قابل خرج ${monthLabel(mk)}</div>
-      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}">${fmtShort(s.remaining)}<small>تومان</small></div>
+      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}">${fmtShort(s.remaining)}</div>
       <div class="sub">${
         !hasBudget
           ? 'هنوز بودجه‌ای ثبت نشده'
           : s.remaining > 0
-            ? `تا آخر ماه (${toFa(daysLeft)} روز) روزی <b>${fmtShort(perDay)}</b> تومان`
+            ? `تا آخر ماه (${toFa(daysLeft)} روز) روزی <b>${fmtShort(perDay)}</b>`
             : 'از بودجه رد شده‌ای'
       }</div>
     </div>
@@ -473,7 +473,7 @@ export function renderReport() {
         <span><b class="green">${fmtShort(totalIncome)}</b> درآمد</span>
         ${budget ? `<span><b>${fmtShort(budget)}</b> بودجه</span>` : ''}
       </div>
-      ${inst ? `<div class="small muted" style="margin-top:6px">${fmtShort(inst)} تومان از این خرج، قسط بوده.</div>` : ''}
+      ${inst ? `<div class="small muted" style="margin-top:6px">${fmtShort(inst)} از این خرج، قسط بوده.</div>` : ''}
     </div>
     ${score !== null ? ringSVG(score, cls) : ''}
   </div>`;
@@ -516,8 +516,8 @@ export function renderInvest() {
   let html = `
   <div class="hero">
     <div style="min-width:0"><div class="lbl">${icon('trend')} ارزش کل سرمایه‌گذاری</div>
-    <div class="hero-num">${fmtShort(total)}<small>تومان</small></div>
-    <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmtShort(Math.abs(plAll))} تومان</div></div>
+    <div class="hero-num">${fmtShort(total)}</div>
+    <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmtShort(Math.abs(plAll))}</div></div>
     <span class="ib lg ${plAll >= 0 ? 'green' : 'red'}">${icon('trend')}</span>
   </div>
 `;
@@ -611,7 +611,7 @@ export function renderAccounts() {
     const total = cashTotal();
     html += `<div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('bank')} جمع همهٔ حساب‌ها</div>
-      <div class="hero-num">${fmtShort(total)}<small>تومان</small></div>
+      <div class="hero-num">${fmtShort(total)}</div>
       <div class="sub">${toFa(state.accounts.length)} حساب در ${toFa(keys.length)} مؤسسه</div></div>
       <span class="ib lg">${icon('card')}</span>
     </div>`;
@@ -636,7 +636,7 @@ export function renderAccounts() {
             <span class="bar" style="margin-top:6px;height:4px"><span style="display:block;height:100%;width:${pct}%;background:var(--accent);border-radius:99px"></span></span>
           </span>
           <span style="text-align:left">
-            <span class="amt ${sum >= 0 ? 'in' : 'out'}" style="display:block">${fmtShort(sum)} <span class="small muted">تومان</span></span>
+            <span class="amt ${sum >= 0 ? 'in' : 'out'}" style="display:block">${fmtShort(sum)}</span>
             <span class="small muted">${pct ? toFa(pct) + '٪ از کل' : ''}</span>
           </span>
           <span class="pocket-chev" style="margin-right:6px;display:flex">${icon(open ? 'chevD' : 'chevL')}</span>
@@ -704,7 +704,7 @@ export function renderAssetsOverview() {
   box.innerHTML = `
     <div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('wallet')} خالص دارایی</div>
-      <div class="hero-num">${fmtShort(nw)}<small>تومان</small></div>
+      <div class="hero-num">${fmtShort(nw)}</div>
       <div class="sub">نقد ${fmtShort(cash)} · سرمایه ${fmtShort(inv)}</div></div>
       <span class="ib lg">${icon('wallet')}</span>
     </div>
@@ -749,5 +749,5 @@ export function setTodayLabel() {
   const [y, m, d] = jalaliNow();
   const txt = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
   const today = document.getElementById('todayLbl');
-  if (today) today.textContent = txt;
+  if (today) today.textContent = txt + ' · واحد: تومان';
 }
