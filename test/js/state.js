@@ -94,6 +94,7 @@ export function defaultState() {
     transactions: [],
     investments: [],
     debts: [],
+    installments: [],
     budgets: {},
     rates: {},
     customCurrencies: [],
@@ -394,6 +395,7 @@ export function hasLocalData(s = state) {
     (s.transactions && s.transactions.length) ||
     (s.investments && s.investments.length) ||
     (s.debts && s.debts.length) ||
+    (s.installments && s.installments.length) ||
     Object.keys(s.budgets || {}).length
   );
 }
@@ -420,6 +422,7 @@ export function mergeStates(local, remote) {
     transactions: mergeById(local.transactions, remote.transactions),
     investments: mergeById(local.investments, remote.investments),
     debts: mergeById(local.debts, remote.debts),
+    installments: mergeById(local.installments, remote.installments),
     budgets: Object.assign({}, remote.budgets || {}, local.budgets || {}),
     rates: Object.assign({}, remote.rates || {}, local.rates || {}),
     customCurrencies: [

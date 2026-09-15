@@ -105,6 +105,11 @@ export function openTxForm(tx, opts) {
     openTransferForm(tx);
     return;
   }
+  if (tx && tx.planId) {
+    import('./installments.js').then((m) => m.openPlanDetail(tx.planId));
+    toast('این تراکنش از بخش اقساط ساخته شده؛ همان‌جا ویرایشش کن');
+    return;
+  }
   if (tx && tx.debtId) {
     // تراکنشِ وصل به طلب/بدهی از خودِ آن بخش ویرایش می‌شود تا هماهنگ بماند
     const d = (state.debts || []).find((x) => x.id === tx.debtId);
@@ -1085,6 +1090,14 @@ export function delTx(id) {
     isPair ? 'این انتقال (هر دو طرف) حذف شود؟' : inv ? 'این فاکتور و همه اقلامش حذف شود؟' : 'این تراکنش حذف شود؟',
     () => {
     const ids = new Set(group.map((x) => x.id));
+    // اگر تراکنش قسط بود، ردیفش هم به حالت پرداخت‌نشده برگردد
+    for (const g of group) {
+      if (g.planId && g.planRowId && state.installments) {
+        const p = state.installments.find((x) => x.id === g.planId);
+        const r = p && (p.rows || []).find((x) => x.id === g.planRowId);
+        if (r) { r.paidISO = null; r.txId = null; p.updatedAt = Date.now(); }
+      }
+    }
     state.transactions = state.transactions.filter((t) => !ids.has(t.id));
     save();
     render();

@@ -6,6 +6,7 @@ import { pieSVG } from './forms.js';
 import { renderSyncCard } from './sync.js';
 import * as sec from './securestore.js';
 import { debtHomeBanner, overdueCount, renderDebts } from './debts.js';
+import { installmentHomeCard, totalRemaining, monthInstallments } from './installments.js';
 import {
   CATS,
   accountById,
@@ -134,6 +135,8 @@ function homeStatusChips() {
   else if (hasLocalData()) chips.push({ cls: 'warn', ic: 'shield', t: 'رمزنگاری غیرفعال', on: 'openEncryptSetup()' });
   const nw = cashTotal() + investTotal();
   chips.push({ cls: '', ic: 'wallet', t: 'خالص دارایی ' + fmtShort(nw), on: "switchTab('accounts')" });
+  const oblig = totalRemaining();
+  if (oblig > 0) chips.push({ cls: '', ic: 'calendar', t: 'تعهدات ' + fmtShort(oblig), on: "switchTab('debts')" });
   const inv = investTotal();
   if (inv > 0) chips.push({ cls: '', ic: 'trend', t: 'سرمایه ' + fmtShort(inv), on: "switchTab('invest')" });
   return `<div class="status-row">${chips
@@ -189,6 +192,7 @@ function txRow(t, opts = {}) {
     (inv ? '<span class="badge" style="color:var(--orange)">' + toFa((t.lines || []).length) + ' قلم</span>' : '') +
     (!opts.compact && t.type === 'out' && cat ? '<span class="badge" style="color:' + cat.color + '">' + cat.label + '</span>' : '') +
     (t.debtId ? '<span class="badge">طلب/بدهی</span>' : '') +
+    (t.planId ? '<span class="badge">قسط</span>' : '') +
     (t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:var(--red)">پاسخ داری</span>' : '') +
     (a && a.currency && a.currency !== 'تومان' ? '<span class="badge">' + esc(a.currency) + '</span>' : '');
   const item = `<div class="item" data-tx="${t.id}" onclick="openTxForm(findTx('${t.id}'))">
@@ -219,6 +223,7 @@ export function renderHome() {
 
   html += renderSyncCard();
   html += debtHomeBanner();
+  html += installmentHomeCard();
   if (!store.persisted) {
     html += `<div class="banner">${icon('alert')}<span>حالت پیش‌نمایش: ذخیره دائمی فعال نیست. فایل را روی گوشی باز کن.</span></div>`;
   }
@@ -389,6 +394,7 @@ export function renderReport() {
       <h3 style="margin:0">خرج‌ها به تفکیک دسته</h3>
       <button class="btn sm ghost" onclick="openBudgetForm('${mk}')">${budget ? 'ویرایش بودجه' : 'تعیین بودجه'}</button>
     </div>
+    ${monthInstallments(mk) ? `<div class="small muted" style="margin:-4px 0 10px">از خرج این ماه ${fmtShort(monthInstallments(mk))} تومان قسط بوده است.</div>` : ''}
     <div class="grid2" style="margin-bottom:12px">
       <div class="stat"><div class="lbl">کل خرج</div><div class="val red">${fmtShort(totalSpent)}</div></div>
       <div class="stat"><div class="lbl">کل درآمد</div><div class="val green">${fmtShort(totalIncome)}</div></div>

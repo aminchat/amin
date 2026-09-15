@@ -1,5 +1,6 @@
 import { store, toast } from './utils.js';
 import { icon } from './icons.js';
+import * as inst from './installments.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
@@ -268,6 +269,21 @@ function findInvest(id) {
 }
 
 Object.assign(window, {
+  openPlanForm: inst.openPlanForm,
+  openPlanDetail: inst.openPlanDetail,
+  findPlan: inst.findPlan,
+  savePlan: inst.savePlan,
+  delPlan: inst.delPlan,
+  plSetKind: inst.plSetKind,
+  plSetMode: inst.plSetMode,
+  plRecalc: inst.plRecalc,
+  payRow: inst.payRow,
+  unpayRow: inst.unpayRow,
+  openPayRow: inst.openPayRow,
+  confirmPayRow: inst.confirmPayRow,
+  openRowEdit: inst.openRowEdit,
+  saveRow: inst.saveRow,
+  delRow: inst.delRow,
   switchTab,
   setAssetTab,
   closeModal,

@@ -4,6 +4,7 @@ import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT } from './state.js';
+import { installmentsSection, overdueInstallments } from './installments.js';
 
 const NOTIFY_DAY_KEY = 'capital_debt_notify_day';
 let editingDebtId = null;
@@ -32,7 +33,7 @@ export function dueSoonDebts(within = 3) {
 }
 
 export function overdueCount() {
-  return dueSoonDebts(0).length;
+  return dueSoonDebts(0).length + overdueInstallments();
 }
 
 function dueLabel(dueISO) {
@@ -357,6 +358,7 @@ export function renderDebts() {
       html += done.map(debtRow).join('');
     }
   }
+  html += installmentsSection();
   box.innerHTML = html;
 }
 
