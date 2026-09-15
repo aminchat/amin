@@ -39,11 +39,11 @@ export const THEMES = [
 ];
 
 export function currentTheme() {
-  return store.get(THEME_KEY) || 'night';
+  return store.get(THEME_KEY) || 'light';
 }
 
 export function applyTheme(id) {
-  const t = THEMES.find((x) => x.id === id) ? id : 'night';
+  const t = THEMES.find((x) => x.id === id) ? id : 'light';
   document.documentElement.setAttribute('data-theme', t);
   store.set(THEME_KEY, t);
   const meta = document.querySelector('meta[name="theme-color"]');
