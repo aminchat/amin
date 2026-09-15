@@ -553,23 +553,18 @@ function acctRow(a) {
   const bal = accountCurrent(a);
   const isForeign = a.currency !== 'تومان';
   const rate = rateOf(a.currency);
-  return `<div class="acct-row">
-    <div class="row acct-main" style="align-items:center" onclick="openAccountLedger('${a.id}')">
-      <div class="ib sm">${icon(accountIcon(a.type))}</div>
-      <div style="flex:1;min-width:0">
-        <div class="t1" style="font-size:13.5px">${esc(a.name)} ${a.last4 ? `<span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
-        <div class="t2">${esc(a.type)}${isForeign ? ` <span class="badge">${esc(a.currency)}</span>${rate ? ` <span class="faint">نرخ ${fmtShort(rate)}</span>` : ''}` : ''}</div>
-      </div>
-      <div style="text-align:left">
-        <div class="amt ${bal >= 0 ? 'in' : 'out'}">${isForeign ? fmt(bal) : fmtShort(bal)}</div>
-        ${isForeign ? `<div class="small muted">≈ ${fmtShort(bal * rate)} تومان</div>` : ''}
-      </div>
-      <div class="acct-actions">
-        <button class="btn sm icon" onclick="event.stopPropagation();openAccountForm(findAccount('${a.id}'))" aria-label="ویرایش">${icon('edit')}</button>
-        <button class="btn sm icon danger" onclick="event.stopPropagation();delAccount('${a.id}')" aria-label="حذف">${icon('trash')}</button>
-      </div>
+  const cls = a.type === 'پول نقد' ? 'green' : a.type && a.type.includes('ارز') ? 'purple' : '';
+  return `<div class="item">
+    <div class="ib ${cls}" onclick="openAccountLedger('${a.id}')">${icon(accountIcon(a.type))}</div>
+    <div class="mid" onclick="openAccountLedger('${a.id}')">
+      <div class="t1">${esc(a.name)}${a.last4 ? ` <span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
+      <div class="t2">${esc(a.type)}${isForeign ? ` · <span class="badge">${esc(a.currency)}</span>${rate ? ` <span class="faint">نرخ ${fmtShort(rate)}</span>` : ''}` : ''}</div>
     </div>
-    ${isForeign && !rate ? `` : ''}
+    <div class="amt-col">
+      <div class="amt ${bal >= 0 ? 'in' : 'out'}">${isForeign ? fmt(bal) : fmtShort(bal)}</div>
+      ${isForeign ? `<div class="bal">${rate ? '≈ ' + fmtShort(bal * rate) : 'بدون نرخ'}</div>` : ''}
+      <button class="btn sm" style="margin-top:6px" onclick="openAccountForm(findAccount('${a.id}'))">ویرایش</button>
+    </div>
   </div>`;
 }
 
@@ -634,7 +629,7 @@ export function renderAccounts() {
           <span class="pocket-chev" style="margin-right:6px;display:flex">${icon(open ? 'chevD' : 'chevL')}</span>
         </button>
         ${open ? `<div class="acct-group-body">${accts.map(acctRow).join('')}
-          <button class="btn sm block" style="margin:8px 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">${icon('plus')} حساب جدید در ${k === '__none' ? 'این گروه' : esc(label)}</button>
+          <button class="btn sm block ghost" style="margin:0 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">${icon('plus')} حساب جدید در ${k === '__none' ? 'این گروه' : esc(label)}</button>
         </div>` : ''}
       </div>`;
     }

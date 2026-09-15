@@ -666,23 +666,32 @@ function planCard(p) {
   const pct = st.total > 0 ? Math.round((st.paidSum / st.total) * 100) : 0;
   const nxt = st.next;
   const n = nxt ? daysUntil(nxt.dueISO) : null;
-  const nextTxt = st.done
-    ? '<span style="color:var(--green)">تسویه شد</span>'
+  const late = !st.done && n !== null && n < 0;
+  const soon = !st.done && n !== null && n >= 0 && n <= 7;
+  const when = st.done
+    ? 'تسویه شد'
     : nxt
-      ? (n < 0 ? '<span style="color:var(--red)">' + toFa(-n) + ' روز عقب‌افتاده</span>' : n === 0 ? '<span style="color:var(--orange)">امروز</span>' : n <= 7 ? '<span style="color:var(--orange)">' + toFa(n) + ' روز دیگر</span>' : fmtDate(nxt.dueISO)) + ' · ' + fmtShort(rowTotal(nxt))
+      ? n < 0 ? toFa(-n) + ' روز عقب‌افتاده' : n === 0 ? 'امروز' : n <= 7 ? toFa(n) + ' روز دیگر' : fmtDate(nxt.dueISO)
       : '';
-  return `<div class="card" style="padding:var(--sp-3)">
-    <div class="row" style="align-items:center;gap:var(--sp-3)" onclick="openPlanDetail('${p.id}')">
-      <span class="ib ${st.overdue ? 'red' : st.done ? 'green' : ''}">${icon(p.kind === 'loan' ? 'bank' : 'gift')}</span>
-      <div style="flex:1;min-width:0">
-        <div class="t1" style="font-size:var(--fs-md)">${esc(p.title)}</div>
-        <div class="t2">${nextTxt || toFa(st.paid.length) + ' از ' + toFa(st.rows.length)}</div>
+  const t2 = [p.kind === 'loan' ? 'وام' : 'خرید قسطی', toFa(st.paid.length) + ' از ' + toFa(st.rows.length)]
+    .concat(nxt && !st.done ? ['قسط بعدی ' + fmtShort(rowTotal(nxt))] : [])
+    .join(' · ');
+  return `
+    <div class="item" style="${st.done ? 'opacity:.62' : ''}">
+      <div class="ic" style="background:${late ? 'var(--red-soft)' : st.done ? 'var(--green-soft)' : 'var(--orange-soft)'};color:${late ? 'var(--red)' : st.done ? 'var(--green)' : 'var(--orange)'}">${icon(p.kind === 'loan' ? 'bank' : 'gift')}</div>
+      <div class="mid" onclick="openPlanDetail('${p.id}')">
+        <div class="t1">${esc(p.title)}</div>
+        <div class="t2">${t2}</div>
+        <div class="pbar" style="height:4px;margin:8px 0 0"><div style="width:${pct}%;background:${late ? 'var(--red)' : 'var(--accent)'}"></div></div>
       </div>
-      <div class="amt-col"><div class="amt out">${fmtShort(st.remain)}</div><div class="bal">${toFa(st.paid.length)}/${toFa(st.rows.length)}</div></div>
+      <div class="amt-col">
+        <div class="amt ${st.done ? '' : 'out'}">${st.done ? fmtShort(st.total) : fmtShort(st.remain)}</div>
+        <div class="bal">${st.done ? 'پرداخت‌شده' : 'مانده'}</div>
+        ${nxt && !st.done && n <= 7 ? `<button class="btn sm ${late ? 'primary' : ''}" style="margin-top:6px" onclick="openPayRow('${p.id}','${nxt.id}')">پرداخت</button>` : `<button class="btn sm" style="margin-top:6px" onclick="openPlanDetail('${p.id}')">جزئیات</button>`}
+      </div>
     </div>
-    <div class="pbar" style="margin:10px 0 0"><div style="width:${pct}%;background:${st.overdue ? 'var(--red)' : 'var(--accent)'}"></div></div>
-    ${nxt && !st.done && n <= 7 ? `<button class="btn sm block" style="margin-top:8px" onclick="openPayRow('${p.id}','${nxt.id}')">${icon('check')} پرداخت ${nxt.kind === 'interest' ? 'سود' : 'قسط'} ${fmtShort(rowTotal(nxt))}</button>` : ''}
-  </div>`;
+    ${late ? '<div class="small" style="color:var(--red);margin:-4px 0 10px 52px">' + when + '</div>' : ''}
+    ${soon ? '<div class="small" style="color:var(--orange);margin:-4px 0 10px 52px">سررسید ' + when + '</div>' : ''}`;
 }
 
 export function renderInstallments() {
