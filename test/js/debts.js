@@ -10,7 +10,25 @@ const NOTIFY_DAY_KEY = 'capital_debt_notify_day';
 let editingDebtId = null;
 
 export function allDebts() {
-  return state.debts || [];
+  return (state.debts || []).map(migrateDebt);
+}
+
+// پرداخت‌های تسویه (جزئی یا کامل)
+export function debtPaid(d) {
+  return (d.payments || []).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+}
+export function debtRemaining(d) {
+  return Math.max(0, (d.amount || 0) - debtPaid(d));
+}
+// مهاجرت رکورد قدیمی: settled + settleTxId → یک پرداخت کامل
+function migrateDebt(d) {
+  if (d.payments) return d;
+  d.payments = [];
+  if (d.settled) {
+    d.payments.push({ id: uid(), amount: d.amount, dateISO: d.settledAt || todayISO(), accountId: d.accountId || '', txId: d.settleTxId || null });
+  }
+  d.settleTxId = null;
+  return d;
 }
 
 export function openDebts() {
@@ -75,7 +93,7 @@ export function openDebtForm(d) {
     </div>
     <div class="field"><label>از/به کدام حساب؟</label>
       <select class="input" id="dAccount" onchange="syncDebtAmountLabel()">${accountOptionsHtml(accId)}</select>
-      <div class="hint" style="margin-top:6px">با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. موقع تسویه هم برعکسش ثبت می‌شود.</div>
+      <div class="hint" style="margin-top:6px">با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. حساب تسویه را موقع تسویه جدا انتخاب می‌کنی (می‌تواند فرق کند).</div>
     </div>
     <div class="field"><label id="dAmountLbl">مبلغ (${acc ? esc(acc.currency) : 'تومان'})</label>
       <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 500000" value="${d ? d.amount : ''}">
@@ -198,30 +216,59 @@ function removeTx(id) {
   state.transactions = state.transactions.filter((t) => t.id !== id);
 }
 
-function syncDebtTxs(d) {
-  if (!d.accountId || !accountById(d.accountId)) {
-    // بدون حساب: تراکنش‌های قبلی (اگر بود) حذف می‌شوند
-    removeTx(d.txId);
-    removeTx(d.settleTxId);
-    d.txId = null;
-    d.settleTxId = null;
+function paymentTx(d, pay) {
+  const acc = accountById(pay.accountId);
+  if (!acc || !(pay.amount > 0)) {
+    removeTx(pay.txId);
+    pay.txId = null;
     return;
   }
-  d.txId = upsertLinkedTx(d.txId, d, 'open');
-  if (d.settled) d.settleTxId = upsertLinkedTx(d.settleTxId, d, 'settle');
+  const lent = d.kind === 'in';
+  const who = d.person || '';
+  const note = (lent ? 'برگشت طلب از ' : 'پس دادم به ') + who + (pay.note ? ' — ' + pay.note : '');
+  let t = pay.txId ? state.transactions.find((x) => x.id === pay.txId) : null;
+  const payload = {
+    amount: pay.amount,
+    accountId: acc.id,
+    note,
+    dateISO: pay.dateISO,
+    month: monthOfISO(pay.dateISO),
+    type: lent ? 'in' : 'out',
+    cat: LOAN_CAT,
+    reflect: '',
+    kind: 'simple',
+    lines: null,
+    updatedAt: Date.now(),
+    debtId: d.id,
+  };
+  if (t) Object.assign(t, payload);
   else {
-    removeTx(d.settleTxId);
-    d.settleTxId = null;
+    t = Object.assign({ id: uid() }, payload);
+    state.transactions.push(t);
   }
+  pay.txId = t.id;
+}
+
+function syncDebtTxs(d) {
+  migrateDebt(d);
+  // تراکنش ایجاد (قرض دادن/گرفتن) فقط اگر حساب انتخاب شده
+  if (!d.accountId || !accountById(d.accountId)) {
+    removeTx(d.txId);
+    d.txId = null;
+  } else d.txId = upsertLinkedTx(d.txId, d, 'open');
+  // هر پرداخت تسویه، حساب خودش را دارد
+  for (const pay of d.payments) paymentTx(d, pay);
+  d.settled = d.amount > 0 && debtPaid(d) >= d.amount - 0.000001;
+  d.settledAt = d.settled ? (d.payments[d.payments.length - 1] || {}).dateISO || todayISO() : null;
 }
 
 export function delDebt(id) {
   const d = allDebts().find((x) => x.id === id);
-  const linked = !!(d && (d.txId || d.settleTxId));
+  const linked = !!(d && (d.txId || (d.payments || []).some((x) => x.txId)));
   askConfirm(linked ? 'این مورد و تراکنش‌های وصل‌شده به آن حذف شود؟' : 'این مورد حذف شود؟', () => {
     if (d) {
       removeTx(d.txId);
-      removeTx(d.settleTxId);
+      for (const pay of d.payments || []) removeTx(pay.txId);
     }
     state.debts = allDebts().filter((d) => d.id !== id);
     save();
@@ -230,16 +277,76 @@ export function delDebt(id) {
   });
 }
 
+// شیت تسویه: مبلغ (پیش‌فرض مانده)، حساب دریافت/پرداخت، تاریخ
 export function settleDebt(id) {
   const d = allDebts().find((x) => x.id === id);
   if (!d) return;
-  d.settled = !d.settled;
-  d.settledAt = d.settled ? todayISO() : null;
+  const lent = d.kind === 'in';
+  const remain = debtRemaining(d);
+  const cur = debtCurrency(d);
+  const hist = (d.payments || [])
+    .slice()
+    .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+    .map((pay) => {
+      const a = accountById(pay.accountId);
+      return `<div class="item" style="min-height:48px">
+        <div class="ic" style="background:var(--green-soft);color:var(--green)">${icon('check')}</div>
+        <div class="mid"><div class="t1">${fmt(pay.amount)} ${esc(cur)}</div><div class="t2">${fmtDate(pay.dateISO)}${a ? ' · ' + esc(a.name) : ' · بدون حساب'}</div></div>
+        <button class="btn sm icon danger" onclick="delDebtPayment('${d.id}','${pay.id}')" aria-label="حذف">${icon('trash')}</button>
+      </div>`;
+    })
+    .join('');
+  openModal(`
+    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    <h2>${lent ? 'دریافت از ' : 'پرداخت به '}${esc(d.person)}</h2>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="stat"><div class="lbl">کل</div><div class="val">${fmt(d.amount)}</div></div>
+      <div class="stat"><div class="lbl">مانده</div><div class="val ${remain > 0 ? 'red' : 'green'}">${fmt(remain)}</div></div>
+    </div>
+    ${remain > 0 ? `
+    <div class="field"><label>مبلغ (${esc(cur)})</label>
+      <input class="input" id="spAmount" type="number" step="any" inputmode="decimal" value="${remain}"></div>
+    <div class="field"><label>${lent ? 'به کدام حساب برگشت؟' : 'از کدام حساب پرداخت شد؟'}</label>
+      <select class="input" id="spAcc"><option value="">— بدون اتصال به حساب —</option>${accountOptGroups(d.accountId || '')}</select>
+      <div class="hint" style="margin-top:6px">می‌تواند با حساب اولیه فرق کند؛ مثلاً از ملت قرض داده‌ای و به ملی برگشته.</div></div>
+    <div class="field"><label>تاریخ</label><input class="input" id="spDate" type="date" value="${todayISO()}"></div>
+    <button class="btn primary block" onclick="addDebtPayment('${d.id}')">${icon('check')} ثبت ${lent ? 'دریافت' : 'پرداخت'}</button>` : '<div class="hint" style="margin-bottom:12px;color:var(--green)">کامل تسویه شده.</div>'}
+    ${hist ? `<div class="divider"></div><h3 class="muted" style="margin-bottom:8px">پرداخت‌ها</h3>${hist}` : ''}
+  `);
+}
+
+export function addDebtPayment(id) {
+  const d = allDebts().find((x) => x.id === id);
+  if (!d) return;
+  const amount = parseFloat(document.getElementById('spAmount').value);
+  if (!amount || amount <= 0) return toast('مبلغ را درست وارد کن');
+  if (amount > debtRemaining(d) + 0.000001) return toast('بیشتر از مانده است');
+  d.payments.push({
+    id: uid(),
+    amount,
+    dateISO: document.getElementById('spDate').value || todayISO(),
+    accountId: document.getElementById('spAcc').value || '',
+    txId: null,
+  });
+  d.updatedAt = Date.now();
+  syncDebtTxs(d);
+  save();
+  closeModal();
+  render();
+  toast(d.settled ? 'تسویه کامل شد ✓' : 'ثبت شد · مانده ' + fmt(debtRemaining(d)));
+}
+
+export function delDebtPayment(id, payId) {
+  const d = allDebts().find((x) => x.id === id);
+  if (!d) return;
+  const pay = d.payments.find((x) => x.id === payId);
+  if (pay) removeTx(pay.txId);
+  d.payments = d.payments.filter((x) => x.id !== payId);
   d.updatedAt = Date.now();
   syncDebtTxs(d);
   save();
   render();
-  toast(d.settled ? (d.accountId ? 'تسویه شد ✓ و در حساب اعمال شد' : 'تسویه شد ✓') : 'دوباره باز شد');
+  settleDebt(id);
 }
 
 export function findDebt(id) {
@@ -297,9 +404,10 @@ function debtRow(d) {
         }</div>
       </div>
       <div style="text-align:left">
-        <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${foreign ? fmt(d.amount) : fmtShort(d.amount)}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
+        <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${foreign ? fmt(debtRemaining(d)) : fmtShort(debtRemaining(d))}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
         ${foreign ? `<div class="small muted">${tm == null ? 'نرخ ' + esc(cur) + ' ثبت نشده' : '≈ ' + fmtShort(tm) + ' تومان'}</div>` : ''}
-        <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? 'برگردان' : 'تسویه'}</button>
+        ${!d.settled && debtPaid(d) > 0 ? `<div class="small muted">${fmtShort(debtPaid(d))} از ${fmtShort(d.amount)} تسویه شده</div>` : ''}
+        <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? 'جزئیات' : 'تسویه'}</button>
       </div>
     </div>
     ${hot ? '<div class="small" style="color:var(--red);margin:-4px 0 10px 52px">سررسید گذشته</div>' : ''}
@@ -312,14 +420,15 @@ export function renderDebts() {
   const list = sortDebts(allDebts());
   const open = list.filter((d) => !d.settled);
   const done = list.filter((d) => d.settled);
-  const recT = sumToman(open.filter((d) => d.kind === 'in'));
-  const payT = sumToman(open.filter((d) => d.kind === 'out'));
+  const openRem = open.map((d) => Object.assign({}, d, { amount: debtRemaining(d) }));
+  const recT = sumToman(openRem.filter((d) => d.kind === 'in'));
+  const payT = sumToman(openRem.filter((d) => d.kind === 'out'));
   const rec = recT.sum;
   const pay = payT.sum;
   const missing = [...new Set([...recT.missing, ...payT.missing])];
   // ریز جمع به تفکیک واحد پول (فقط وقتی ارز خارجی هست)
   const byCur = {};
-  for (const d of open) {
+  for (const d of openRem) {
     const c = debtCurrency(d);
     byCur[c] = byCur[c] || { in: 0, out: 0 };
     byCur[c][d.kind === 'in' ? 'in' : 'out'] += d.amount || 0;

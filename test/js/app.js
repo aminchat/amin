@@ -15,6 +15,8 @@ import {
   saveDebt,
   setDebtKind,
   settleDebt,
+  addDebtPayment,
+  delDebtPayment,
   syncDebtAmountLabel,
 } from './debts.js';
 import {
@@ -355,6 +357,8 @@ Object.assign(window, {
   saveDebt,
   delDebt,
   settleDebt,
+  addDebtPayment,
+  delDebtPayment,
   setDebtKind,
   syncDebtAmountLabel,
   enableDebtReminders,
