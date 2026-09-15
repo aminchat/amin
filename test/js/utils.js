@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.4.0-test';
+export const APP_VERSION = '2.4.1-test';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -133,13 +133,20 @@ export function fmtShort(n) {
   n = Number(n) || 0;
   const abs = Math.abs(n);
   const sign = n < 0 ? '−' : '';
-  const one = (v) => {
-    let t = v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0);
-    if (t.includes('.')) t = t.replace(/0+$/, '').replace(/\.$/, '');
-    return toFa(t.replace('.', '٫'));
-  };
-  if (abs >= 1e9) return sign + one(abs / 1e9) + ' میلیارد';
-  if (abs >= 1e6) return sign + one(abs / 1e6) + ' میلیون';
-  if (abs >= 1e3) return sign + one(abs / 1e3) + ' هزار';
+  const digits = (v) => (v < 10 ? 2 : v < 100 ? 1 : 0);
+  const fa = (t) => toFa(t.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', '٫'));
+  const units = [[1e9, 'میلیارد'], [1e6, 'میلیون'], [1e3, 'هزار']];
+  for (let i = 0; i < units.length; i++) {
+    const [div, name] = units[i];
+    if (abs < div) continue;
+    const v = abs / div;
+    const r = Number(v.toFixed(digits(v)));
+    // اگر گرد کردن باعث شد به واحد بالاتر برسیم (مثلاً ۱۰۰۰ میلیون → ۱ میلیارد)
+    if (r >= 1000 && i > 0) {
+      const [d2, n2] = units[i - 1];
+      return sign + fa((abs / d2).toFixed(2)) + ' ' + n2;
+    }
+    return sign + fa(r.toFixed(digits(v))) + ' ' + name;
+  }
   return fmt(n);
 }
