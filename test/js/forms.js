@@ -1,4 +1,4 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
 import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
@@ -173,7 +173,6 @@ export function openTxForm(tx, opts) {
       <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : pre.amount || ''}" oninput="onTxAmountInput()">
     </div>
     <div id="txUnitWrap" style="${txMode === 'invoice' ? 'display:none' : ''}">
-      <div class="hint" style="margin:0 0 12px">اگر قیمت واحد و مقدار را بزنی، مبلغ کل خودش حساب می‌شود.</div>
       <div class="row">
         <div class="col field"><label>قیمت واحد</label>
           <input class="input" id="txUnitPrice" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 80000" value="${tx && tx.unitPrice ? tx.unitPrice : ''}" oninput="syncTxUnitTotal()">
@@ -198,7 +197,6 @@ export function openTxForm(tx, opts) {
       <textarea class="input" id="txReflect" placeholder="مثلاً: می‌توانستم همان پول را پس‌انداز کنم...">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
     </div>
     <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
-      <div class="hint" style="margin:0 0 10px">اول مبلغ کل را بزن، بعد اقلام را وارد کن. هر قلم پاکت خودش را دارد. جمع اقلام باید با مبلغ کل یکی شود. از حساب فقط همان مبلغ کل کم می‌شود.</div>
       <div id="txLines"></div>
       <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
       <div class="row" style="margin-bottom:12px">
@@ -1273,7 +1271,6 @@ export function openPocketLedger(catId, mk) {
       <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ثبت طلب / بدهی</button>
       <button class="btn sm" style="flex:1" onclick="closeModal();switchTab('debts')">فهرست طلب و بدهی</button>
     </div>
-    <div class="hint" style="margin-bottom:10px">این پاکت خودکار از بخش «طلب و بدهی» پر می‌شود (وقتی برای هر مورد حساب انتخاب کنی).</div>
     <div style="max-height:44vh;overflow:auto">${rows}</div>
   `);
     return;
@@ -1322,7 +1319,7 @@ export function openInvestForm(inv) {
   const isEdit = !!inv;
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${isEdit ? 'ویرایش دارایی' : 'دارایی جدید'}</h2>
+    <h2 style="display:flex;align-items:center">${isEdit ? 'ویرایش دارایی' : 'دارایی جدید'}${infoTip('این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در تراکنش‌ها (پاکت سرمایه‌گذاری) ثبت کن.', 'lg')}</h2>
     <div class="field"><label>نام دارایی</label>
       <input class="input" id="iName" placeholder="مثلاً طلا، زمین، ماشین" value="${inv ? esc(inv.name) : ''}">
     </div>
@@ -1351,7 +1348,6 @@ export function openInvestForm(inv) {
         <input class="input" id="iPriceNow" type="number" step="any" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.cur : ''}">
       </div>
     </div>
-    <div class="hint">این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در بخش تراکنش‌ها (دسته سرمایه‌گذاری) ثبت کن.</div>
     <div style="height:12px"></div>
     <button class="btn primary block" onclick="saveInvest()">${isEdit ? 'ذخیره' : 'افزودن دارایی'}</button>
   `);
@@ -1535,14 +1531,13 @@ export function openTransferForm(tx) {
   }
   const opts = accountOptGroups('');
   openModal(`<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${pair ? 'ویرایش انتقال' : 'انتقال بین حساب‌ها'}</h2>
-    <div class="hint" style="margin-bottom:12px">این انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.</div>
+    <h2 style="display:flex;align-items:center">${pair ? 'ویرایش انتقال' : 'انتقال بین حساب‌ها'}${infoTip('انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.', 'lg')}</h2>
     <div class="field"><label>از حساب</label><select class="input" id="trFrom" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>به حساب</label><select class="input" id="trTo" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>مبلغ از حساب مبدأ</label><input class="input" id="trAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مبلغ به واحد حساب مبدأ" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
     <div id="trBalance" class="small muted" style="margin:-8px 0 12px"></div>
     <div id="trRates"></div>
-    <div id="trPreview" class="hint" style="margin-bottom:12px">مبلغ حساب مقصد بعد از تبدیل اینجا نمایش داده می‌شود.</div>
+    <div id="trPreview" class="hint" style="margin-bottom:12px;display:none"></div>
     <div class="field"><label>توضیح (اختیاری)</label><input class="input" id="trNote" placeholder="مثلاً انتقال به کارت خرید" value="${esc((out && out.note) || (inn && inn.note) || '')}"></div>
     <div class="field"><label>تاریخ</label><input class="input" id="trDate" type="date" value="${(out && out.dateISO) || (inn && inn.dateISO) || todayISO()}"></div>
     <button class="btn primary block" onclick="saveTransfer()">${pair ? 'ذخیره انتقال' : 'ثبت انتقال'}</button>
@@ -1617,7 +1612,6 @@ function renderTransferRates() {
   }
   if (html) {
     html =
-      `<div class="hint" style="margin-bottom:12px">این نرخ فقط برای همین انتقال استفاده می‌شود و روی نرخ روزِ محاسبه دارایی کل اثری ندارد.</div>` +
       html;
   }
   wrap.innerHTML = html;
@@ -1649,9 +1643,10 @@ export function updateTransferPreview() {
   const to = accountById(toEl.value);
   const amount = parseFloat(amtEl.value) || 0;
   if (!from || !to || !amount) {
-    box.textContent = 'مبلغ حساب مقصد بعد از تبدیل اینجا نمایش داده می‌شود.';
+    box.style.display = 'none';
     return;
   }
+  box.style.display = '';
   const avail = transferSourceAvailable(from.id);
   if (amount > avail + 1e-9) {
     box.innerHTML = `<span style="color:var(--red)">مبلغ از موجودی حساب مبدأ بیشتر است. حداکثر برداشت: <b>${fmt(Math.max(0, avail))} ${esc(from.currency)}</b></span>`;

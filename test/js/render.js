@@ -1,4 +1,4 @@
-import { esc, fmt, fmtT, fmtShort, toFa, store } from './utils.js';
+import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip } from './utils.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS } from './jalali.js';
@@ -128,11 +128,8 @@ function homePockets(mk) {
 
 function homeStatusChips() {
   const chips = [];
-  if (!isGoogleLinked()) chips.push({ cls: 'warn', ic: 'cloud', t: 'بدون همگام‌سازی', on: 'openSettingsGoogle()' });
-  else if (!googleSyncOk()) chips.push({ cls: 'warn', ic: 'cloud', t: 'اتصال گوگل منقضی', on: 'googleSignIn()' });
-  else chips.push({ cls: 'ok', ic: 'cloud', t: 'همگام با درایو', on: 'openSettingsGoogle()' });
-  if (sec.isEncrypted()) chips.push({ cls: 'ok', ic: 'shield', t: 'رمزنگاری فعال', on: 'openSettingsSecurity()' });
-  else if (hasLocalData()) chips.push({ cls: 'warn', ic: 'shield', t: 'رمزنگاری غیرفعال', on: 'openEncryptSetup()' });
+  // وضعیت همگام‌سازی و رمزنگاری در تنظیمات است؛ فقط اگر اتصال قطع شده باشد این‌جا هشدار می‌دهیم
+  if (isGoogleLinked() && !googleSyncOk()) chips.push({ cls: 'warn', ic: 'cloud', t: 'اتصال گوگل منقضی', on: 'googleSignIn()' });
   const nw = cashTotal() + investTotal();
   chips.push({ cls: '', ic: 'wallet', t: 'خالص دارایی ' + fmtShort(nw), on: "switchTab('accounts')" });
   const oblig = totalRemaining();
@@ -480,16 +477,11 @@ export function renderReport() {
 
   html += `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
-      <h3 style="margin:0">پاکت‌ها · برنامه در برابر واقعیت</h3>
+      <h3 style="margin:0;display:flex;align-items:center">پاکت‌ها${infoTip(budget ? 'نوار کم‌رنگ سهم هر پاکت از بودجه است (۶۰/۲۰/۱۵/۵)؛ نوار پررنگ خرج واقعی. اگر از خط هدف رد شود قرمز می‌شود.' : 'بودجه ثبت نشده؛ سهم‌ها از کل خرج همین ماه حساب شده‌اند. برای سقف ریالی، بودجه را ثبت کن.')}</h3>
       <button class="btn sm ghost" onclick="openBudgetForm('${mk}')">${budget ? 'بودجه' : 'تعیین بودجه'}</button>
     </div>
-    <div class="small muted" style="margin-bottom:12px">${
-      budget
-        ? 'نوار کم‌رنگ سهم هر پاکت از بودجه است؛ نوار پررنگ خرج واقعی.'
-        : 'بودجه ثبت نشده؛ سهم‌ها از کل خرج همین ماه حساب شده‌اند.'
-    }</div>
+    <div style="height:8px"></div>
     <div class="bullets">${bulletRows(mk, budget, totalSpent)}</div>
-    ${!waste ? '' : `<div class="hint" style="margin-top:10px">برای دیدن ریز هدررفت‌ها روی ردیفش بزن.</div>`}
   </div>`;
 
   if (f.out || f.in) {
@@ -566,7 +558,7 @@ function acctRow(a) {
       <div class="ib sm">${icon(accountIcon(a.type))}</div>
       <div style="flex:1;min-width:0">
         <div class="t1" style="font-size:13.5px">${esc(a.name)} ${a.last4 ? `<span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
-        <div class="t2">${esc(a.type)} · ${a.currency}${isForeign && rate ? ` (${fmt(rate)} ت/${a.currency})` : ''}</div>
+        <div class="t2">${esc(a.type)}${isForeign ? ` <span class="badge">${esc(a.currency)}</span>${rate ? ` <span class="faint">نرخ ${fmtShort(rate)}</span>` : ''}` : ''}</div>
       </div>
       <div style="text-align:left">
         <div class="amt ${bal >= 0 ? 'in' : 'out'}">${isForeign ? fmt(bal) : fmtShort(bal)}</div>
@@ -725,10 +717,12 @@ export function renderAssetsOverview() {
       ${entry('debts', 'handshake', 'purple', 'طلب و بدهی', debts.length, debtSub, `<span style="color:var(--green)">+${fmtShort(rec)}</span> <span class="small muted">/</span> <span style="color:var(--red)">−${fmtShort(pay)}</span>`, lateDebts > 0)}
       ${entry('installments', 'calendar', 'orange', 'اقساط', plans, instSub, plans ? fmtShort(inst) : '—', lateInst > 0)}
     </div>
-    ${oblig > 0 ? `<div class="card" style="display:flex;align-items:center;gap:var(--sp-3)">
-      <span class="ib red">${icon('alert')}</span>
-      <div style="flex:1"><div class="t1">تعهدات</div><div class="t2">بدهی ${fmtShort(pay)} + ماندهٔ اقساط ${fmtShort(inst)} — جدا از خالص دارایی</div></div>
-      <div class="amt out">${fmtShort(oblig)}</div>
+    ${oblig > 0 ? `<div class="card oblig">
+      <div class="oblig-head"><span class="ib red">${icon('alert')}</span><span class="t1" style="flex:1">تعهدات${infoTip('جمع بدهی‌های باز و اقساط پرداخت‌نشده. در خالص دارایی بالا لحاظ نشده است.')}</span><span class="amt out">${fmtShort(oblig)}</span></div>
+      <div class="oblig-rows">
+        ${pay > 0 ? `<div class="oblig-row"><span>بدهی به دیگران</span><b>${fmtShort(pay)}</b></div>` : ''}
+        ${inst > 0 ? `<div class="oblig-row"><span>اقساط باقی‌مانده</span><b>${fmtShort(inst)}</b></div>` : ''}
+      </div>
     </div>` : ''}`;
 }
 

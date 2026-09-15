@@ -620,3 +620,16 @@ select.input option{color:var(--text);background:var(--card);font-weight:500}
 @keyframes bfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .brow-sub{font-size:var(--fs-xs);color:var(--muted);margin-top:5px}
 .brow.over .brow-sub{color:var(--red)}
+
+/* ── راهنمای ⓘ ── */
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--faint);color:var(--muted);font:700 11px/1 ui-serif,Georgia,serif;font-style:italic;background:transparent;vertical-align:middle;margin-inline-start:6px;padding:0;flex-shrink:0}
+.info-btn:active{background:var(--card2)}
+.info-btn.lg{width:22px;height:22px;font-size:13px}
+.tip{position:fixed;z-index:9999;background:var(--text);color:var(--bg);font-size:var(--fs-xs);line-height:1.7;padding:10px 12px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.35);opacity:0;transform:translateY(-4px);transition:opacity .16s,transform .16s;pointer-events:auto;text-align:right}
+.tip.show{opacity:1;transform:none}
+.field label{display:flex;align-items:center}
+.oblig-head{display:flex;align-items:center;gap:var(--sp-3)}
+.oblig-rows{margin-top:var(--sp-3);padding-top:var(--sp-2);border-top:1px solid var(--border-soft)}
+.oblig-row{display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-sm);color:var(--muted);padding:5px 0}
+.oblig-row b{color:var(--text);font-weight:700}
+.faint{color:var(--faint)}

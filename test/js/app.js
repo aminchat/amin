@@ -1,4 +1,4 @@
-import { store, toast } from './utils.js';
+import { store, toast, showTip, hideTip } from './utils.js';
 import { icon } from './icons.js';
 import * as inst from './installments.js';
 import { closeModal, openModal } from './modal.js';
@@ -356,6 +356,8 @@ Object.assign(window, {
   txShift,
   repShift,
   togglePocket,
+  showTip,
+  hideTip,
   toggleAcctGroup,
   googleSignIn,
   googleSignOut,

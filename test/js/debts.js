@@ -1,5 +1,5 @@
 import { icon } from './icons.js';
-import { esc, fmt, fmtShort, store, toast, uid, todayISO } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, infoTip } from './utils.js';
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -306,9 +306,8 @@ export function settleDebt(id) {
     ${remain > 0 ? `
     <div class="field"><label>مبلغ (${esc(cur)})</label>
       <input class="input" id="spAmount" type="number" step="any" inputmode="decimal" value="${remain}"></div>
-    <div class="field"><label>${lent ? 'به کدام حساب برگشت؟' : 'از کدام حساب پرداخت شد؟'}</label>
-      <select class="input" id="spAcc"><option value="">— بدون اتصال به حساب —</option>${accountOptGroups(d.accountId || '')}</select>
-      <div class="hint" style="margin-top:6px">می‌تواند با حساب اولیه فرق کند؛ مثلاً از ملت قرض داده‌ای و به ملی برگشته.</div></div>
+    <div class="field"><label>${lent ? 'به کدام حساب برگشت؟' : 'از کدام حساب پرداخت شد؟'} ${infoTip('می‌تواند با حساب اولیه فرق کند؛ مثلاً از ملت قرض داده‌ای و به ملی برگشته.')}</label>
+      <select class="input" id="spAcc"><option value="">— بدون اتصال به حساب —</option>${accountOptGroups(d.accountId || '')}</select></div>
     <div class="field"><label>تاریخ</label><input class="input" id="spDate" type="date" value="${todayISO()}"></div>
     <button class="btn primary block" onclick="addDebtPayment('${d.id}')">${icon('check')} ثبت ${lent ? 'دریافت' : 'پرداخت'}</button>` : '<div class="hint" style="margin-bottom:12px;color:var(--green)">کامل تسویه شده.</div>'}
     ${hist ? `<div class="divider"></div><h3 class="muted" style="margin-bottom:8px">پرداخت‌ها</h3>${hist}` : ''}

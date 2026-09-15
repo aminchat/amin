@@ -7,7 +7,7 @@
 //   • پرداخت هر قسط / پیش‌پرداخت → تراکنش خرج از حساب، در پاکت انتخابی (داخل بودجه)
 //   • ویرایش/حذف ردیف پرداخت‌شده → تراکنشش هماهنگ می‌شود
 import { icon } from './icons.js';
-import { esc, fmt, fmtShort, toFa, toast, uid, todayISO, haptic } from './utils.js';
+import { esc, fmt, fmtShort, toFa, toast, uid, todayISO, haptic, infoTip } from './utils.js';
 import { fmtDate, monthOfISO, toJalali, toGregorian } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -220,24 +220,22 @@ export function openPlanForm(p) {
         <div class="col field"><label>تاریخ دریافت</label>
           <input class="input" id="plStart" type="date" value="${p ? p.startISO : todayISO()}"></div>
       </div>
-      <div class="field"><label>واریز اصل وام به حساب</label>
+      <div class="field"><label>واریز اصل وام به حساب ${infoTip('فقط اگر همین الان وام گرفته‌ای و هنوز موجودی‌اش را در حساب وارد نکرده‌ای، حساب را انتخاب کن. برای وام‌های قدیمی که پولش الان در حساب‌هایت هست «ثبت نشود» بماند وگرنه دوبار حساب می‌شود.')}</label>
         <select class="input" id="plDisburseAcc" onchange="plRecalc()"><option value="" ${!p || !p.disburseAccountId ? 'selected' : ''}>ثبت نشود — پول قبلاً در حسابم هست</option>${accountOptGroups(p ? p.disburseAccountId : '')}</select>
-        <div class="hint" id="plDisburseHint" style="margin-top:6px">فقط اگر همین الان وام گرفته‌ای و هنوز موجودی‌اش را در حساب وارد نکرده‌ای، حساب را انتخاب کن. برای وام‌های قدیمی که پولش الان در حساب‌هایت هست «ثبت نشود» بماند وگرنه دوبار حساب می‌شود.</div>
+        <div class="hint" id="plDisburseHint" style="margin-top:6px;display:none"></div>
       </div>
     </div>
 
-    <div class="field"><label>هر قسط از کدام حساب و پاکت؟</label>
+    <div class="field"><label>هر قسط از کدام حساب و پاکت؟ ${infoTip('پرداخت قسط خرجِ واقعی ماه است و از بودجهٔ همان پاکت کم می‌شود.')}</label>
       <div class="row">
         <select class="input col" id="plAcc">${accountOptGroups(acc)}</select>
         <select class="input col" id="plCat">${catOptions(p ? p.cat : 'need')}</select>
       </div>
-      <div class="hint" style="margin-top:6px">پرداخت قسط خرجِ واقعی ماه است و از بودجهٔ همان پاکت کم می‌شود.</div>
     </div>
 
     ${p ? '' : `
     <div class="divider"></div>
-    <h3 style="margin-bottom:10px">جدول اقساط اولیه</h3>
-    <div class="small muted" style="margin-bottom:10px">این فقط نقطهٔ شروع است؛ بعداً هر ردیف را جدا می‌توانی عوض کنی (مبلغ، تاریخ، سود، جریمه).</div>
+    <h3 style="margin-bottom:10px;display:flex;align-items:center">جدول اقساط ${infoTip('این فقط نقطهٔ شروع است؛ بعداً هر ردیف را جدا می‌توانی عوض کنی (مبلغ، تاریخ، سود، جریمه).')}</h3>
     <div id="plModeBox" style="${F.kind === 'loan' ? '' : 'display:none'}">
       <div class="seg" style="margin-bottom:12px">
         <button type="button" class="${F.mode === 'equal' ? 'on' : ''}" onclick="plSetMode('equal')">اقساط مساوی</button>
@@ -261,13 +259,11 @@ export function openPlanForm(p) {
       <div class="col field" id="plRateBox" style="${F.kind === 'loan' ? '' : 'display:none'}"><label>نرخ سود سالانه ٪ (اختیاری)</label>
         <input class="input" id="plRate" type="number" inputmode="decimal" step="any" placeholder="مثلاً 23" oninput="plRecalc(true)"></div>
     </div>
-    <div class="field"><label id="plPerLbl">${F.kind === 'loan' && F.mode === 'periodic' ? 'اصل هر ماه' : 'مبلغ هر قسط'}</label>
-      <input class="input" id="plPer" type="number" inputmode="numeric" placeholder="مثلاً 15000000" oninput="plPerTouched=true;plRecalc()">
-      <div class="hint" id="plPerHint" style="margin-top:6px">با نرخ سود پیشنهاد می‌شود؛ عدد قرارداد بانک را هر وقت خواستی جایگزین کن.</div></div>
+    <div class="field"><label><span id="plPerLbl">${F.kind === 'loan' && F.mode === 'periodic' ? 'اصل هر ماه' : 'مبلغ هر قسط'}</span>${F.kind === 'loan' ? infoTip('با نرخ سود پیشنهاد می‌شود؛ عدد قرارداد بانک را هر وقت خواستی جایگزین کن.') : ''}</label>
+      <input class="input" id="plPer" type="number" inputmode="numeric" placeholder="مثلاً 15000000" oninput="plPerTouched=true;plRecalc()"></div>
     <div id="plEqualBox" style="${F.kind === 'loan' && F.mode === 'equal' ? '' : 'display:none'}">
-      <div class="field"><label>از هر قسط چقدر سود است؟</label>
-        <input class="input" id="plPerInt" type="number" inputmode="numeric" placeholder="مثلاً 2000000" oninput="plIntTouched=true;plRecalc()">
-        <div class="hint" style="margin-top:6px">با نرخ سود خودکار پر می‌شود (تقسیم ساده). مثلاً قسط ۱۵ میلیون که ۲ میلیونش سود است.</div></div>
+      <div class="field"><label>سودِ داخل هر قسط ${infoTip('با نرخ سود خودکار پر می‌شود (تقسیم ساده). مثلاً قسط ۱۵ میلیون که ۲ میلیونش سود است.')}</label>
+        <input class="input" id="plPerInt" type="number" inputmode="numeric" placeholder="مثلاً 2000000" oninput="plIntTouched=true;plRecalc()"></div>
     </div>
     <div id="plPeriodicBox" style="${F.kind === 'loan' && F.mode === 'periodic' ? '' : 'display:none'}">
       <div class="row">
@@ -279,9 +275,8 @@ export function openPlanForm(p) {
     </div>
     <div class="field" id="plFirstBox" style="${F.kind === 'loan' ? '' : 'display:none'}"><label>تاریخ اولین قسط</label>
       <input class="input" id="plFirst" type="date" value="${addJMonths(todayISO(), 1)}"></div>
-    <div class="field"><label>چند قسط از قبل پرداخت شده؟ (برای وام‌های در جریان)</label>
-      <input class="input" id="plPrepaid" type="number" inputmode="numeric" value="0" oninput="plRecalc()">
-      <div class="hint" style="margin-top:6px">این‌ها فقط تیک می‌خورند؛ تراکنشی ساخته نمی‌شود و از حسابی کم نمی‌شود — چون آن پرداخت‌ها قبلاً از موجودی فعلی‌ات رفته‌اند.</div></div>
+    <div class="field"><label>قسط‌های پرداخت‌شدهٔ قبلی ${infoTip('برای وام‌های در جریان. این‌ها فقط تیک می‌خورند؛ تراکنشی ساخته نمی‌شود و از حسابی کم نمی‌شود — چون آن پرداخت‌ها قبلاً از موجودی فعلی‌ات رفته‌اند.')}</label>
+      <input class="input" id="plPrepaid" type="number" inputmode="numeric" value="0" oninput="plRecalc()"></div>
     <div class="hint" id="plSummary" style="margin-bottom:12px"></div>`}
 
     <div class="field"><label>توضیح (اختیاری)</label>
@@ -359,14 +354,14 @@ export function plRecalc(fromRate) {
     box.textContent = 'مدت و مبلغ قسط را بنویس تا خلاصه را ببینی.';
     return;
   }
-  let principal = 0, interest = 0, extra = '';
+  let principal = 0, interest = 0, extra = '', markup = 0;
   if (F.kind === 'purchase') {
     const down = v('plDown');
-    principal = down + count * per;
+    principal = down + count * per; // کل بازپرداخت خرید قسطی = پیش‌پرداخت + اقساط
     extra = down ? ' (پیش‌پرداخت ' + fmtShort(down) + ' + ' : ' (';
     extra += toFa(count) + ' × ' + fmtShort(per) + ')';
     const cash = v('plCash');
-    if (cash > 0 && principal > cash) interest = principal - cash;
+    if (cash > 0 && principal > cash) markup = principal - cash;
   } else if (F.mode === 'equal') {
     const pi = v('plPerInt');
     principal = count * (per - pi);
@@ -379,17 +374,21 @@ export function plRecalc(fromRate) {
   const pre = v('plPrepaid');
   const yrs = count / 12;
   const eff = F.kind === 'loan' && principal > 0 && yrs > 0 ? (interest / principal / yrs) * 100 : 0;
+  const total = principal + interest;
   box.innerHTML =
-    `کل بازپرداخت: <b>${fmt(principal + interest)}</b> تومان${extra}` +
-    (interest ? `<br>${F.kind === 'purchase' ? 'نسبت به نقدی' : 'از این مبلغ'} <b style="color:var(--orange)">${fmt(interest)}</b> ${F.kind === 'purchase' ? 'بیشتر می‌پردازی.' : 'سود است'}${eff ? ' (≈ ' + toFa(eff.toFixed(1).replace('.0', '')) + '٪ در سال).' : ''}` : '') +
+    `کل بازپرداخت: <b>${fmt(total)}</b>${extra}` +
+    (interest ? `<br>از این مبلغ <b style="color:var(--orange)">${fmt(interest)}</b> سود است${eff ? ' (≈ ' + toFa(eff.toFixed(1).replace('.0', '')) + '٪ در سال).' : ''}` : '') +
+    (markup ? `<br>نسبت به نقدی <b style="color:var(--orange)">${fmt(markup)}</b> بیشتر می‌پردازی.` : '') +
     (F.kind === 'loan' && principal0 > 0 && Math.abs(principal - principal0) > count ? `<br><span style="color:var(--orange)">جمع اصلِ اقساط (${fmtShort(principal)}) با مبلغ وام (${fmtShort(principal0)}) یکی نیست؛ اگر عمدی نیست مبلغ قسط را چک کن.</span>` : '') +
-    (pre > 0 ? `<br>${toFa(pre)} قسط اول پرداخت‌شده تیک می‌خورد؛ ماندهٔ فعلی ≈ <b>${fmt(Math.max(0, principal + interest - pre * per - (F.mode === 'equal' ? 0 : 0)))}</b>.` : '');
+    (pre > 0 ? `<br>${toFa(pre)} قسط اول پرداخت‌شده تیک می‌خورد؛ ماندهٔ فعلی ≈ <b>${fmt(Math.max(0, total - pre * per))}</b>.` : '');
   const dh = document.getElementById('plDisburseHint');
   const da = document.getElementById('plDisburseAcc');
   if (dh && da) {
     const old = pre > 0 || (document.getElementById('plStart') && document.getElementById('plStart').value < todayISO());
-    dh.style.color = da.value && old ? 'var(--red)' : '';
-    if (da.value && old) dh.textContent = 'توجه: این وام مربوط به گذشته است؛ با انتخاب حساب، مبلغ وام دوباره به موجودی اضافه می‌شود. اگر پول از قبل در حسابت هست «ثبت نشود» را انتخاب کن.';
+    const warn = !!da.value && old;
+    dh.style.display = warn ? '' : 'none';
+    dh.style.color = warn ? 'var(--red)' : '';
+    dh.textContent = warn ? 'توجه: این وام مربوط به گذشته است؛ با انتخاب حساب، مبلغ وام دوباره به موجودی اضافه می‌شود. اگر پول از قبل در حسابت هست «ثبت نشود» را انتخاب کن.' : '';
   }
 }
 
@@ -646,13 +645,12 @@ export function openPlanDetail(id) {
     <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <div id="plDetail">
     <h2>${esc(p.title)} <span class="badge">${p.kind === 'loan' ? 'وام' : 'خرید قسطی'}</span></h2>
-    <div class="grid3" style="margin-bottom:10px">
+    <div class="grid2" style="margin-bottom:10px">
       <div class="stat"><div class="lbl">مانده</div><div class="val red">${fmtShort(st.remain)}</div></div>
-      <div class="stat"><div class="lbl">پرداخت‌شده</div><div class="val green">${fmtShort(st.paidSum)}</div></div>
-      <div class="stat"><div class="lbl">سود کل</div><div class="val orange">${fmtShort(st.interestAll)}</div><div class="sub">${fmtShort(st.interestPaid)} داده‌ای</div></div>
+      <div class="stat"><div class="lbl">پرداختی</div><div class="val green">${fmtShort(st.paidSum)}</div></div>
     </div>
     <div class="pbar" style="margin:4px 0 6px"><div style="width:${pct}%"></div></div>
-    <div class="small muted" style="display:flex;justify-content:space-between;margin-bottom:12px"><span>${toFa(st.paid.length)} از ${toFa(st.rows.length)} پرداخت</span><span>${toFa(pct)}٪</span></div>
+    <div class="small muted" style="display:flex;justify-content:space-between;margin-bottom:12px"><span>${toFa(st.paid.length)} از ${toFa(st.rows.length)} قسط</span>${st.interestAll ? `<span>سود ${fmtShort(st.interestPaid)} از ${fmtShort(st.interestAll)}</span>` : ''}<span>${toFa(pct)}٪</span></div>
     <div class="row" style="margin-bottom:12px">
       <button class="btn sm" style="flex:1" onclick="openRowEdit('${p.id}','')">${icon('plus')} ردیف</button>
       <button class="btn sm" style="flex:1" onclick="openPlanForm(findPlan('${p.id}'))">${icon('edit')} مشخصات</button>
@@ -671,19 +669,19 @@ function planCard(p) {
   const nextTxt = st.done
     ? '<span style="color:var(--green)">تسویه شد</span>'
     : nxt
-      ? (n < 0 ? '<span style="color:var(--red)">عقب‌افتاده · </span>' : n <= 3 ? '<span style="color:var(--orange)">به‌زودی · </span>' : 'بعدی ') + fmtDate(nxt.dueISO) + ' · ' + fmtShort(rowTotal(nxt))
+      ? (n < 0 ? '<span style="color:var(--red)">' + toFa(-n) + ' روز عقب‌افتاده</span>' : n === 0 ? '<span style="color:var(--orange)">امروز</span>' : n <= 7 ? '<span style="color:var(--orange)">' + toFa(n) + ' روز دیگر</span>' : fmtDate(nxt.dueISO)) + ' · ' + fmtShort(rowTotal(nxt))
       : '';
   return `<div class="card" style="padding:var(--sp-3)">
     <div class="row" style="align-items:center;gap:var(--sp-3)" onclick="openPlanDetail('${p.id}')">
       <span class="ib ${st.overdue ? 'red' : st.done ? 'green' : ''}">${icon(p.kind === 'loan' ? 'bank' : 'gift')}</span>
       <div style="flex:1;min-width:0">
         <div class="t1" style="font-size:var(--fs-md)">${esc(p.title)}</div>
-        <div class="t2">${toFa(st.paid.length)} از ${toFa(st.rows.length)} · ${nextTxt}</div>
+        <div class="t2">${nextTxt || toFa(st.paid.length) + ' از ' + toFa(st.rows.length)}</div>
       </div>
-      <div class="amt-col"><div class="amt out">${fmtShort(st.remain)}</div><div class="bal">مانده</div></div>
+      <div class="amt-col"><div class="amt out">${fmtShort(st.remain)}</div><div class="bal">${toFa(st.paid.length)}/${toFa(st.rows.length)}</div></div>
     </div>
-    <div class="pbar" style="margin:10px 0 8px"><div style="width:${pct}%;background:${st.overdue ? 'var(--red)' : 'var(--accent)'}"></div></div>
-    ${nxt && !st.done && n <= 7 ? `<button class="btn sm block" onclick="openPayRow('${p.id}','${nxt.id}')">${icon('check')} پرداخت ${nxt.kind === 'interest' ? 'سود' : 'قسط'} ${fmtShort(rowTotal(nxt))}</button>` : ''}
+    <div class="pbar" style="margin:10px 0 0"><div style="width:${pct}%;background:${st.overdue ? 'var(--red)' : 'var(--accent)'}"></div></div>
+    ${nxt && !st.done && n <= 7 ? `<button class="btn sm block" style="margin-top:8px" onclick="openPayRow('${p.id}','${nxt.id}')">${icon('check')} پرداخت ${nxt.kind === 'interest' ? 'سود' : 'قسط'} ${fmtShort(rowTotal(nxt))}</button>` : ''}
   </div>`;
 }
 
@@ -697,13 +695,12 @@ export function renderInstallments() {
   });
   const remain = totalRemaining();
   const paidAll = allPlans().reduce((s, p) => s + planStats(p).paidSum, 0);
-  const intAll = allPlans().reduce((s, p) => s + planStats(p).interestAll, 0);
   let html = '';
   if (plans.length) {
     html += `<div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('calendar')} ماندهٔ اقساط</div>
       <div class="hero-num">${fmtShort(remain)}</div>
-      <div class="sub">پرداخت‌شده ${fmtShort(paidAll)} · سود کل ${fmtShort(intAll)}</div></div>
+      <div class="sub">پرداختی ${fmtShort(paidAll)}</div></div>
       <span class="ib lg ${overdueInstallments() ? 'red' : ''}">${icon('calendar')}</span>
     </div>`;
     html += plans.map(planCard).join('');

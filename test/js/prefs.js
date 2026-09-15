@@ -1,4 +1,4 @@
-import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION } from './utils.js';
+import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip } from './utils.js';
 import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
@@ -360,13 +360,13 @@ export function setLockMode(mode, sub) {
   const lbl = document.getElementById('lockSub');
   const inp = document.getElementById('lockPin');
   const bio = document.getElementById('lockBio');
-  if (title) title.textContent = mode === 'pass' ? 'بازکردن داده‌ها' : 'ورود به برنامه';
+  if (title) title.textContent = 'ورود';
   if (lbl)
     lbl.textContent =
       sub ||
       (mode === 'pass'
-        ? 'رمز عبور را وارد کن (در همهٔ دستگاه‌هایت یکسان است)'
-        : 'رمز را وارد کن');
+        ? 'رمز عبور'
+        : 'رمز ورود');
   if (inp) {
     inp.value = '';
     inp.placeholder = mode === 'pass' ? 'رمز عبور' : 'پین';
@@ -451,7 +451,7 @@ function autoBioPrompt() {
 }
 
 export function showLockForRemote() {
-  setLockMode('pass', 'رمز عبور را وارد کن تا داده‌ها از گوگل باز شود (در همهٔ دستگاه‌ها یکسان است)');
+  setLockMode('pass', 'رمز عبور (همان رمز دستگاه‌های دیگر)');
   lockApp();
 }
 
@@ -570,7 +570,7 @@ export async function recoveryStep2() {
     <div class="field"><label>تکرار رمز عبور</label>
       <input class="input" id="recPass2" type="password" autocomplete="new-password" dir="ltr"></div>
     <div id="recPassErr" class="hint" style="display:none;color:#fb7185"></div>
-    <button class="btn primary block" id="recFinishBtn" style="margin-top:12px" onclick="recoveryFinish()">بازکردن داده‌ها</button>
+    <button class="btn primary block" id="recFinishBtn" style="margin-top:12px" onclick="recoveryFinish()">ورود</button>
   `);
   setTimeout(() => {
     const p1 = document.getElementById('recPass');
@@ -606,7 +606,7 @@ export async function recoveryFinish() {
   const btn = document.getElementById('recFinishBtn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'در حال بازکردن…';
+    btn.textContent = 'در حال ورود…';
   }
   try {
     const st = await sec.recoverWithPhrase(phrase, a);
@@ -618,7 +618,7 @@ export async function recoveryFinish() {
     if (window.__capLog) window.__capLog('recoveryFinish', e);
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'بازکردن داده‌ها';
+      btn.textContent = 'ورود';
     }
     recPassError('بازیابی انجام نشد: ' + ((e && e.message) || e));
   }
@@ -857,7 +857,6 @@ export function openSettingsSecurity() {
   if (enc) {
     body += `
     <div class="sgroup">
-      <div class="hint">✅ رمزنگاری فعال است — داده‌ها روی گوشی و گوگل‌درایو رمزشده‌اند و فقط با رمز عبور تو باز می‌شوند.</div>
       ${settingsRow('key', '#3d8bfd', 'تغییر رمز عبور', 'روی همهٔ دستگاه‌ها اعمال می‌شود', 'changePassPrompt()')}
       ${settingsRow('scroll', '#a78bfa', 'عبارت بازیابی جدید', 'اگر کاغذ قبلی گم شده', 'rotatePhrasePrompt()')}
     </div>
@@ -879,8 +878,7 @@ export function openSettingsSecurity() {
   } else {
     body += `
     <div class="sgroup">
-      <div class="hint">⚠️ داده‌هایت هنوز به‌صورت ساده ذخیره می‌شوند. با فعال‌کردن رمزنگاری، حتی در گوگل‌درایو هم خواندنی نخواهند بود.</div>
-      ${settingsRow('shield', '#22c55e', 'فعال‌کردن رمزنگاری', 'رمز عبور + عبارت بازیابی', 'openEncryptSetup()')}
+      ${settingsRow('shield', '#f59e0b', 'فعال‌کردن رمزنگاری', 'داده‌ها الان ساده ذخیره می‌شوند', 'openEncryptSetup()')}
     </div>
     <div class="sgroup">
       ${

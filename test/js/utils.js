@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.5.2-test';
+export const APP_VERSION = '2.6.0-test';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -150,3 +150,43 @@ export function fmtShort(n) {
   }
   return fmt(n);
 }
+
+// دکمهٔ ⓘ که توضیح را فقط در صورت درخواست کاربر نشان می‌دهد (چند ثانیه یا تا ضربهٔ بعدی)
+export function infoTip(text, cls) {
+  return `<button type="button" class="info-btn ${cls || ''}" data-tip="${esc(text)}" onclick="event.stopPropagation();showTip(this)" aria-label="راهنما">i</button>`;
+}
+let tipEl = null, tipTimer = 0;
+export function hideTip() {
+  if (tipEl) tipEl.remove();
+  tipEl = null;
+  clearTimeout(tipTimer);
+}
+export function showTip(btn) {
+  const same = tipEl && tipEl._for === btn;
+  hideTip();
+  if (same) return;
+  const t = document.createElement('div');
+  t.className = 'tip';
+  t.textContent = btn.dataset.tip || '';
+  t._for = btn;
+  document.body.appendChild(t);
+  const r = btn.getBoundingClientRect();
+  const w = Math.min(300, window.innerWidth - 24);
+  t.style.width = w + 'px';
+  let left = r.left + r.width / 2 - w / 2;
+  left = Math.max(12, Math.min(window.innerWidth - w - 12, left));
+  t.style.left = left + 'px';
+  const below = r.bottom + 8;
+  t.style.top = below + 'px';
+  requestAnimationFrame(() => {
+    const th = t.offsetHeight;
+    if (below + th > window.innerHeight - 12) t.style.top = Math.max(12, r.top - th - 8) + 'px';
+    t.classList.add('show');
+  });
+  tipEl = t;
+  tipTimer = setTimeout(hideTip, 6000);
+}
+document.addEventListener('pointerdown', (e) => {
+  if (tipEl && !e.target.closest('.info-btn') && !e.target.closest('.tip')) hideTip();
+}, true);
+document.addEventListener('scroll', () => hideTip(), true);
