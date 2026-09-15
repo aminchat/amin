@@ -516,7 +516,8 @@ body.locked{overflow:hidden}
 .entry:last-child{border-bottom:0}
 .entry:active{background:var(--press)}
 .entry .mid{flex:1;min-width:0}
-.entry .t1{font-size:var(--fs-md);font-weight:700}
+.entry .t1{font-size:var(--fs-md);font-weight:700;display:flex;align-items:center;gap:6px}
+.entry .t2.red{color:var(--red)}
 .entry .t2{font-size:var(--fs-xs);color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .entry .num{font-size:var(--fs-md);font-weight:800;white-space:nowrap}
 .entry .num .small{font-weight:600}

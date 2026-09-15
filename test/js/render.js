@@ -5,8 +5,8 @@ import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, M
 import { renderSyncCard } from './sync.js';
 import * as sec from './securestore.js';
 import { debtHomeBanner, overdueCount, renderDebts } from './debts.js';
-import { installmentHomeCard, totalRemaining, monthInstallments, renderInstallments, overdueInstallments } from './installments.js';
-import { debtRemaining } from './debts.js';
+import { installmentHomeCard, totalRemaining, monthInstallments, renderInstallments, overdueInstallments, dueRows, rowTotal } from './installments.js';
+import { debtRemaining, dueSoonDebts, daysUntilDue } from './debts.js';
 import {
   CATS,
   accountById,
@@ -695,12 +695,23 @@ export function renderAssetsOverview() {
   const lateDebts = overdueCount() - overdueInstallments();
   const lateInst = overdueInstallments();
   const plans = (state.installments || []).length;
-  const entry = (id, ic, cls, t1, t2, num, alert) =>
+  const entry = (id, ic, cls, t1, count, t2, num, alert) =>
     `<button type="button" class="entry" onclick="setAssetTab('${id}')">
       <span class="ib ${cls}">${icon(ic)}</span>${alert ? '<span class="dot-alert"></span>' : ''}
-      <span class="mid"><span class="t1">${t1}</span><span class="t2">${t2}</span></span>
+      <span class="mid"><span class="t1">${t1}${count ? ` <span class="badge">${toFa(count)}</span>` : ''}</span>${t2 ? `<span class="t2 ${alert ? 'red' : ''}">${t2}</span>` : ''}</span>
       <span class="num">${num}</span><span class="chev">${icon('chevL')}</span>
     </button>`;
+  const dayTxt = (n) => (n < 0 ? toFa(-n) + ' روز عقب افتاده' : n === 0 ? 'امروز' : toFa(n) + ' روز دیگر');
+  // زیرنویس‌های معنادار به‌جای شمارش
+  const foreign = state.accounts.filter((a) => a.currency && a.currency !== 'تومان').length;
+  const accSub = foreign ? toFa(foreign) + ' حساب ارزی' : '';
+  const totalBuy = state.investments.reduce((x, i) => x + i.qty * i.buy * rateOf(i.currency), 0);
+  const pl = inv - totalBuy;
+  const invSub = state.investments.length && totalBuy ? `<span class="${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? 'سود' : 'زیان'} ${fmtShort(Math.abs(pl))}</span>` : '';
+  const nextDebt = debts.filter((d) => d.dueISO).sort((a, b) => a.dueISO.localeCompare(b.dueISO))[0];
+  const debtSub = lateDebts > 0 ? toFa(lateDebts) + ' مورد سررسید گذشته' : nextDebt ? 'سررسید بعدی ' + dayTxt(daysUntilDue(nextDebt.dueISO)) : debts.length ? '' : 'موردی باز نیست';
+  const nextRow = dueRows(3650)[0];
+  const instSub = lateInst > 0 ? toFa(lateInst) + ' قسط عقب‌افتاده' : nextRow ? 'قسط بعدی ' + dayTxt(nextRow.days) + ' · ' + fmtShort(rowTotal(nextRow.row)) : plans ? '' : 'وام یا خرید قسطی نداری';
   box.innerHTML = `
     <div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('wallet')} خالص دارایی</div>
@@ -709,10 +720,10 @@ export function renderAssetsOverview() {
       <span class="ib lg">${icon('wallet')}</span>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
-      ${entry('accounts', 'card', '', 'حساب‌ها', toFa(state.accounts.length) + ' حساب', fmtShort(cash))}
-      ${entry('invest', 'trend', 'green', 'سرمایه', toFa(state.investments.length) + ' دارایی', fmtShort(inv))}
-      ${entry('debts', 'handshake', 'purple', 'طلب و بدهی', debts.length ? toFa(debts.length) + ' مورد باز' : 'موردی باز نیست', `<span style="color:var(--green)">+${fmtShort(rec)}</span> <span class="small muted">/</span> <span style="color:var(--red)">−${fmtShort(pay)}</span>`, lateDebts > 0)}
-      ${entry('installments', 'calendar', 'orange', 'اقساط', plans ? toFa(plans) + ' طرح' : 'وام یا خرید قسطی نداری', plans ? fmtShort(inst) : '—', lateInst > 0)}
+      ${entry('accounts', 'card', '', 'حساب‌ها', state.accounts.length, accSub, fmtShort(cash))}
+      ${entry('invest', 'trend', 'green', 'سرمایه', state.investments.length, invSub, fmtShort(inv))}
+      ${entry('debts', 'handshake', 'purple', 'طلب و بدهی', debts.length, debtSub, `<span style="color:var(--green)">+${fmtShort(rec)}</span> <span class="small muted">/</span> <span style="color:var(--red)">−${fmtShort(pay)}</span>`, lateDebts > 0)}
+      ${entry('installments', 'calendar', 'orange', 'اقساط', plans, instSub, plans ? fmtShort(inst) : '—', lateInst > 0)}
     </div>
     ${oblig > 0 ? `<div class="card" style="display:flex;align-items:center;gap:var(--sp-3)">
       <span class="ib red">${icon('alert')}</span>
