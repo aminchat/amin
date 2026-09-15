@@ -390,8 +390,8 @@ export function renderReport() {
       <button class="btn sm ghost" onclick="openBudgetForm('${mk}')">${budget ? 'ویرایش بودجه' : 'تعیین بودجه'}</button>
     </div>
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">کل خرج</div><div class="val red">${fmt(totalSpent)}</div></div>
-      <div class="stat"><div class="lbl">کل درآمد</div><div class="val green">${fmt(totalIncome)}</div></div>
+      <div class="stat"><div class="lbl">کل خرج</div><div class="val red">${fmtShort(totalSpent)}</div></div>
+      <div class="stat"><div class="lbl">کل درآمد</div><div class="val green">${fmtShort(totalIncome)}</div></div>
     </div>
     ${pieSVG(slices.filter((s) => s.v > 0), 190)}
     <div class="legend">
@@ -400,7 +400,7 @@ export function renderReport() {
         .map((s) => {
           const pct = totalSpent > 0 ? Math.round((s.v / totalSpent) * 100) : 0;
           return `<div class="lr"><span class="sw" style="background:${s.color}"></span>
-          <span class="nm">${s.label}</span><span class="pv">${fmt(s.v)}</span><span class="pg">${toFa(pct)}٪</span></div>`;
+          <span class="nm">${s.label}</span><span class="pv">${fmtShort(s.v)}</span><span class="pg">${toFa(pct)}٪</span></div>`;
         })
         .join('')}
     </div>
@@ -410,7 +410,7 @@ export function renderReport() {
     <h3>سقف پاکت‌ها از بودجه</h3>
     <div class="small muted" style="margin-bottom:12px">${
       budget
-        ? 'سقف هر پاکت = سهم آن از بودجه ' + fmt(budget) + ' تومان (۶۰/۲۰/۱۵/۵).'
+        ? 'سقف هر پاکت = سهم آن از بودجه ' + fmtShort(budget) + ' تومان (۶۰/۲۰/۱۵/۵).'
         : 'برای دیدن سقف پاکت‌ها بودجه این ماه را ثبت کن.'
     }</div>
     ${envelopeBars(mk)}
@@ -439,9 +439,7 @@ export function renderReport() {
     }
     ${
       wasteItems.length
-        ? `<div class="divider"></div><div style="display:flex;justify-content:space-between;font-weight:700"><span>جمع هدررفت</span><span class="red">${fmt(
-            catSpent(mk, 'waste')
-          )} تومان</span></div>`
+        ? `<div class="divider"></div><div style="display:flex;justify-content:space-between;font-weight:700"><span>جمع هدررفت</span><span class="red">${fmtShort(catSpent(mk, 'waste'))} تومان</span></div>`
         : ''
     }
   </div>`;
@@ -461,8 +459,8 @@ export function renderInvest() {
   let html = `
   <div class="hero">
     <div style="min-width:0"><div class="lbl">${icon('trend')} ارزش کل سرمایه‌گذاری</div>
-    <div class="hero-num">${fmt(total)}<small>تومان</small></div>
-    <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmt(Math.abs(plAll))} تومان</div></div>
+    <div class="hero-num">${fmtShort(total)}<small>تومان</small></div>
+    <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmtShort(Math.abs(plAll))} تومان</div></div>
     <span class="ib lg ${plAll >= 0 ? 'green' : 'red'}">${icon('trend')}</span>
   </div>
   <button class="btn primary block" style="margin-bottom:var(--sp-3)" onclick="openInvestForm()">${icon('plus')} افزودن دارایی</button>`;
@@ -481,8 +479,8 @@ export function renderInvest() {
           <div class="small muted">${i.currency}</div>
         </div>
         <div class="grid2" style="margin:10px 0">
-          <div class="stat"><div class="lbl">ارزش فعلی</div><div class="val accent">${fmt(val)}</div><div class="sub">${i.currency !== 'تومان' ? '≈ ' + fmtT(val * rateOf(i.currency)) : 'تومان'}</div></div>
-          <div class="stat"><div class="lbl">سود / زیان</div><div class="val ${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? '+' : '−'}${fmt(Math.abs(pl))}</div><div class="sub">از زمان خرید</div></div>
+          <div class="stat"><div class="lbl">ارزش فعلی</div><div class="val accent">${i.currency !== 'تومان' ? fmt(val) : fmtShort(val)}</div><div class="sub">${i.currency !== 'تومان' ? '≈ ' + fmtShort(val * rateOf(i.currency)) + ' تومان' : 'تومان'}</div></div>
+          <div class="stat"><div class="lbl">سود / زیان</div><div class="val ${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? '+' : '−'}${i.currency !== 'تومان' ? fmt(Math.abs(pl)) : fmtShort(Math.abs(pl))}</div><div class="sub">از زمان خرید</div></div>
         </div>
         <div class="small muted" style="margin-bottom:10px">قیمت خرید هر ${esc(i.unit || 'واحد')}: ${fmt(i.buy)} · قیمت امروز: <b style="color:var(--text)">${fmt(i.cur)}</b>${curSuffix}</div>
         <div class="row">
@@ -518,8 +516,8 @@ function acctRow(a) {
         <div class="t2">${esc(a.type)} · ${a.currency}${isForeign && rate ? ` (${fmt(rate)} ت/${a.currency})` : ''}</div>
       </div>
       <div style="text-align:left">
-        <div class="amt ${bal >= 0 ? 'in' : 'out'}">${fmt(bal)}</div>
-        ${isForeign ? `<div class="small muted">≈ ${fmtT(bal * rate)}</div>` : ''}
+        <div class="amt ${bal >= 0 ? 'in' : 'out'}">${isForeign ? fmt(bal) : fmtShort(bal)}</div>
+        ${isForeign ? `<div class="small muted">≈ ${fmtShort(bal * rate)} تومان</div>` : ''}
       </div>
       <div class="acct-actions">
         <button class="btn sm icon" onclick="event.stopPropagation();openAccountForm(findAccount('${a.id}'))" aria-label="ویرایش">${icon('edit')}</button>
@@ -564,7 +562,7 @@ export function renderAccounts() {
     const total = cashTotal();
     html += `<div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('bank')} جمع همهٔ حساب‌ها</div>
-      <div class="hero-num">${fmt(total)}<small>تومان</small></div>
+      <div class="hero-num">${fmtShort(total)}<small>تومان</small></div>
       <div class="sub">${toFa(state.accounts.length)} حساب در ${toFa(keys.length)} مؤسسه</div></div>
       <span class="ib lg">${icon('card')}</span>
     </div>`;
@@ -589,7 +587,7 @@ export function renderAccounts() {
             <span class="bar" style="margin-top:6px;height:4px"><span style="display:block;height:100%;width:${pct}%;background:var(--accent);border-radius:99px"></span></span>
           </span>
           <span style="text-align:left">
-            <span class="amt ${sum >= 0 ? 'in' : 'out'}" style="display:block">${fmtT(sum)}</span>
+            <span class="amt ${sum >= 0 ? 'in' : 'out'}" style="display:block">${fmtShort(sum)} <span class="small muted">تومان</span></span>
             <span class="small muted">${pct ? toFa(pct) + '٪ از کل' : ''}</span>
           </span>
           <span class="pocket-chev" style="margin-right:6px;display:flex">${icon(open ? 'chevD' : 'chevL')}</span>

@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.1.2';
+export const APP_VERSION = '2.2.0';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -134,7 +134,7 @@ export function fmtShort(n) {
   const abs = Math.abs(n);
   const sign = n < 0 ? '−' : '';
   const one = (v) => {
-    let t = v.toFixed(v < 10 ? 1 : 0);
+    let t = v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0);
     if (t.includes('.')) t = t.replace(/0+$/, '').replace(/\.$/, '');
     return toFa(t.replace('.', '٫'));
   };
