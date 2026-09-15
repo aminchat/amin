@@ -281,8 +281,8 @@ export function renderTx() {
     const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
     const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
     html += `<div class="grid2" style="margin-bottom:var(--sp-3)">
-      <div class="stat"><div class="lbl">خرج این ماه</div><div class="val red">${fmt(sumOut)}</div></div>
-      <div class="stat"><div class="lbl">درآمد این ماه</div><div class="val green">${fmt(sumIn)}</div></div>
+      <div class="stat"><div class="lbl">خرج این ماه</div><div class="val red">${fmtShort(sumOut)}</div></div>
+      <div class="stat"><div class="lbl">درآمد این ماه</div><div class="val green">${fmtShort(sumIn)}</div></div>
     </div>`;
     // گروه‌بندی بر اساس روز
     let lastDay = '';
