@@ -2,7 +2,6 @@ import { esc, fmt, fmtT, fmtShort, toFa, store } from './utils.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS } from './jalali.js';
-import { pieSVG } from './forms.js';
 import { renderSyncCard } from './sync.js';
 import * as sec from './securestore.js';
 import { debtHomeBanner, overdueCount, renderDebts } from './debts.js';
@@ -375,14 +374,89 @@ export function txShift(d) {
   renderTx();
 }
 
+// ── Bullet chart: برنامه در برابر واقعیت ──
+// هر ردیف: نوار کم‌رنگ = سهم برنامه (X)، نوار پررنگ = خرج واقعی (Y)، خط عمودی = هدف.
+// مقیاس مشترک: با بودجه → بودجه؛ بدون بودجه → کل خرج ماه (مقایسهٔ توزیع).
+function bulletRows(mk, budget, totalSpent) {
+  const base = budget || totalSpent;
+  const cats = CATS.filter((c) => !c.loan);
+  let maxV = 0;
+  const rows = cats.map((c) => {
+    const spent = catSpent(mk, c.id);
+    const target = base ? Math.round((base * c.target) / 100) : 0;
+    maxV = Math.max(maxV, spent, target);
+    return { c, spent, target };
+  });
+  if (!maxV) maxV = 1;
+  const scale = Math.max(maxV, base) * 1.06;
+  const W = 100;
+  return rows
+    .map(({ c, spent, target }) => {
+      const tw = (target / scale) * W;
+      const sw = Math.min(W, (spent / scale) * W);
+      const overW = spent > target ? Math.min(W, sw) - tw : 0;
+      const over = c.target === 0 ? spent > 0 : target > 0 && spent > target;
+      const ratio = target > 0 ? Math.round((spent / target) * 100) : 0;
+      const sub = c.target === 0
+        ? spent > 0 ? fmtShort(spent) + ' هدر رفت' : 'هیچی — عالی'
+        : !base
+          ? 'خرجی نیست'
+          : over
+            ? fmtShort(spent - target) + ' بیشتر از برنامه'
+            : spent === target
+              ? 'دقیقاً سر سهم'
+              : c.id === 'invest' && spent < target
+              ? fmtShort(target - spent) + ' تا هدف مانده'
+              : fmtShort(target - spent) + ' مانده';
+      return `<button type="button" class="brow ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')" style="--c:${c.color}">
+        <div class="brow-head">
+          <span class="brow-ic">${icon('cat_' + c.id)}</span>
+          <span class="brow-name">${c.label}</span>
+          <span class="brow-pct">${c.target ? toFa(ratio) + '٪ از سهم' : ''}</span>
+        </div>
+        <svg class="bullet" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
+          <rect class="b-track" x="0" y="0" width="100" height="14" rx="7"/>
+          ${tw > 0 ? `<rect class="b-target" x="${(W - tw).toFixed(2)}" y="0" width="${tw.toFixed(2)}" height="14" rx="7"/>` : ''}
+          ${sw > 0 ? `<rect class="b-actual" x="${(W - sw).toFixed(2)}" y="4" width="${sw.toFixed(2)}" height="6" rx="3"/>` : ''}
+          ${overW > 0 ? `<rect class="b-over" x="${(W - sw).toFixed(2)}" y="4" width="${overW.toFixed(2)}" height="6" rx="3"/>` : ''}
+          ${tw > 0 ? `<rect class="b-mark" x="${(W - tw - 0.4).toFixed(2)}" y="-1" width="0.9" height="16" rx="0.4"/>` : ''}
+        </svg>
+        <div class="brow-sub">${sub}</div>
+      </button>`;
+    })
+    .join('');
+}
+
+// امتیاز پایبندی به برنامه (۰-۱۰۰): فاصلهٔ توزیع واقعی از ۶۰/۲۰/۱۵/۵ + جریمهٔ هدررفت
+function planScore(mk, totalSpent) {
+  if (!totalSpent) return null;
+  let diff = 0;
+  for (const c of CATS) {
+    if (c.loan) continue;
+    const pct = (catSpent(mk, c.id) / totalSpent) * 100;
+    diff += Math.abs(pct - c.target);
+  }
+  return Math.max(0, Math.round(100 - diff / 2));
+}
+
 export function renderReport() {
   const mk = repMonth;
   const budget = (state.budgets[mk] && state.budgets[mk].amount) || 0;
   const cm = computeMonths()[mk] || { carriedIn: 0, spent: 0, income: 0 };
   const totalSpent = cm.spent;
   const totalIncome = cm.income;
-  const wasteItems = pocketItems(mk, 'waste');
-  const slices = CATS.filter((c) => !c.loan).map((c) => ({ v: catSpent(mk, c.id), color: c.color, label: c.label }));
+  const score = planScore(mk, totalSpent);
+  const inst = monthInstallments(mk);
+  const f = loanFlow(mk);
+  const overCats = CATS.filter((c) => !c.loan && c.target > 0 && budget && catSpent(mk, c.id) > catCeiling(mk, c.id));
+  const waste = catSpent(mk, 'waste');
+
+  let verdict, cls;
+  if (!totalSpent) { verdict = 'هنوز خرجی ثبت نشده'; cls = 'muted'; }
+  else if (overCats.length) { verdict = overCats.map((c) => c.label).join(' و ') + ' از سهمش رد شد'; cls = 'red'; }
+  else if (score >= 80) { verdict = 'طبق برنامه پیش می‌روی'; cls = 'green'; }
+  else if (score >= 55) { verdict = 'کمی از برنامه فاصله داری'; cls = 'amber'; }
+  else { verdict = 'توزیع خرج با برنامه نمی‌خواند'; cls = 'red'; }
 
   let html = `<div class="mnav">
     <button type="button" onclick="repShift(-1)" aria-label="ماه قبل">${icon('chevR')}</button>
@@ -390,66 +464,42 @@ export function renderReport() {
     <button type="button" onclick="repShift(1)" aria-label="ماه بعد">${icon('chevL')}</button>
   </div>`;
 
-  html += `<div class="card">
-    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
-      <h3 style="margin:0">خرج‌ها به تفکیک دسته</h3>
-      <button class="btn sm ghost" onclick="openBudgetForm('${mk}')">${budget ? 'ویرایش بودجه' : 'تعیین بودجه'}</button>
+  html += `<div class="hero rep-hero">
+    <div style="min-width:0;flex:1">
+      <div class="lbl">حال این ماه</div>
+      <div class="rep-verdict ${cls}">${verdict}</div>
+      <div class="rep-stats">
+        <span><b class="red">${fmtShort(totalSpent)}</b> خرج</span>
+        <span><b class="green">${fmtShort(totalIncome)}</b> درآمد</span>
+        ${budget ? `<span><b>${fmtShort(budget)}</b> بودجه</span>` : ''}
+      </div>
+      ${inst ? `<div class="small muted" style="margin-top:6px">${fmtShort(inst)} تومان از این خرج، قسط بوده.</div>` : ''}
     </div>
-    ${monthInstallments(mk) ? `<div class="small muted" style="margin:-4px 0 10px">از خرج این ماه ${fmtShort(monthInstallments(mk))} تومان قسط بوده است.</div>` : ''}
-    <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">کل خرج</div><div class="val red">${fmtShort(totalSpent)}</div></div>
-      <div class="stat"><div class="lbl">کل درآمد</div><div class="val green">${fmtShort(totalIncome)}</div></div>
-    </div>
-    ${pieSVG(slices.filter((s) => s.v > 0), 190)}
-    <div class="legend">
-      ${slices
-        .filter((s) => s.v > 0)
-        .map((s) => {
-          const pct = totalSpent > 0 ? Math.round((s.v / totalSpent) * 100) : 0;
-          return `<div class="lr"><span class="sw" style="background:${s.color}"></span>
-          <span class="nm">${s.label}</span><span class="pv">${fmtShort(s.v)}</span><span class="pg">${toFa(pct)}٪</span></div>`;
-        })
-        .join('')}
-    </div>
+    ${score !== null ? ringSVG(score, cls) : ''}
   </div>`;
 
   html += `<div class="card">
-    <h3>سقف پاکت‌ها از بودجه</h3>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h3 style="margin:0">پاکت‌ها · برنامه در برابر واقعیت</h3>
+      <button class="btn sm ghost" onclick="openBudgetForm('${mk}')">${budget ? 'بودجه' : 'تعیین بودجه'}</button>
+    </div>
     <div class="small muted" style="margin-bottom:12px">${
       budget
-        ? 'سقف هر پاکت = سهم آن از بودجه ' + fmtShort(budget) + ' تومان (۶۰/۲۰/۱۵/۵).'
-        : 'برای دیدن سقف پاکت‌ها بودجه این ماه را ثبت کن.'
+        ? 'نوار کم‌رنگ سهم هر پاکت از بودجه است؛ نوار پررنگ خرج واقعی.'
+        : 'بودجه ثبت نشده؛ سهم‌ها از کل خرج همین ماه حساب شده‌اند.'
     }</div>
-    ${envelopeBars(mk)}
-    <div class="hint">اگر از سقف یک پاکت رد شدی باز هم می‌توانی خرج ثبت کنی؛ فقط از برنامه خارج شده‌ای.</div>
+    <div class="bullets">${bulletRows(mk, budget, totalSpent)}</div>
+    ${!waste ? '' : `<div class="hint" style="margin-top:10px">برای دیدن ریز هدررفت‌ها روی ردیفش بزن.</div>`}
   </div>`;
 
-  html += `<div class="card">
-    <h3>${icon('cat_waste')} هدررفت‌های این ماه</h3>
-    ${
-      wasteItems.length === 0
-        ? '<div class="small muted" style="padding:6px 0">هدررفتی ثبت نشده. عالی!</div>'
-        : wasteItems
-            .map((it) => {
-              const a = accountById(it.accountId);
-              return `
-      <div class="item" style="align-items:flex-start" onclick="openTxForm(findTx('${it.txId}'))">
-        <div class="ic" style="background:var(--red-soft);color:var(--red)">${icon('cat_waste')}</div>
-        <div class="mid">
-          <div class="t1">${esc(it.title)}${it.invoice ? ' <span class="badge">فاکتور</span>' : ''}</div>
-          <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>
-        </div>
-        <div class="amt out">−${fmt(it.amount)}</div>
-      </div>`;
-            })
-            .join('')
-    }
-    ${
-      wasteItems.length
-        ? `<div class="divider"></div><div style="display:flex;justify-content:space-between;font-weight:700"><span>جمع هدررفت</span><span class="red">${fmtShort(catSpent(mk, 'waste'))} تومان</span></div>`
-        : ''
-    }
-  </div>`;
+  if (f.out || f.in) {
+    html += `<div class="card" style="padding:0;overflow:hidden"><button type="button" class="entry" onclick="openPocketLedger('loan','${mk}')">
+      <span class="ib" style="background:#14b8a622;color:#14b8a6">${icon('cat_loan')}</span>
+      <span class="mid"><div class="t1">قرض / امانت این ماه</div>
+      <div class="t2">داده: ${fmtShort(f.out)} · گرفته/برگشتی: ${fmtShort(f.in)} — خارج از خرج و درآمد</div></span>
+      <span class="chev">${icon('chevL')}</span>
+    </button></div>`;
+  }
 
   document.getElementById('reportContent').innerHTML = html;
 }
