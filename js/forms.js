@@ -882,11 +882,15 @@ export function saveTx() {
 const qa = { amount: '', type: 'out', cat: 'need', accountId: '', dateISO: '', note: '' };
 
 // عدد به حروف کوتاه (برای تأیید مبلغ زیر صفحه‌کلید)
+// حذف صفرهای اضافی فقط در بخش اعشاری («۵۰» دست‌نخورده می‌ماند)
+function trimDec(str) {
+  return str.includes('.') ? str.replace(/0+$/, '').replace(/\.$/, '') : str;
+}
 function amountWords(n) {
   if (!n) return '';
-  if (n >= 1e9) return toFa((n / 1e9).toFixed(n % 1e9 ? 2 : 0).replace(/\.?0+$/, '')) + ' میلیارد تومان';
-  if (n >= 1e6) return toFa((n / 1e6).toFixed(n % 1e6 ? 2 : 0).replace(/\.?0+$/, '')) + ' میلیون تومان';
-  if (n >= 1e3) return toFa((n / 1e3).toFixed(n % 1e3 ? 1 : 0).replace(/\.?0+$/, '')) + ' هزار تومان';
+  if (n >= 1e9) return toFa(trimDec((n / 1e9).toFixed(2))) + ' میلیارد تومان';
+  if (n >= 1e6) return toFa(trimDec((n / 1e6).toFixed(2))) + ' میلیون تومان';
+  if (n >= 1e3) return toFa(trimDec((n / 1e3).toFixed(1))) + ' هزار تومان';
   return toFa(n) + ' تومان';
 }
 

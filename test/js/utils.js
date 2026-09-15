@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.1.1-test';
+export const APP_VERSION = '2.1.2-test';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -133,7 +133,11 @@ export function fmtShort(n) {
   n = Number(n) || 0;
   const abs = Math.abs(n);
   const sign = n < 0 ? '−' : '';
-  const one = (v) => toFa(v.toFixed(v < 10 ? 1 : 0).replace(/\.0$/, '').replace('.', '٫'));
+  const one = (v) => {
+    let t = v.toFixed(v < 10 ? 1 : 0);
+    if (t.includes('.')) t = t.replace(/0+$/, '').replace(/\.$/, '');
+    return toFa(t.replace('.', '٫'));
+  };
   if (abs >= 1e9) return sign + one(abs / 1e9) + ' میلیارد';
   if (abs >= 1e6) return sign + one(abs / 1e6) + ' میلیون';
   if (abs >= 1e3) return sign + one(abs / 1e3) + ' هزار';
