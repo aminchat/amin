@@ -201,7 +201,7 @@ function txRow(t, opts = {}) {
     </div>`;
   if (opts.noSwipe) return item;
   return `<div class="swipe" data-tx="${t.id}">
-    <div class="under"><span class="l" style="color:var(--accent)">${icon('edit')} ویرایش</span><span class="r" style="color:var(--red)">حذف ${icon('trash')}</span></div>
+    <div class="under"><span class="r" style="color:var(--red)">${icon('trash')} حذف</span><span class="l" style="color:var(--accent)">ویرایش ${icon('edit')}</span></div>
     ${item}
   </div>`;
 }
