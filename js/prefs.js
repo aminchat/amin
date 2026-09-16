@@ -1015,30 +1015,44 @@ function legalUrl(kind) {
 export function openSettingsBackup() {
   openModal(`
     ${settingsHeader(tr('پشتیبان‌گیری'), 'openSettings()')}
-    <p class="small muted">${tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.')}</p>
+    <p class="small muted">${(sec.isEncrypted() ? tr('فایل پشتیبان با همان رمز عبور برنامه رمز می‌شود؛ بدون رمز قابل باز شدن نیست.') : tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.'))}</p>
     <div class="sgroup">
-      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), tr('فایل JSON'), 'exportBackup()')}
+      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), sec.isEncrypted() ? tr('فایل JSON رمزشده') : tr('فایل JSON'), 'exportBackup()')}
       ${settingsRow('upload', '#f59e0b', tr('بازیابی از فایل'), tr('جایگزین همهٔ داده‌های فعلی می‌شود'), "document.getElementById('bkFile').click()")}
     </div>
     <input type="file" id="bkFile" accept="application/json,.json" style="display:none" onchange="importBackup(this.files[0])">
   `);
 }
 
-export function exportBackup() {
-  const data = JSON.stringify(state, null, 1);
+export async function exportBackup() {
+  const plain = JSON.stringify(state, null, 1);
+  const enc = sec.isEncrypted();
+  if (enc && !sec.isUnlocked()) {
+    toast(tr('اول قفل برنامه را باز کن'));
+    return;
+  }
+  const data = enc ? await sec.encryptStandalone(plain) : plain;
   const blob = new Blob([data], { type: 'application/json' });
   const a = document.createElement('a');
   const d = new Date();
   const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   a.href = URL.createObjectURL(blob);
-  a.download = 'capital-backup-' + stamp + '.json';
+  a.download = 'capital-backup-' + stamp + (enc ? '.enc' : '') + '.json';
   document.body.appendChild(a);
   a.click();
   setTimeout(() => {
     URL.revokeObjectURL(a.href);
     a.remove();
   }, 500);
-  toast(tr('فایل پشتیبان ساخته شد'));
+  toast(enc ? tr('فایل پشتیبان رمزشده ساخته شد') : tr('فایل پشتیبان ساخته شد'));
+}
+
+let pendingImportEnv = null;
+function isEnvelope(o) {
+  return !!(o && typeof o === 'object' && o.v && Array.isArray(o.wraps) && o.data && o.data.ct);
+}
+function validBackup(obj) {
+  return !!(obj && typeof obj === 'object' && Array.isArray(obj.transactions) && Array.isArray(obj.accounts));
 }
 
 export async function importBackup(file) {
@@ -1050,7 +1064,51 @@ export async function importBackup(file) {
     toast(tr('فایل معتبر نیست'));
     return;
   }
-  if (!obj || typeof obj !== 'object' || !Array.isArray(obj.transactions) || !Array.isArray(obj.accounts)) {
+  if (isEnvelope(obj)) {
+    // پشتیبان رمزشده: اول با کلید همین نشست، وگرنه رمز عبور پرسیده می‌شود
+    try {
+      const got = await sec.decryptRemote(obj);
+      return applyImport(got.state);
+    } catch (e) {
+      pendingImportEnv = obj;
+      return openImportPassModal();
+    }
+  }
+  return applyImport(obj);
+}
+
+function openImportPassModal(err) {
+  openModal(`
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('پشتیبان رمزشده')}</h2>
+    <p class="small muted">${tr('رمز عبوری که موقع ساخت این فایل فعال بوده را وارد کن.')}</p>
+    <div class="field"><label>${tr('رمز عبور')}</label>
+      <input class="input" id="impPass" type="password" autocomplete="off" style="text-align:center">
+    </div>
+    ${err ? `<p class="small" style="color:#ef4444">${err}</p>` : ''}
+    <button class="btn primary block" onclick="submitImportPass()">${tr('باز کردن فایل')}</button>
+  `);
+  setTimeout(() => {
+    const i = document.getElementById('impPass');
+    if (i) i.focus();
+  }, 50);
+}
+
+export async function submitImportPass() {
+  const inp = document.getElementById('impPass');
+  const pass = inp ? inp.value : '';
+  if (!pass || !pendingImportEnv) return;
+  try {
+    const got = await sec.decryptRemoteWith(pendingImportEnv, pass);
+    pendingImportEnv = null;
+    await applyImport(got.state);
+  } catch (e) {
+    openImportPassModal(tr('رمز درست نیست'));
+  }
+}
+
+async function applyImport(obj) {
+  if (!validBackup(obj)) {
     toast(tr('فایل معتبر نیست'));
     return;
   }
@@ -1058,9 +1116,11 @@ export async function importBackup(file) {
   const ok = window.confirm(tr('همهٔ داده‌های فعلی با {n} تراکنش داخل فایل جایگزین شود؟', { n }));
   if (!ok) return;
   replaceState(obj, { markDirty: true });
+  save();
   toast(tr('بازیابی انجام شد'));
   closeModal();
-  if (window.render) window.render();
+  if (window.onBookChanged) window.onBookChanged();
+  else if (window.render) window.render();
 }
 
 function googleUserFromStore() {
@@ -1241,10 +1301,10 @@ export function openSettingsBook() {
     </div>
     <h3 class="muted" style="margin:14px 0 6px">${tr('پشتیبان‌گیری')}</h3>
     <div class="sgroup">
-      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), tr('فایل JSON'), 'exportBackup()')}
+      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), sec.isEncrypted() ? tr('فایل JSON رمزشده') : tr('فایل JSON'), 'exportBackup()')}
       ${settingsRow('upload', '#f59e0b', tr('بازیابی از فایل'), tr('جایگزین همهٔ داده‌های فعلی می‌شود'), "document.getElementById('bkFile').click()")}
     </div>
     <input type="file" id="bkFile" accept="application/json,.json" style="display:none" onchange="importBackup(this.files[0])">
-    <p class="small muted" style="margin-top:12px">${tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.')}</p>
+    <p class="small muted" style="margin-top:12px">${(sec.isEncrypted() ? tr('فایل پشتیبان با همان رمز عبور برنامه رمز می‌شود؛ بدون رمز قابل باز شدن نیست.') : tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.'))}</p>
   `);
 }
