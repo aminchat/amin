@@ -332,7 +332,8 @@ input[type="date"].input{min-height:var(--tap)}
 .tx-list .item:last-child{border-bottom:0}
 
 /* سوایپ روی ردیف تراکنش */
-.swipe{position:relative;overflow:hidden;border-radius:var(--r-md);margin-bottom:var(--sp-2)}
+.swipe{position:relative;overflow:hidden;border-radius:var(--r-md);margin-bottom:var(--sp-2);touch-action:pan-y}
+.swipe .item{touch-action:pan-y}
 .swipe .item{margin:0;transition:transform .2s var(--ease);will-change:transform;background:var(--card)}
 .swipe.dragging .item{transition:none}
 .swipe .under{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 var(--sp-4);font-size:var(--fs-sm);font-weight:800;color:#fff;border-radius:var(--r-md)}
@@ -635,3 +636,7 @@ select.input option{color:var(--text);background:var(--card);font-weight:500}
 .faint{color:var(--faint)}
 .input.money{font-variant-numeric:tabular-nums;text-align:right;letter-spacing:.2px}
 .money-words{font-size:var(--fs-xs);color:var(--muted);margin:4px 4px 0;min-height:0}
+
+/* متن‌ها انتخاب‌نشدنی؛ فقط فیلدها و متن یادداشت‌ها */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,[contenteditable],.selectable{-webkit-user-select:text;user-select:text}

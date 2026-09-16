@@ -357,7 +357,7 @@ function attachSwipe(root) {
       }
     };
     w.addEventListener('pointerup', end);
-    w.addEventListener('pointercancel', end);
+    w.addEventListener('pointercancel', () => { clearTimeout(lp); active = false; reset(); });
     w.addEventListener('pointerleave', () => { if (active && !horiz) { clearTimeout(lp); } });
     w.addEventListener('contextmenu', (e) => e.preventDefault());
   });
