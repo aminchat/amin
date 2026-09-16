@@ -36,31 +36,15 @@ try {
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
-/* Public app information: independent of JavaScript-rendered dashboard content. */
-#appPublicInfo {
-  margin: 24px 0 calc(110px + env(safe-area-inset-bottom, 0px));
-  padding: 20px;
-  border: 1px solid #cbd5e1;
-  border-radius: 16px;
-  background: #fff;
-  color: #243246;
-  line-height: 1.95;
-  text-align: start;
-}
-#appPublicInfo h2 { margin: 0 0 10px; font-size: 19px; color: #123b39; }
-#appPublicInfo p { margin: 10px 0; }
-#appPublicInfo .public-links, #lockScreen .public-links {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 20px;
-}
-#appPublicInfo a, #lockScreen .public-links a {
-  color: #12665e; text-decoration: underline; text-underline-offset: 4px;
-  overflow-wrap: anywhere;
-}
-#appPublicInfo .public-support { font-size: 13px; }
-#lockScreen .public-links {
-  margin-top: 18px; padding: 10px; background: #fff; border-radius: 10px;
-  font-size: 13px; line-height: 1.8;
-}
+/* Legal links: quiet footer, inherits app font/theme tokens */
+.public-links{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 0;font-size:var(--fs-xs);line-height:1.6;color:var(--muted);letter-spacing:.01em}
+.public-links a{color:var(--muted);text-decoration:none;padding:4px 6px;border-radius:6px;transition:color .15s}
+.public-links a:hover,.public-links a:focus-visible{color:var(--accent);outline:none}
+.public-links a+a::before{content:"·";color:var(--faint);margin-inline-end:6px}
+#appPublicInfo{margin:var(--sp-6) 0 calc(96px + env(safe-area-inset-bottom,0px));text-align:center}
+#appPublicInfo .public-support{margin:2px 0 0;font-size:var(--fs-xs);color:var(--faint)}
+#appPublicInfo .public-support a{color:inherit;text-decoration:none}
+#lockScreen .public-links{margin-top:var(--sp-5)}
 </style>
 </head>
 <body>
@@ -101,16 +85,13 @@ try {
   </section>
 
   <!-- Keep outside homeContent: the dashboard replaces that element dynamically. -->
-  <div id="appPublicInfo" dir="rtl" aria-labelledby="appPublicInfoTitle">
-
+  <footer id="appPublicInfo">
     <div class="public-links" aria-label="اطلاعات حقوقی برنامه">
-      <a href="https://aminchat.github.io/amin/privacy.html">Privacy Policy</a>
-      <a href="https://aminchat.github.io/amin/terms.html">Terms of Service</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
     </div>
-    <p class="public-support">
-      پشتیبانی: <a href="/cdn-cgi/l/email-protection#e2838f8b8cd0d2d2d7d3a2858f838b8ecc818d8f" dir="ltr"><span class="__cf_email__" data-cfemail="b2d3dfdbdc8082828783f2d5dfd3dbde9cd1dddf">[email&#160;protected]</span></a>
-    </p>
-  </div>
+    <p class="public-support"><a href="mailto:amin20051@gmail.com" dir="ltr">amin20051@gmail.com</a></p>
+  </footer>
 </main>
 
 <nav id="bottomNav" aria-label="ناوبری">
@@ -137,12 +118,12 @@ try {
     <button class="link-btn" id="lockForgot" style="display:none">رمز عبور را فراموش کردم</button>
     <div id="lockDebug" class="small muted" style="margin-top:10px;color:#fb7185"></div>
     <div class="public-links" aria-label="حریم خصوصی و شرایط استفاده">
-      <a href="https://aminchat.github.io/amin/privacy.html">Privacy Policy</a>
-      <a href="https://aminchat.github.io/amin/terms.html">Terms of Service</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
     </div>
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module" src="js/boot.js?v=2.9.2"></script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3bf982a2aa05e76',t:'MTc4OTU1ODgwNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script type="module" src="js/boot.js?v=2.9.5"></script>
+</body>
 </html>
