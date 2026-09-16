@@ -164,8 +164,14 @@ export default {
   'time.inDays': 'in {n} days',
 
   // settings (stage 1: language)
-  'set.language': 'Language',
+  'set.language': 'Language & Region',
   'set.languageSub': 'App language and numerals',
+  'set.langOnly': 'Language',
+  'set.digits': 'Numerals',
+  'set.digits.fa': 'Persian',
+  'set.digits.en': 'Latin',
+  'set.book': 'Book',
+  'set.bookSub': 'Calendar, new book and backup',
   'set.auto': 'Automatic (device)',
   'set.calendar': 'Calendar',
   'set.cal.jalali': 'Solar Hijri (Jalali)',
