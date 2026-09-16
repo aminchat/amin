@@ -2,7 +2,7 @@ import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip,
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey } from './jalali.js';
-import { jalaliMonths } from './i18n.js';
+import { jalaliMonths, calendar } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import {
@@ -1454,9 +1454,16 @@ export function openBudgetForm(mk) {
   const cur = jalaliNow();
   const years = [];
   for (let y = cur[0] - 2; y <= cur[0] + 2; y++) years.push(y);
-  const monthOpts = jalaliMonths().map(
-    (name, i) => `<option value="${i + 1}" ${i + 1 === sm ? 'selected' : ''}>${name}</option>`
-  ).join('');
+  const greg = calendar() === 'gregorian';
+  // در تقویم میلادی: یک فهرست از ماه‌های بودجه (شمسی) با برچسب بازهٔ میلادی
+  const monthOpts = greg
+    ? years
+        .flatMap((y) => Array.from({ length: 12 }, (_, i) => y + '/' + String(i + 1).padStart(2, '0')))
+        .map((k) => `<option value="${k}" ${k === mk ? 'selected' : ''}>${monthLabel(k)}</option>`)
+        .join('')
+    : jalaliMonths().map(
+        (name, i) => `<option value="${i + 1}" ${i + 1 === sm ? 'selected' : ''}>${name}</option>`
+      ).join('');
   const yearOpts = years
     .map((y) => `<option value="${y}" ${y === sy ? 'selected' : ''}>${y}</option>`)
     .join('');
@@ -1468,7 +1475,7 @@ export function openBudgetForm(mk) {
       <div class="col field"><label>${tr('ماه')}</label>
         <select class="input" id="bMonth">${monthOpts}</select>
       </div>
-      <div class="col field"><label>${tr('سال')}</label>
+      <div class="col field" ${greg ? 'style="display:none"' : ''}><label>${tr('سال')}</label>
         <select class="input" id="bYear">${yearOpts}</select>
       </div>
     </div>
@@ -1485,8 +1492,9 @@ export function saveBudget() {
     toast(tr('مبلغ بودجه را وارد کن'));
     return;
   }
-  const m = parseInt(document.getElementById('bMonth').value, 10);
-  const y = parseInt(document.getElementById('bYear').value, 10);
+  const mv = document.getElementById('bMonth').value;
+  const m = mv.includes('/') ? parseInt(mv.split('/')[1], 10) : parseInt(mv, 10);
+  const y = mv.includes('/') ? parseInt(mv.split('/')[0], 10) : parseInt(document.getElementById('bYear').value, 10);
   const mk = y + '/' + String(m).padStart(2, '0');
   state.budgets[mk] = { amount, updatedAt: Date.now() };
   save();
