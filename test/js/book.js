@@ -8,6 +8,7 @@ import { openModal, closeModal } from './modal.js';
 import { icon } from './icons.js';
 import { debtRemaining } from './debts.js';
 import { archiveToDrive, isGoogleLinked } from './sync.js';
+import * as sec from './securestore.js';
 import { monthOfISO, curMonthKey, setBookCalendar } from './jalali.js';
 
 const W = { target: 'gregorian', opts: { accounts: true, invest: true, debts: true, plans: true, rates: true, budget: true }, archived: false };
@@ -125,13 +126,21 @@ export async function bookCreate() {
   const btn = document.querySelector('#sheet .btn.primary');
   if (btn) btn.disabled = true;
   const stamp = todayISO();
-  const archive = JSON.stringify(state, null, 1);
-  const archName = 'capital-archive-' + (state.calendar || 'jalali') + '-' + stamp + '.json';
+  const plain = JSON.stringify(state, null, 1);
+  const enc = sec.isEncrypted();
+  if (enc && !sec.isUnlocked()) {
+    if (btn) btn.disabled = false;
+    toast(tr('اول قفل برنامه را باز کن'));
+    return;
+  }
+  // آرشیو (گوشی و درایو) با همان کلید دادهٔ برنامه رمز می‌شود
+  const archive = enc ? await sec.encryptStandalone(plain) : plain;
+  const archName = 'capital-archive-' + (state.calendar || 'jalali') + '-' + stamp + (enc ? '.enc' : '') + '.json';
   try {
     download(archName, archive);
     if (isGoogleLinked()) {
       toast(tr('در حال ذخیرهٔ آرشیو در گوگل…'));
-      await archiveToDrive(archName, archive);
+      await archiveToDrive(archName, archive, { raw: true });
     }
   } catch (e) {
     if (btn) btn.disabled = false;

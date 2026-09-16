@@ -771,10 +771,10 @@ export function scheduleSync() {
 }
 
 // آرشیو: یک فایل جداگانه با نام داده‌شده در درایو (رمزشده اگر رمزنگاری فعال باشد)
-export function archiveToDrive(name, plainJson) {
+export function archiveToDrive(name, plainJson, opts) {
   return new Promise(function (resolve, reject) {
     const go = function () {
-      const build = sec.isEncrypted() && sec.isUnlocked() ? sec.encryptStandalone(plainJson) : Promise.resolve(plainJson);
+      const build = opts && opts.raw ? Promise.resolve(plainJson) : sec.isEncrypted() && sec.isUnlocked() ? sec.encryptStandalone(plainJson) : Promise.resolve(plainJson);
       build
         .then(function (content) {
           const fd = new FormData();
