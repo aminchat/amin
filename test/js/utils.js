@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.6.2-test';
+export const APP_VERSION = '2.7.0-test';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -190,3 +190,111 @@ document.addEventListener('pointerdown', (e) => {
   if (tipEl && !e.target.closest('.info-btn') && !e.target.closest('.tip')) hideTip();
 }, true);
 document.addEventListener('scroll', () => hideTip(), true);
+
+// ── ورودی مبلغ: کاما هنگام تایپ + «به حروف» زیر فیلد ──
+// همهٔ <input type="number"> که شمارش/درصد نیستند خودکار تبدیل می‌شوند؛
+// el.value همچنان عدد خام (بدون کاما) برمی‌گرداند تا کدهای فعلی دست نخورند.
+const PLAIN_IDS = /^(txQty|lnQty_|iQty|plCount|plRate|plEvery|plPrepaid)/;
+const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+const AR = '٠١٢٣٤٥٦٧٨٩';
+export function normNum(str) {
+  str = String(str == null ? '' : str)
+    .replace(/[۰-۹]/g, (d) => FA.indexOf(d))
+    .replace(/[٠-٩]/g, (d) => AR.indexOf(d))
+    .replace(/[٫،,\s]/g, (c) => (c === '٫' ? '.' : ''));
+  const neg = str.trim().startsWith('-');
+  str = str.replace(/[^\d.]/g, '');
+  const i = str.indexOf('.');
+  if (i >= 0) str = str.slice(0, i + 1) + str.slice(i + 1).replace(/\./g, '');
+  return (neg ? '-' : '') + str;
+}
+function groupNum(raw) {
+  if (!raw) return '';
+  const neg = raw.startsWith('-');
+  if (neg) raw = raw.slice(1);
+  const [int, dec] = raw.split('.');
+  const g = (int || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (neg ? '-' : '') + g + (dec !== undefined ? '.' + dec : '');
+}
+export function amountWords(n, cur) {
+  n = Math.abs(Number(n) || 0);
+  if (!n) return '';
+  const trim = (t) => (t.includes('.') ? t.replace(/0+$/, '').replace(/\.$/, '') : t);
+  const u = cur || 'تومان';
+  if (n >= 1e9) return toFa(trim((n / 1e9).toFixed(2)).replace('.', '٫')) + ' میلیارد ' + u;
+  if (n >= 1e6) return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
+  if (n >= 1e3) return toFa(trim((n / 1e3).toFixed(1)).replace('.', '٫')) + ' هزار ' + u;
+  return toFa(trim(String(Math.round(n * 100) / 100)).replace('.', '٫')) + ' ' + u;
+}
+function moneyize(el) {
+  if (el.dataset.money) return;
+  el.dataset.money = '1';
+  const raw0 = normNum(nativeValue.get.call(el));
+  el.type = 'text';
+  el.inputMode = el.getAttribute('inputmode') === 'numeric' ? 'numeric' : 'decimal';
+  el.setAttribute('dir', 'ltr');
+  el.classList.add('money');
+  const ph = el.getAttribute('placeholder') || '';
+  if (ph) {
+    const d = normNum(ph);
+    el.setAttribute('placeholder', d ? groupNum(d) : '');
+  }
+  let words = null;
+  const showWords = () => {
+    const raw = normNum(nativeValue.get.call(el));
+    const n = Number(raw) || 0;
+    const txt = n >= 1000 ? amountWords(n, el.dataset.cur) : '';
+    if (!txt) {
+      if (words) words.textContent = '';
+      return;
+    }
+    if (!words || !words.isConnected) {
+      words = document.createElement('div');
+      words.className = 'money-words';
+      el.insertAdjacentElement('afterend', words);
+    }
+    words.textContent = txt;
+  };
+  const paint = (raw) => {
+    nativeValue.set.call(el, groupNum(raw));
+    showWords();
+  };
+  Object.defineProperty(el, 'value', {
+    configurable: true,
+    get() {
+      return normNum(nativeValue.get.call(el));
+    },
+    set(v) {
+      paint(normNum(v));
+    },
+  });
+  paint(raw0);
+  el.addEventListener('input', () => {
+    const cur = nativeValue.get.call(el);
+    const caret = el.selectionStart || cur.length;
+    const digitsBefore = cur.slice(0, caret).replace(/[^\d.-]/g, '').length;
+    paint(normNum(cur));
+    // بازگرداندن نشانگر بعد از همان تعداد رقم
+    const out = nativeValue.get.call(el);
+    let pos = 0, seen = 0;
+    while (pos < out.length && seen < digitsBefore) {
+      if (/[\d.-]/.test(out[pos])) seen++;
+      pos++;
+    }
+    try {
+      el.setSelectionRange(pos, pos);
+    } catch (e) {}
+  });
+}
+export function enhanceMoneyInputs(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll('input[type="number"]').forEach((el) => {
+    if (el.dataset.money || el.dataset.plain != null || PLAIN_IDS.test(el.id)) return;
+    moneyize(el);
+  });
+}
+if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+  new MutationObserver((muts) => {
+    for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) enhanceMoneyInputs(n.matches('input') ? n.parentNode : n);
+  }).observe(document.documentElement, { childList: true, subtree: true });
+}

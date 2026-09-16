@@ -1,4 +1,4 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
 import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
@@ -227,6 +227,13 @@ export function syncTxAmountLabel() {
   if (!lbl) return;
   const cur = a ? a.currency : 'تومان';
   lbl.textContent = (txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ') + ' (' + cur + ')';
+  ['txAmount', 'txUnitPrice'].forEach((id) => {
+    const inp = document.getElementById(id);
+    if (inp) {
+      inp.dataset.cur = cur;
+      if (inp.value) inp.value = inp.value; // بازنویسی «به حروف»
+    }
+  });
 }
 
 export function onTxAmountInput() {
@@ -886,17 +893,6 @@ const qa = { amount: '', type: 'out', cat: 'need', accountId: '', dateISO: '', n
 
 // عدد به حروف کوتاه (برای تأیید مبلغ زیر صفحه‌کلید)
 // حذف صفرهای اضافی فقط در بخش اعشاری («۵۰» دست‌نخورده می‌ماند)
-function trimDec(str) {
-  return str.includes('.') ? str.replace(/0+$/, '').replace(/\.$/, '') : str;
-}
-function amountWords(n) {
-  if (!n) return '';
-  if (n >= 1e9) return toFa(trimDec((n / 1e9).toFixed(2))) + ' میلیارد تومان';
-  if (n >= 1e6) return toFa(trimDec((n / 1e6).toFixed(2))) + ' میلیون تومان';
-  if (n >= 1e3) return toFa(trimDec((n / 1e3).toFixed(1))) + ' هزار تومان';
-  return toFa(n) + ' تومان';
-}
-
 function acctLabel(a) {
   const inst = institutionOf(a);
   return inst && inst !== a.name ? inst + ' · ' + a.name : a.name;

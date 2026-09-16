@@ -169,6 +169,11 @@ export function syncDebtAmountLabel() {
   if (!sel || !lbl) return;
   const a = accountById(sel.value);
   lbl.textContent = 'مبلغ (' + (a ? a.currency : 'تومان') + ')';
+  const inp = document.getElementById('dAmount');
+  if (inp) {
+    inp.dataset.cur = a ? a.currency : 'تومان';
+    inp.dispatchEvent(new Event('input'));
+  }
 }
 
 // ─── اتصال طلب/بدهی به تراکنش‌های پاکت قرض ────────────────────────────────

@@ -633,3 +633,5 @@ select.input option{color:var(--text);background:var(--card);font-weight:500}
 .oblig-row{display:flex;justify-content:space-between;align-items:center;font-size:var(--fs-sm);color:var(--muted);padding:5px 0}
 .oblig-row b{color:var(--text);font-weight:700}
 .faint{color:var(--faint)}
+.input.money{font-variant-numeric:tabular-nums;text-align:right;letter-spacing:.2px}
+.money-words{font-size:var(--fs-xs);color:var(--muted);margin:4px 4px 0;min-height:0}
