@@ -6,7 +6,7 @@ import { openNewBook, bookToggle, bookCreate } from './book.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
-import { renderAll, fitNumbers, setTodayLabel, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
+import { renderAll, fitNumbers, setTodayLabel, resetMonths, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
   enableDebtReminders,
@@ -457,6 +457,7 @@ function changeCalendar(v) {
   setCalendar(v);
 }
 window.onBookChanged = () => {
+  resetMonths();
   setTodayLabel();
   buildAssetTabs();
   switchTab('home');

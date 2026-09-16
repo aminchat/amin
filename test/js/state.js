@@ -1,6 +1,6 @@
 import { store, setBaseInfo, setBigUnits, setCurDisplay } from './utils.js';
 import { t, lang } from './i18n.js';
-import { curMonthKey, setBookCalendar } from './jalali.js';
+import { curMonthKey, setBookCalendar, monthOfISO } from './jalali.js';
 import { langInfo } from './i18n.js';
 import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
@@ -176,6 +176,13 @@ export let state = loadState();
 syncBase();
 export function syncBase() {
   setBookCalendar(state.calendar || 'jalali');
+  // کلید ماه تراکنش‌ها همیشه بر اساس تقویم همین دفتر (پس از تغییر دفتر/ادغام قدیمی)
+  for (const t of state.transactions || []) {
+    if (t.dateISO) {
+      const mk = monthOfISO(t.dateISO);
+      if (t.month !== mk) t.month = mk;
+    }
+  }
   setBaseInfo(baseCur(), currencyInfo(baseCur()));
   setBigUnits(new Set(Object.keys(CURRENCY_INFO).filter((c) => CURRENCY_INFO[c].big)));
 }

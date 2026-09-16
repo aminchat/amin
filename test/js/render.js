@@ -36,6 +36,10 @@ import {
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
+export function resetMonths() {
+  txMonth = curMonthKey();
+  repMonth = curMonthKey();
+}
 
 function envelopeBars(mk) {
   return `<div class="pockets">${CATS.map((c) => {
