@@ -1,6 +1,7 @@
 import { store, setBaseInfo, setBigUnits, setCurDisplay } from './utils.js';
 import { t, lang } from './i18n.js';
-import { curMonthKey } from './jalali.js';
+import { curMonthKey, setBookCalendar, monthOfISO } from './jalali.js';
+import { langInfo } from './i18n.js';
 import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
 export const KEY = 'capital_app_v1';
@@ -147,6 +148,8 @@ export function defaultState() {
     budgets: {},
     rates: {},
     baseCurrency: DEFAULT_BASE,
+    calendar: 'jalali',
+    bookId: '',
     customCurrencies: [],
     updatedAt: 0,
     rev: 0,
@@ -160,12 +163,26 @@ function loadState() {
     const s = store.get(KEY);
     if (s) return Object.assign(defaultState(), JSON.parse(s));
   } catch (e) {}
-  return defaultState();
+  // کاربر تازه: تقویم دفتر از زبان دستگاه
+  const fresh = defaultState();
+  fresh.calendar = langInfo().cal === 'gregorian' ? 'gregorian' : 'jalali';
+  return fresh;
+}
+export function bookCal() {
+  return state.calendar || 'jalali';
 }
 
 export let state = loadState();
 syncBase();
 export function syncBase() {
+  setBookCalendar(state.calendar || 'jalali');
+  // کلید ماه تراکنش‌ها همیشه بر اساس تقویم همین دفتر (پس از تغییر دفتر/ادغام قدیمی)
+  for (const t of state.transactions || []) {
+    if (t.dateISO) {
+      const mk = monthOfISO(t.dateISO);
+      if (t.month !== mk) t.month = mk;
+    }
+  }
   setBaseInfo(baseCur(), currencyInfo(baseCur()));
   setBigUnits(new Set(Object.keys(CURRENCY_INFO).filter((c) => CURRENCY_INFO[c].big)));
 }
@@ -471,6 +488,7 @@ export function curStats() {
 
 export function hasLocalData(s = state) {
   return (
+    !!s.bookId ||
     (s.accounts && s.accounts.length) ||
     (s.transactions && s.transactions.length) ||
     (s.investments && s.investments.length) ||
@@ -497,7 +515,21 @@ function mergeById(a, b) {
 }
 
 export function mergeStates(local, remote) {
+  // دفترهای متفاوت (تقویم متفاوت یا شناسهٔ دفتر متفاوت) با هم ادغام نمی‌شوند؛
+  // نسخهٔ جدیدتر به‌طور کامل برنده است (مثلاً بعد از «دفتر جدید» روی دستگاه دیگر)
+  const lc = local.calendar || 'jalali';
+  const rc = remote.calendar || 'jalali';
+  const lb = local.bookId || '';
+  const rb = remote.bookId || '';
+  if (lc !== rc || (lb && rb && lb !== rb)) {
+    const win = (local.updatedAt || 0) >= (remote.updatedAt || 0) ? local : remote;
+    return Object.assign(defaultState(), JSON.parse(JSON.stringify(win)), {
+      rev: Math.max(local.rev || 0, remote.rev || 0),
+    });
+  }
   return {
+    calendar: lc,
+    bookId: lb || rb,
     accounts: mergeById(local.accounts, remote.accounts),
     transactions: mergeById(local.transactions, remote.transactions),
     investments: mergeById(local.investments, remote.investments),

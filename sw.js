@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v38';
+const CACHE = 'capital-app-v39';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS = [
   './js/app.js',
   './js/utils.js',
   './js/jalali.js',
+  './js/book.js',
   './js/state.js',
   './js/view.js',
   './js/modal.js',

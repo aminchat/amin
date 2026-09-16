@@ -24,6 +24,18 @@ function detect() {
 export function langPref() {
   return store.get(KEY) || 'auto';
 }
+const DKEY = 'capital_digits';
+export function digitsPref() {
+  return store.get(DKEY) || 'auto';
+}
+export function digits() {
+  const p = digitsPref();
+  return p === 'auto' ? (cur || LANGS[0]).digits : p;
+}
+export function setDigitsPref(p) {
+  store.set(DKEY, p === 'auto' ? '' : p);
+  setFaDigits(digits() === 'fa');
+}
 export function lang() {
   return cur ? cur.id : 'fa';
 }
@@ -33,10 +45,9 @@ export function langInfo() {
 export function isRTL() {
   return langInfo().dir === 'rtl';
 }
-// تقویم: 'auto' → بر اساس زبان
+// تقویم نمایش = تقویم دفتر (در jalali.js نگه داشته می‌شود)؛ این تابع فقط برای سازگاری
 export function calendar() {
-  const p = store.get(CAL_KEY) || 'auto';
-  return p === 'auto' ? langInfo().cal : p;
+  return langInfo().cal;
 }
 export function calPref() {
   return store.get(CAL_KEY) || 'auto';
@@ -71,7 +82,7 @@ async function loadLang(id) {
   fallback = Object.assign({}, en.default, enUi.default);
   dict = mine ? mine.default : fallback;
   cur = info;
-  setFaDigits(info.digits === 'fa');
+  setFaDigits(digits() === 'fa');
   applyDocument();
 }
 

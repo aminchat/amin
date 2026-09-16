@@ -1,10 +1,11 @@
-import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip } from './utils.js';
-import { t, t as tr, LANGS, langPref, lang, calPref, calendar } from './i18n.js';
+import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain } from './utils.js';
+import { fmtDate } from './jalali.js';
+import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
 import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
-import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES, curName } from './state.js';
+import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES, curName, bookCal } from './state.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -807,7 +808,8 @@ export function openSettings() {
     ${settingsHeader(tr('تنظیمات'))}
     <div class="sgroup">
       ${settingsRow('palette', '#8b5cf6', tr('ظاهر'), tr('تم و رنگ برنامه'), 'openSettingsAppearance()', theme.name)}
-      ${settingsRow('globe', '#0891b2', t('set.language'), t('set.languageSub'), 'openSettingsLanguage()', (LANGS.find((l) => l.id === lang()) || {}).name + (langPref() === 'auto' ? ' · ' + t('set.auto').split(' ')[0] : ''))}
+      ${settingsRow('globe', '#0891b2', t('set.language'), t('set.languageSub'), 'openSettingsLanguage()', (LANGS.find((l) => l.id === lang()) || {}).name + ' · ' + (digitsPref() === 'auto' ? (lang() === 'fa' ? '۱۲۳' : '123') : digitsPref() === 'fa' ? '۱۲۳' : '123'))}
+      ${settingsRow('calendar', '#0ea5e9', t('set.book'), t('set.bookSub'), 'openSettingsBook()', bookCal() === 'gregorian' ? t('set.cal.greg') : t('set.cal.jalali'))}
     </div>
     <div class="sgroup">
       ${settingsRow(
@@ -829,7 +831,6 @@ export function openSettings() {
     <div class="sgroup">
       ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('receipt', '#f97316', tr('خواندن فاکتور از عکس'), tr('کلید هوش مصنوعی گوگل'), 'openSettingsScan()', gemini ? tr('فعال') : tr('خاموش'))}
-      ${settingsRow('download', '#0d9488', tr('پشتیبان‌گیری'), tr('خروجی و بازیابی فایل JSON'), 'openSettingsBackup()')}
       ${settingsRow('info', '#64748b', tr('دربارهٔ برنامه'), (tr('نسخه') + ' ') + APP_VERSION, 'openSettingsAbout()')}
     </div>
   `);
@@ -947,10 +948,10 @@ function ratesSummary() {
   const used = usedCurrencies();
   if (!used.length) return tr('برای حساب‌ها و دارایی‌های ارزی');
   const missing = used.filter((c) => !rateOf(c));
-  return missing.length ? (tr('نرخ') + ' ') + missing.join('، ') + (' ' + tr('ثبت نشده')) : used.map((c) => c + ' ' + toFaNum(rateOf(c))).join(' · ');
+  return missing.length ? (tr('نرخ') + ' ') + missing.join('، ') + (' ' + tr('ثبت نشده')) : used.map((c) => curName(c) + ' ' + toFaNum(rateOf(c))).join(' · ');
 }
 function toFaNum(n) {
-  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',').replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+  return toFa(fmtPlain(n));
 }
 export function openSettingsRates() {
   const used = usedCurrencies();
@@ -958,7 +959,7 @@ export function openSettingsRates() {
   const row = (c) => `<div class="srow" style="cursor:default">
       <span class="sic" style="background:${rateOf(c) ? '#0ea5e9' : '#f59e0b'}">${icon('coin')}</span>
       <span class="smid"><span class="st1">${esc(curName(c))}</span><span class="st2">${rateOf(c) ? (tr('هر واحد') + ' ') + toFaNum(rateOf(c)) + ' ' + curName(baseCur()) : tr('ثبت نشده')}</span></span>
-      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${baseCur()}" onchange="saveRateFrom('${esc(c)}')">
+      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${curName(baseCur())}" onchange="saveRateFrom('${esc(c)}')">
     </div>`;
   openModal(`
     ${settingsHeader(tr('ارز'), 'openSettings()')}
@@ -1183,23 +1184,55 @@ export function applyBaseCurrency() {
 // ─── زبان و تقویم ───
 export function openSettingsLanguage() {
   const pref = langPref();
-  const cp = calPref();
-  const opt = (id, name, on, click) => `<button type="button" class="srow" onclick="${click}">
+  const dp = digitsPref();
+  const opt = (name, on, click) => `<button type="button" class="srow" onclick="${click}">
       <span class="smid"><span class="st1">${name}</span></span>
       <span class="sval">${on ? icon('check') : ''}</span>
     </button>`;
   openModal(`
     ${settingsHeader(t('set.language'), 'openSettings()')}
+    <h3 class="muted" style="margin:4px 0 6px">${t('set.langOnly')}</h3>
     <div class="sgroup">
-      ${opt('auto', t('set.auto'), pref === 'auto', "changeLanguage('auto')")}
-      ${LANGS.map((l) => opt(l.id, l.name, pref === l.id, "changeLanguage('" + l.id + "')")).join('')}
+      ${opt(t('set.auto'), pref === 'auto', "changeLanguage('auto')")}
+      ${LANGS.map((l) => opt(l.name, pref === l.id, "changeLanguage('" + l.id + "')")).join('')}
     </div>
-    <h3 class="muted" style="margin:14px 0 6px">${t('set.calendar')}</h3>
+    <h3 class="muted" style="margin:14px 0 6px">${t('set.digits')}</h3>
     <div class="sgroup">
-      ${opt('auto', t('set.auto'), cp === 'auto', "changeCalendar('auto')")}
-      ${opt('jalali', t('set.cal.jalali'), cp === 'jalali', "changeCalendar('jalali')")}
-      ${opt('gregorian', t('set.cal.greg'), cp === 'gregorian', "changeCalendar('gregorian')")}
+      ${opt(t('set.auto'), dp === 'auto', "changeDigits('auto')")}
+      ${opt('۱۲۳۴۵۶ · ' + t('set.digits.fa'), dp === 'fa', "changeDigits('fa')")}
+      ${opt('123456 · ' + t('set.digits.en'), dp === 'en', "changeDigits('en')")}
     </div>
     <p class="small muted" style="margin-top:12px">${t('set.langNote')}</p>
+  `);
+}
+
+export function changeDigits(p) {
+  setDigitsPref(p);
+  import('./render.js').then((m) => m.renderAll());
+  openSettingsLanguage();
+}
+
+export function openSettingsBook() {
+  const cal = bookCal();
+  const n = state.transactions.length;
+  let first = '';
+  for (const t of state.transactions) if (t.dateISO && (!first || t.dateISO < first)) first = t.dateISO;
+  openModal(`
+    ${settingsHeader(t('set.book'), 'openSettings()')}
+    <div class="sgroup">
+      ${settingsRow('calendar', '#0ea5e9', t('set.calendar'), tr('تقویم این دفتر ثابت است'), '', cal === 'gregorian' ? t('set.cal.greg') : t('set.cal.jalali'))}
+      ${settingsRow('list', '#64748b', t('nav.tx'), first ? tr('از {d}', { d: fmtDate(first) }) : tr('هنوز تراکنشی ثبت نشده'), '', toFa(n))}
+    </div>
+    <h3 class="muted" style="margin:14px 0 6px">${tr('دفتر جدید')}</h3>
+    <div class="sgroup">
+      ${settingsRow('refresh', '#f59e0b', tr('دفتر جدید با تقویم {c}', { c: cal === 'gregorian' ? tr('شمسی') : tr('میلادی') }), tr('آرشیو دفتر فعلی و انتقال گزینشی'), 'openNewBook()')}
+    </div>
+    <h3 class="muted" style="margin:14px 0 6px">${tr('پشتیبان‌گیری')}</h3>
+    <div class="sgroup">
+      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), tr('فایل JSON'), 'exportBackup()')}
+      ${settingsRow('upload', '#f59e0b', tr('بازیابی از فایل'), tr('جایگزین همهٔ داده‌های فعلی می‌شود'), "document.getElementById('bkFile').click()")}
+    </div>
+    <input type="file" id="bkFile" accept="application/json,.json" style="display:none" onchange="importBackup(this.files[0])">
+    <p class="small muted" style="margin-top:12px">${tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.')}</p>
   `);
 }

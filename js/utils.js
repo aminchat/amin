@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.9.5';
+export const APP_VERSION = '2.10.3';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -36,6 +36,13 @@ export function setMoneyHidden(on) {
   } catch (e) {}
 }
 
+// عدد بدون مخفی‌سازی، با جداکنندهٔ هزارگان و اعشار در صورت نیاز (برای نرخ‌ها)
+export function fmtPlain(n) {
+  n = Number(n) || 0;
+  const abs = Math.abs(n);
+  const s = abs >= 1000 ? abs.toLocaleString('en-US', { maximumFractionDigits: 2 }) : abs >= 1 ? abs.toLocaleString('en-US', { maximumFractionDigits: 4 }) : abs.toLocaleString('en-US', { maximumFractionDigits: 8 });
+  return (n < 0 ? '−' : '') + s.replace('.', decSep());
+}
 export function fmt(n) {
   if (hideMoney) return '••••';
   n = Number(n) || 0;

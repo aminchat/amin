@@ -2,10 +2,11 @@ import { store, toast, showTip, hideTip } from './utils.js';
 import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i18n.js';
 import { icon } from './icons.js';
 import * as inst from './installments.js';
+import { openNewBook, bookToggle, bookCreate } from './book.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
-import { renderAll, fitNumbers, setTodayLabel, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
+import { renderAll, fitNumbers, setTodayLabel, resetMonths, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
   enableDebtReminders,
@@ -45,6 +46,8 @@ import {
   exportBackup,
   importBackup,
   openSettingsLanguage,
+  openSettingsBook,
+  changeDigits,
   openSettingsRates,
   openBaseCurrency,
   bcSync,
@@ -124,6 +127,7 @@ import {
   updateTransferPreview,
   openQuickTx,
   qaKey,
+  qaFn,
   qaSetType,
   qaSetCat,
   qaPickAccount,
@@ -316,6 +320,7 @@ Object.assign(window, {
   openTxForm,
   openQuickTx,
   qaKey,
+  qaFn,
   qaSetType,
   qaSetCat,
   qaPickAccount,
@@ -395,10 +400,15 @@ Object.assign(window, {
   openSettingsSecurity,
   openSettingsGoogle,
   openSettingsScan,
+  openNewBook,
+  bookToggle,
+  bookCreate,
   openSettingsBackup,
   exportBackup,
   importBackup,
   openSettingsLanguage,
+  openSettingsBook,
+  changeDigits,
   openSettingsRates,
   changeLanguage,
   changeCalendar,
@@ -449,10 +459,13 @@ async function changeLanguage(pref) {
 }
 function changeCalendar(v) {
   setCalendar(v);
-  setTodayLabel();
-  render();
-  if (window.openSettingsLanguage) window.openSettingsLanguage();
 }
+window.onBookChanged = () => {
+  resetMonths();
+  setTodayLabel();
+  buildAssetTabs();
+  switchTab('home');
+};
 paintShellIcons();
 document.getElementById('fab').onclick = () => {
   if (curTab === 'assets' && curAsset === 'debts') openDebtForm();
