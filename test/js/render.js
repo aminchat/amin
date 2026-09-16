@@ -1,4 +1,5 @@
-import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip } from './utils.js';
+import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign } from './utils.js';
+import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS } from './jalali.js';
@@ -42,12 +43,12 @@ function envelopeBars(mk) {
       const f = loanFlow(mk);
       const has = f.out > 0 || f.in > 0;
       const netTxt = !has
-        ? 'بدون گردش'
+        ? tr('pk.noFlow')
         : f.net === 0
-          ? 'سر به سر'
+          ? tr('pk.even')
           : f.net > 0
-            ? '+' + fmt(f.net) + ' گرفته‌ای'
-            : '−' + fmt(-f.net) + ' داده‌ای';
+            ? '+' + fmt(f.net) + ' ' + tr('pk.received')
+            : '−' + fmt(-f.net) + ' ' + tr('pk.given');
       return `<button type="button" class="pocket" onclick="openPocketLedger('${c.id}','${mk}')">
       <div class="pocket-head">
         <span class="pocket-ic" style="background:${c.color}22;color:${c.color}">${icon('cat_' + c.id)}</span>
@@ -65,7 +66,7 @@ function envelopeBars(mk) {
       <div class="pocket-head">
         <span class="pocket-ic" style="background:${c.color}22;color:${c.color}">${icon('cat_' + c.id)}</span>
         <span class="pocket-name">${c.label}</span>
-        <span class="pocket-share">${toFa(c.target)}٪</span>
+        <span class="pocket-share">${toFa(c.target)}${pctSign()}</span>
       </div>
       <div class="bar"><div style="width:${width}%;background:${over ? 'var(--red)' : c.color}"></div></div>
     </button>`;
@@ -92,7 +93,7 @@ function ringSVG(pct, cls) {
   const p = Math.max(0, Math.min(100, pct));
   return `<div class="ring ${cls || ''}">
     <svg viewBox="0 0 84 84"><circle class="track" cx="42" cy="42" r="${r}"/><circle class="prog" cx="42" cy="42" r="${r}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c * (1 - p / 100)).toFixed(1)}"/></svg>
-    <div class="pct">${toFa(Math.round(pct))}٪</div>
+    <div class="pct">${toFa(Math.round(pct))}${pctSign()}</div>
   </div>`;
 }
 
@@ -101,7 +102,7 @@ function homePockets(mk) {
     if (c.loan) {
       const f = loanFlow(mk);
       const has = f.out > 0 || f.in > 0;
-      const txt = !has ? 'بدون گردش' : f.net === 0 ? 'سر به سر' : f.net > 0 ? 'گرفته‌ای' : 'داده‌ای';
+      const txt = !has ? tr('pk.noFlow') : f.net === 0 ? tr('pk.even') : f.net > 0 ? tr('pk.received') : tr('pk.given');
       return `<button type="button" class="pk" onclick="openPocketLedger('${c.id}','${mk}')">
         <span class="ib sm" style="background:${c.color}22;color:${c.color}">${icon('cat_loan')}</span>
         <span class="n">${c.label}</span>
@@ -114,7 +115,7 @@ function homePockets(mk) {
     const over = c.target === 0 ? spent > 0 : ceil > 0 && spent > ceil;
     const width = ceil > 0 ? Math.min(100, Math.round((spent / ceil) * 100)) : spent > 0 ? 100 : 0;
     const left = ceil - spent;
-    const sub = c.target === 0 ? (spent > 0 ? 'کاش نبود' : 'هیچی، عالی') : ceil > 0 ? (left >= 0 ? fmtShort(left) + ' مانده' : fmtShort(-left) + ' بیشتر') : 'بدون سقف';
+    const sub = c.target === 0 ? (spent > 0 ? tr('pk.wish') : tr('pk.none')) : ceil > 0 ? (left >= 0 ? tr('pk.left', { amt: fmtShort(left) }) : tr('pk.over', { amt: fmtShort(-left) })) : tr('pk.noCeil');
     return `<button type="button" class="pk ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')">
       <span class="ib sm" style="background:${c.color}22;color:${c.color}">${icon('cat_' + c.id)}</span>
       <span class="n">${c.label}</span>
@@ -128,13 +129,13 @@ function homePockets(mk) {
 function homeStatusChips() {
   const chips = [];
   // وضعیت همگام‌سازی و رمزنگاری در تنظیمات است؛ فقط اگر اتصال قطع شده باشد این‌جا هشدار می‌دهیم
-  if (isGoogleLinked() && !googleSyncOk()) chips.push({ cls: 'warn', ic: 'cloud', t: 'اتصال گوگل منقضی', on: 'googleSignIn()' });
+  if (isGoogleLinked() && !googleSyncOk()) chips.push({ cls: 'warn', ic: 'cloud', t: tr('home.chip.googleExpired'), on: 'googleSignIn()' });
   const nw = cashTotal() + investTotal();
-  chips.push({ cls: '', ic: 'wallet', t: 'خالص دارایی ' + fmtShort(nw), on: "switchTab('accounts')" });
+  chips.push({ cls: '', ic: 'wallet', t: tr('home.chip.netWorth', { amt: fmtShort(nw) }), on: "switchTab('accounts')" });
   const oblig = totalRemaining();
-  if (oblig > 0) chips.push({ cls: '', ic: 'calendar', t: 'تعهدات ' + fmtShort(oblig), on: "switchTab('debts')" });
+  if (oblig > 0) chips.push({ cls: '', ic: 'calendar', t: tr('home.chip.oblig', { amt: fmtShort(oblig) }), on: "switchTab('debts')" });
   const inv = investTotal();
-  if (inv > 0) chips.push({ cls: '', ic: 'trend', t: 'سرمایه ' + fmtShort(inv), on: "switchTab('invest')" });
+  if (inv > 0) chips.push({ cls: '', ic: 'trend', t: tr('home.chip.invest', { amt: fmtShort(inv) }), on: "switchTab('invest')" });
   return `<div class="status-row">${chips
     .map((c) => `<button type="button" class="schip ${c.cls}" onclick="${c.on}">${icon(c.ic)}<span>${c.t}</span></button>`)
     .join('')}</div>`;
@@ -146,12 +147,12 @@ function onboardingCard(mk) {
   const hasTx = state.transactions.length > 0;
   if (hasAcct && hasBudget && hasTx) return '';
   const steps = [
-    { done: hasAcct, t: 'یک حساب بساز', d: 'کارت بانکی یا پول نقد', on: 'openAccountForm()' },
-    { done: hasBudget, t: 'بودجهٔ این ماه را بنویس', d: 'چقدر می‌خواهی این ماه خرج کنی؟', on: 'openBudgetForm()' },
-    { done: hasTx, t: 'اولین خرج را ثبت کن', d: 'با دکمهٔ + پایین صفحه', on: 'openTxForm()' },
+    { done: hasAcct, t: tr('home.onb.acct'), d: tr('home.onb.acctSub'), on: 'openAccountForm()' },
+    { done: hasBudget, t: tr('home.onb.budget'), d: tr('home.onb.budgetSub'), on: 'openBudgetForm()' },
+    { done: hasTx, t: tr('home.onb.tx'), d: tr('home.onb.txSub'), on: 'openTxForm()' },
   ];
   return `<div class="card">
-    <div class="card-head"><h3>${icon('sparkle')} شروع سریع</h3><span class="small muted">${toFa(steps.filter((x) => x.done).length)} از ${toFa(3)}</span></div>
+    <div class="card-head"><h3>${icon('sparkle')} ${tr('home.onb.title')}</h3><span class="small muted">${tr('home.onb.of', { done: toFa(steps.filter((x) => x.done).length), total: toFa(3) })}</span></div>
     <div class="onb">${steps
       .map((st, i) => `<button type="button" class="onb-step ${st.done ? 'done' : ''}" onclick="${st.on}">
         <span class="n">${st.done ? icon('check') : toFa(i + 1)}</span>
@@ -171,25 +172,25 @@ function txRow(t, opts = {}) {
   const title = t.note
     ? esc(t.note)
     : transfer
-      ? 'انتقال بین حساب‌ها'
+      ? tr('tx.transfer')
       : inv
-        ? 'فاکتور'
+        ? tr('tx.invoice')
         : t.type === 'in'
-          ? (t.cat === 'loan' ? 'قرض / امانت' : 'درآمد')
+          ? (t.cat === 'loan' ? tr('cat.loan') : tr('tx.income'))
           : cat
             ? cat.label
-            : 'خرج';
+            : tr('tx.expense');
   const unitHint = !inv && t.qty && t.unitPrice ? toFa(t.qty) + (t.unit ? ' ' + esc(t.unit) : '') + ' × ' + fmt(t.unitPrice) : '';
   const amtClass = transfer ? 'transfer' : t.type;
   const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
-  const balTxt = opts.bal == null ? '' : `<div class="bal">مانده ${fmt(opts.bal)}</div>`;
+  const balTxt = opts.bal == null ? '' : `<div class="bal">${tr('tx.balance', { amt: fmt(opts.bal) })}</div>`;
   const badges =
-    (transfer ? '<span class="badge" style="color:var(--purple)">انتقال</span>' : '') +
-    (inv ? '<span class="badge" style="color:var(--orange)">' + toFa((t.lines || []).length) + ' قلم</span>' : '') +
+    (transfer ? '<span class="badge" style="color:var(--purple)">' + tr('tx.badge.transfer') + '</span>' : '') +
+    (inv ? '<span class="badge" style="color:var(--orange)">' + tr('tx.items', { n: toFa((t.lines || []).length) }) + '</span>' : '') +
     (!opts.compact && t.type === 'out' && cat ? '<span class="badge" style="color:' + cat.color + '">' + cat.label + '</span>' : '') +
-    (t.debtId ? '<span class="badge">طلب/بدهی</span>' : '') +
-    (t.planId ? '<span class="badge">قسط</span>' : '') +
-    (t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:var(--red)">پاسخ داری</span>' : '') +
+    (t.debtId ? '<span class="badge">' + tr('tx.badge.debt') + '</span>' : '') +
+    (t.planId ? '<span class="badge">' + tr('tx.badge.plan') + '</span>' : '') +
+    (t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:var(--red)">' + tr('tx.badge.reflect') + '</span>' : '') +
     (a && a.currency && a.currency !== baseCur() ? '<span class="badge">' + esc(a.currency) + '</span>' : '');
   const item = `<div class="item" data-tx="${t.id}" onclick="openTxForm(findTx('${t.id}'))">
       <div class="ic" style="background:${color.startsWith('var') ? color.replace(')', '-soft)') : color + '22'};color:${color}">${icon(icName)}</div>
@@ -201,7 +202,7 @@ function txRow(t, opts = {}) {
     </div>`;
   if (opts.noSwipe) return item;
   return `<div class="swipe" data-tx="${t.id}">
-    <div class="under"><span class="r" style="color:var(--red)">${icon('trash')} حذف</span><span class="l" style="color:var(--accent)">ویرایش ${icon('edit')}</span></div>
+    <div class="under"><span class="r" style="color:var(--red)">${icon('trash')} ${tr('act.delete')}</span><span class="l" style="color:var(--accent)">${tr('act.edit')} ${icon('edit')}</span></div>
     ${item}
   </div>`;
 }
@@ -221,29 +222,29 @@ export function renderHome() {
   html += debtHomeBanner();
   html += installmentHomeCard();
   if (!store.persisted) {
-    html += `<div class="banner">${icon('alert')}<span>حالت پیش‌نمایش: ذخیره دائمی فعال نیست. فایل را روی گوشی باز کن.</span></div>`;
+    html += `<div class="banner">${icon('alert')}<span>${tr('home.preview')}</span></div>`;
   }
 
   // کارت قهرمان
   const ringCls = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : '';
   html += `<div class="hero">
     <div style="min-width:0">
-      <div class="lbl">${icon('wallet')} قابل خرج ${monthLabel(mk)}</div>
+      <div class="lbl">${icon('wallet')} ${tr('home.spendable', { month: monthLabel(mk) })}</div>
       <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}">${fmtShort(s.remaining)}</div>
       <div class="sub">${
         !hasBudget
-          ? 'هنوز بودجه‌ای ثبت نشده'
+          ? tr('home.noBudget')
           : s.remaining > 0
-            ? `تا آخر ماه (${toFa(daysLeft)} روز) روزی <b>${fmtShort(perDay)}</b>`
-            : 'از بودجه رد شده‌ای'
+            ? tr('home.perDay', { days: toFa(daysLeft), amt: fmtShort(perDay) })
+            : tr('home.overBudget')
       }</div>
     </div>
     ${ringSVG(pct, ringCls)}
     <div class="hero-foot">
-      <div class="kv"><div class="k">بودجه</div><div class="v">${fmtShort(s.budget)}</div></div>
-      <div class="kv"><div class="k">مانده قبلی</div><div class="v">${fmtShort(s.carriedIn)}</div></div>
-      <div class="kv"><div class="k">خرج شده</div><div class="v val red">${fmtShort(s.spent)}</div></div>
-      ${hasBudget ? `<button type="button" class="link" onclick="openBudgetForm()">${icon('edit')}</button>` : `<button type="button" class="btn sm primary" onclick="openBudgetForm()">ثبت بودجه</button>`}
+      <div class="kv"><div class="k">${tr('home.budget')}</div><div class="v">${fmtShort(s.budget)}</div></div>
+      <div class="kv"><div class="k">${tr('home.carried')}</div><div class="v">${fmtShort(s.carriedIn)}</div></div>
+      <div class="kv"><div class="k">${tr('home.spent')}</div><div class="v val red">${fmtShort(s.spent)}</div></div>
+      ${hasBudget ? `<button type="button" class="link" onclick="openBudgetForm()">${icon('edit')}</button>` : `<button type="button" class="btn sm primary" onclick="openBudgetForm()">${tr('act.setBudget')}</button>`}
     </div>
   </div>`;
 
@@ -251,7 +252,7 @@ export function renderHome() {
   html += onboardingCard(mk);
 
   html += `<div class="card" style="padding-bottom:var(--sp-2)">
-    <div class="card-head"><h3>${icon('target')} پاکت‌های این ماه</h3><button type="button" class="link" onclick="switchTab('report')">جزئیات</button></div>
+    <div class="card-head"><h3>${icon('target')} ${tr('home.pockets')}</h3><button type="button" class="link" onclick="switchTab('report')">${tr('act.details')}</button></div>
     ${homePockets(mk)}
   </div>`;
 
@@ -259,7 +260,7 @@ export function renderHome() {
   const recent = sortTxs(state.transactions.slice()).slice(0, 3);
   if (recent.length) {
     html += `<div class="card">
-      <div class="card-head"><h3>${icon('list')} آخرین تراکنش‌ها</h3><button type="button" class="link" onclick="switchTab('tx')">همه</button></div>
+      <div class="card-head"><h3>${icon('list')} ${tr('home.recent')}</h3><button type="button" class="link" onclick="switchTab('tx')">${tr('act.all')}</button></div>
       <div class="tx-list">${recent.map((t) => txRow(t, { noSwipe: true, compact: true })).join('')}</div>
     </div>`;
   }
@@ -271,19 +272,19 @@ export function renderTx() {
   const txs = sortTxs(state.transactions.filter((t) => t.month === txMonth));
   const after = runningBalanceByTxId();
   let html = `<div class="mnav">
-    <button type="button" onclick="txShift(-1)" aria-label="ماه قبل">${icon('chevR')}</button>
-    <div class="mttl">${monthLabel(txMonth)}<div class="small muted">${txMonth === curMonthKey() ? 'ماه جاری' : ''}</div></div>
-    <button type="button" onclick="txShift(1)" aria-label="ماه بعد">${icon('chevL')}</button>
+    <button type="button" onclick="txShift(-1)" aria-label="${tr('act.prevMonth')}">${icon('chevR')}</button>
+    <div class="mttl">${monthLabel(txMonth)}<div class="small muted">${txMonth === curMonthKey() ? tr('tx.curMonth') : ''}</div></div>
+    <button type="button" onclick="txShift(1)" aria-label="${tr('act.nextMonth')}">${icon('chevL')}</button>
   </div>`;
 
   if (txs.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>در این ماه تراکنشی ثبت نشده.<br>با دکمهٔ + پایین صفحه شروع کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}</div>`;
   } else {
     const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
     const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
     html += `<div class="grid2" style="margin-bottom:var(--sp-3)">
-      <div class="stat"><div class="lbl">خرج این ماه</div><div class="val red">${fmtShort(sumOut)}</div></div>
-      <div class="stat"><div class="lbl">درآمد این ماه</div><div class="val green">${fmtShort(sumIn)}</div></div>
+      <div class="stat"><div class="lbl">${tr('tx.spentMonth')}</div><div class="val red">${fmtShort(sumOut)}</div></div>
+      <div class="stat"><div class="lbl">${tr('tx.incomeMonth')}</div><div class="val green">${fmtShort(sumIn)}</div></div>
     </div>`;
     // گروه‌بندی بر اساس روز
     let lastDay = '';
@@ -295,9 +296,9 @@ export function renderTx() {
       }
       html += txRow(t, { bal: after[t.id] });
     }
-    html += `<div class="small muted" style="text-align:center;padding:var(--sp-3)">راهنما: کشیدن به چپ = حذف · به راست = ویرایش · نگه‌داشتن = تکرار</div>`;
+    html += `<div class="small muted" style="text-align:center;padding:var(--sp-3)">${tr('tx.swipeHelp')}</div>`;
   }
-  html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openPaperScan()">${icon('scan')} ثبت چند تراکنش از عکس کاغذ</button>`;
+  html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openPaperScan()">${icon('scan')} ${tr('act.scanPaper')}</button>`;
   document.getElementById('txContent').innerHTML = html;
   attachSwipe(document.getElementById('txContent'));
 }
@@ -394,21 +395,21 @@ function bulletRows(mk, budget, totalSpent) {
       const over = c.target === 0 ? spent > 0 : target > 0 && spent > target;
       const ratio = target > 0 ? Math.round((spent / target) * 100) : 0;
       const sub = c.target === 0
-        ? spent > 0 ? fmtShort(spent) + ' هدر رفت' : 'هیچی — عالی'
+        ? spent > 0 ? tr('rep.wasted', { amt: fmtShort(spent) }) : tr('pk.none')
         : !base
-          ? 'خرجی نیست'
+          ? tr('rep.noSpendRow')
           : over
-            ? fmtShort(spent - target) + ' بیشتر از برنامه'
+            ? tr('rep.overPlan', { amt: fmtShort(spent - target) })
             : spent === target
-              ? 'دقیقاً سر سهم'
+              ? tr('rep.exact')
               : c.id === 'invest' && spent < target
-              ? fmtShort(target - spent) + ' تا هدف مانده'
-              : fmtShort(target - spent) + ' مانده';
+              ? tr('rep.toGoal', { amt: fmtShort(target - spent) })
+              : tr('rep.left', { amt: fmtShort(target - spent) });
       return `<button type="button" class="brow ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')" style="--c:${c.color}">
         <div class="brow-head">
           <span class="brow-ic">${icon('cat_' + c.id)}</span>
           <span class="brow-name">${c.label}</span>
-          <span class="brow-pct">${c.target ? toFa(ratio) + '٪ از سهم' : ''}</span>
+          <span class="brow-pct">${c.target ? tr('rep.ofShare', { pct: toFa(ratio) }) : ''}</span>
         </div>
         <svg class="bullet" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
           <rect class="b-track" x="0" y="0" width="100" height="14" rx="7"/>
@@ -448,36 +449,36 @@ export function renderReport() {
   const waste = catSpent(mk, 'waste');
 
   let verdict, cls;
-  if (!totalSpent) { verdict = 'هنوز خرجی ثبت نشده'; cls = 'muted'; }
-  else if (overCats.length) { verdict = overCats.map((c) => c.label).join(' و ') + ' از سهمش رد شد'; cls = 'red'; }
-  else if (score >= 80) { verdict = 'طبق برنامه پیش می‌روی'; cls = 'green'; }
-  else if (score >= 55) { verdict = 'کمی از برنامه فاصله داری'; cls = 'amber'; }
-  else { verdict = 'توزیع خرج با برنامه نمی‌خواند'; cls = 'red'; }
+  if (!totalSpent) { verdict = tr('rep.noSpend'); cls = 'muted'; }
+  else if (overCats.length) { verdict = tr('rep.overCat', { cats: overCats.map((c) => c.label).join(tr('rep.and')) }); cls = 'red'; }
+  else if (score >= 80) { verdict = tr('rep.onTrack'); cls = 'green'; }
+  else if (score >= 55) { verdict = tr('rep.drift'); cls = 'amber'; }
+  else { verdict = tr('rep.offPlan'); cls = 'red'; }
 
   let html = `<div class="mnav">
-    <button type="button" onclick="repShift(-1)" aria-label="ماه قبل">${icon('chevR')}</button>
+    <button type="button" onclick="repShift(-1)" aria-label="${tr('act.prevMonth')}">${icon('chevR')}</button>
     <div class="mttl">${monthLabel(mk)}</div>
-    <button type="button" onclick="repShift(1)" aria-label="ماه بعد">${icon('chevL')}</button>
+    <button type="button" onclick="repShift(1)" aria-label="${tr('act.nextMonth')}">${icon('chevL')}</button>
   </div>`;
 
   html += `<div class="hero rep-hero">
     <div style="min-width:0;flex:1">
-      <div class="lbl">حال این ماه</div>
+      <div class="lbl">${tr('rep.mood')}</div>
       <div class="rep-verdict ${cls}">${verdict}</div>
       <div class="rep-stats">
-        <span><b class="red">${fmtShort(totalSpent)}</b> خرج</span>
-        <span><b class="green">${fmtShort(totalIncome)}</b> درآمد</span>
-        ${budget ? `<span><b>${fmtShort(budget)}</b> بودجه</span>` : ''}
+        <span><b class="red">${fmtShort(totalSpent)}</b> ${tr('rep.spent')}</span>
+        <span><b class="green">${fmtShort(totalIncome)}</b> ${tr('rep.income')}</span>
+        ${budget ? `<span><b>${fmtShort(budget)}</b> ${tr('rep.budget')}</span>` : ''}
       </div>
-      ${inst ? `<div class="small muted" style="margin-top:6px">${fmtShort(inst)} از این خرج، قسط بوده.</div>` : ''}
+      ${inst ? `<div class="small muted" style="margin-top:6px">${tr('rep.instOf', { amt: fmtShort(inst) })}</div>` : ''}
     </div>
     ${score !== null ? ringSVG(score, cls) : ''}
   </div>`;
 
   html += `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
-      <h3 style="margin:0;display:flex;align-items:center">پاکت‌ها${infoTip(budget ? 'نوار کم‌رنگ سهم هر پاکت از بودجه است (۶۰/۲۰/۱۵/۵)؛ نوار پررنگ خرج واقعی. اگر از خط هدف رد شود قرمز می‌شود.' : 'بودجه ثبت نشده؛ سهم‌ها از کل خرج همین ماه حساب شده‌اند. برای سقف ریالی، بودجه را ثبت کن.')}</h3>
-      <button class="btn sm ghost" onclick="openBudgetForm('${mk}')">${budget ? 'بودجه' : 'تعیین بودجه'}</button>
+      <h3 style="margin:0;display:flex;align-items:center">${tr('rep.pockets')}${infoTip(budget ? tr('rep.tipBudget') : tr('rep.tipNoBudget'))}</h3>
+      <button class="btn sm ghost" onclick="openBudgetForm('${mk}')">${budget ? tr('act.budget') : tr('act.setBudget')}</button>
     </div>
     <div style="height:8px"></div>
     <div class="bullets">${bulletRows(mk, budget, totalSpent)}</div>
@@ -486,8 +487,8 @@ export function renderReport() {
   if (f.out || f.in) {
     html += `<div class="card" style="padding:0;overflow:hidden"><button type="button" class="entry" onclick="openPocketLedger('loan','${mk}')">
       <span class="ib" style="background:#14b8a622;color:#14b8a6">${icon('cat_loan')}</span>
-      <span class="mid"><div class="t1">قرض / امانت این ماه</div>
-      <div class="t2">داده: ${fmtShort(f.out)} · گرفته/برگشتی: ${fmtShort(f.in)} — خارج از خرج و درآمد</div></span>
+      <span class="mid"><div class="t1">${tr('rep.loanTitle')}</div>
+      <div class="t2">${tr('rep.loanSub', { out: fmtShort(f.out), in: fmtShort(f.in) })}</div></span>
       <span class="chev">${icon('chevL')}</span>
     </button></div>`;
   }
@@ -506,15 +507,15 @@ export function renderInvest() {
   const plAll = total - totalBuy;
   let html = `
   <div class="hero">
-    <div style="min-width:0"><div class="lbl">${icon('trend')} ارزش کل سرمایه‌گذاری</div>
+    <div style="min-width:0"><div class="lbl">${icon('trend')} ${tr('inv.total')}</div>
     <div class="hero-num">${fmtShort(total)}</div>
-    <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? 'سود' : 'زیان'} کلی: ${fmtShort(Math.abs(plAll))}</div></div>
+    <div class="sub ${plAll >= 0 ? 'val green' : 'val red'}">${plAll >= 0 ? tr('inv.profit') : tr('inv.loss')} ${tr('inv.overall')}: ${fmtShort(Math.abs(plAll))}</div></div>
     <span class="ib lg ${plAll >= 0 ? 'green' : 'red'}">${icon('trend')}</span>
   </div>
 `;
 
   if (state.investments.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>هنوز دارایی ثبت نکرده‌ای.<br>طلا، ملک، ماشین یا هر سرمایه‌ای را با دکمهٔ + بالا اضافه کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>${tr('inv.empty')}</div>`;
   } else {
     html += state.investments
       .map((i) => {
@@ -527,11 +528,11 @@ export function renderInvest() {
           <div class="small muted">${i.currency}</div><span class="schev">${icon('chevL')}</span>
         </div>
         <div class="grid2" style="margin:10px 0">
-          <div class="stat"><div class="lbl">ارزش فعلی</div><div class="val accent">${i.currency !== baseCur() ? fmt(val) + ' ' + esc(currencyInfo(i.currency).symbol) : fmtShort(val)}</div><div class="sub">${i.currency !== baseCur() ? '≈ ' + fmtShort(val * rateOf(i.currency)) + ' ' + baseCur() : ''}</div></div>
-          <div class="stat"><div class="lbl">سود / زیان</div><div class="val ${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? '+' : '−'}${i.currency !== baseCur() ? fmt(Math.abs(pl)) : fmtShort(Math.abs(pl))}</div><div class="sub">از زمان خرید</div></div>
+          <div class="stat"><div class="lbl">${tr('inv.value')}</div><div class="val accent">${i.currency !== baseCur() ? fmt(val) + ' ' + esc(currencyInfo(i.currency).symbol) : fmtShort(val)}</div><div class="sub">${i.currency !== baseCur() ? '≈ ' + fmtShort(val * rateOf(i.currency)) + ' ' + baseCur() : ''}</div></div>
+          <div class="stat"><div class="lbl">${tr('inv.pl')}</div><div class="val ${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? '+' : '−'}${i.currency !== baseCur() ? fmt(Math.abs(pl)) : fmtShort(Math.abs(pl))}</div><div class="sub">${tr('inv.sinceBuy')}</div></div>
         </div>
-        <div class="small muted" style="margin-bottom:10px">قیمت خرید هر ${esc(i.unit || 'واحد')}: ${fmt(i.buy)} · قیمت امروز: <b style="color:var(--text)">${fmt(i.cur)}</b>${curSuffix}</div>
-        <button class="btn sm block" onclick="editInvestPrice('${i.id}')">${icon('refresh')} به‌روزرسانی قیمت امروز</button>
+        <div class="small muted" style="margin-bottom:10px">${tr('inv.buyPrice', { unit: esc(i.unit || tr('inv.unit')), buy: fmt(i.buy), cur: fmt(i.cur), suffix: curSuffix })}</div>
+        <button class="btn sm block" onclick="editInvestPrice('${i.id}')">${icon('refresh')} ${tr('act.updatePrice')}</button>
       </div>`;
       })
       .join('');
@@ -557,12 +558,12 @@ function acctRow(a) {
     <div class="ib ${cls}" onclick="openAccountLedger('${a.id}')">${icon(accountIcon(a.type))}</div>
     <div class="mid" onclick="openAccountLedger('${a.id}')">
       <div class="t1">${esc(a.name)}${a.last4 ? ` <span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
-      <div class="t2">${esc(a.type)}${isForeign ? ` · <span class="badge">${esc(a.currency)}</span>${rate ? ` <span class="faint">نرخ ${fmtShort(rate)}</span>` : ''}` : ''}</div>
+      <div class="t2">${esc(a.type)}${isForeign ? ` · <span class="badge">${esc(a.currency)}</span>${rate ? ` <span class="faint">${tr('acc.rate', { r: fmtShort(rate) })}</span>` : ''}` : ''}</div>
     </div>
     <div class="amt-col">
       <div class="amt ${bal >= 0 ? 'in' : 'out'}">${isForeign ? fmt(bal) : fmtShort(bal)}</div>
-      ${isForeign ? `<div class="bal">${rate ? '≈ ' + fmtShort(bal * rate) : 'بدون نرخ'}</div>` : ''}
-      <button class="btn sm" style="margin-top:6px" onclick="openAccountForm(findAccount('${a.id}'))">ویرایش</button>
+      ${isForeign ? `<div class="bal">${rate ? '≈ ' + fmtShort(bal * rate) : tr('acc.noRate')}</div>` : ''}
+      <button class="btn sm" style="margin-top:6px" onclick="openAccountForm(findAccount('${a.id}'))">${tr('act.edit')}</button>
     </div>
   </div>`;
 }
@@ -572,7 +573,7 @@ export function renderAccounts() {
   let html = '';
 
   if (state.accounts.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>هنوز حسابی نساخته‌ای.<br>با دکمهٔ + بالای صفحه شروع کن.<br><br>کارت بانکی، پول نقد یا کیف پول ارزی اضافه کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('acc.empty')}</div>`;
   } else {
     // گروه‌بندی بر اساس مؤسسه
     const groups = new Map();
@@ -596,21 +597,20 @@ export function renderAccounts() {
     }
     const total = cashTotal();
     html += `<div class="hero">
-      <div style="min-width:0"><div class="lbl">${icon('bank')} جمع همهٔ حساب‌ها</div>
+      <div style="min-width:0"><div class="lbl">${icon('bank')} ${tr('acc.total')}</div>
       <div class="hero-num">${fmtShort(total)}</div>
-      <div class="sub">${toFa(state.accounts.length)} حساب در ${toFa(keys.length)} مؤسسه</div></div>
+      <div class="sub">${tr('acc.summary', { n: toFa(state.accounts.length), g: toFa(keys.length) })}</div></div>
       <span class="ib lg">${icon('card')}</span>
     </div>`;
 
     for (const k of keys) {
       const accts = groups.get(k);
-      const label = k === '__none' ? 'بدون مؤسسه' : k;
+      const label = k === '__none' ? tr('acc.noInst') : k;
       const sum = accts.reduce((s, a) => s + accountCurrentToman(a), 0);
       const open = openGroups.has(k);
       const curs = [...new Set(accts.map((a) => a.currency))];
       const sub =
-        toFa(accts.length) +
-        (accts.length === 1 ? ' حساب' : ' حساب') +
+        tr('acc.n', { n: toFa(accts.length) }) +
         (curs.length > 1 ? ' · ' + curs.join('، ') : curs[0] !== baseCur() ? ' · ' + curs[0] : '');
       const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((sum / total) * 100))) : 0;
       html += `<div class="card acct-group ${open ? 'open' : ''}" style="padding:0;overflow:hidden">
@@ -623,12 +623,12 @@ export function renderAccounts() {
           </span>
           <span style="text-align:left">
             <span class="amt ${sum >= 0 ? 'in' : 'out'}" style="display:block">${fmtShort(sum)}</span>
-            <span class="small muted">${pct ? toFa(pct) + '٪ از کل' : ''}</span>
+            <span class="small muted">${pct ? tr('acc.ofTotal', { pct: toFa(pct) }) : ''}</span>
           </span>
           <span class="pocket-chev" style="margin-right:6px;display:flex">${icon(open ? 'chevD' : 'chevL')}</span>
         </button>
         ${open ? `<div class="acct-group-body">${accts.map(acctRow).join('')}
-          <button class="btn sm block ghost" style="margin:0 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">${icon('plus')} حساب جدید در ${k === '__none' ? 'این گروه' : esc(label)}</button>
+          <button class="btn sm block ghost" style="margin:0 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">${icon('plus')} ${tr('acc.newIn', { name: k === '__none' ? tr('acc.thisGroup') : esc(label) })}</button>
         </div>` : ''}
       </div>`;
     }
@@ -636,7 +636,7 @@ export function renderAccounts() {
 
   const missingRate = foreign.filter((c) => !rateOf(c));
   if (missingRate.length) {
-    html += `<div class="hint" style="color:var(--orange)">نرخ ${missingRate.map(esc).join('، ')} ثبت نشده؛ این حساب‌ها در جمع کل نیستند. <button type="button" class="link" style="padding:0 4px" onclick="openSettingsRates()">ثبت نرخ</button></div>`;
+    html += `<div class="hint" style="color:var(--orange)">${tr('acc.missingRate', { curs: missingRate.map(esc).join('، ') })} <button type="button" class="link" style="padding:0 4px" onclick="openSettingsRates()">${tr('act.setRate')}</button></div>`;
   }
   document.getElementById('accountsContent').innerHTML = html;
 }
@@ -687,35 +687,35 @@ export function renderAssetsOverview() {
       <span class="mid"><span class="t1">${t1}${count ? ` <span class="badge">${toFa(count)}</span>` : ''}</span>${t2 ? `<span class="t2 ${alert ? 'red' : ''}">${t2}</span>` : ''}</span>
       <span class="num">${num}</span><span class="chev">${icon('chevL')}</span>
     </button>`;
-  const dayTxt = (n) => (n < 0 ? toFa(-n) + ' روز عقب افتاده' : n === 0 ? 'امروز' : toFa(n) + ' روز دیگر');
+  const dayTxt = (n) => (n < 0 ? tr('time.daysLate', { n: toFa(-n) }) : n === 0 ? tr('time.today') : tr('time.inDays', { n: toFa(n) }));
   // زیرنویس‌های معنادار به‌جای شمارش
   const foreign = state.accounts.filter((a) => a.currency && a.currency !== baseCur()).length;
-  const accSub = foreign ? toFa(foreign) + ' حساب ارزی' : '';
+  const accSub = foreign ? tr('as.foreign', { n: toFa(foreign) }) : '';
   const totalBuy = state.investments.reduce((x, i) => x + i.qty * i.buy * rateOf(i.currency), 0);
   const pl = inv - totalBuy;
-  const invSub = state.investments.length && totalBuy ? `<span class="${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? 'سود' : 'زیان'} ${fmtShort(Math.abs(pl))}</span>` : '';
+  const invSub = state.investments.length && totalBuy ? `<span class="${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? tr('inv.profit') : tr('inv.loss')} ${fmtShort(Math.abs(pl))}</span>` : '';
   const nextDebt = debts.filter((d) => d.dueISO).sort((a, b) => a.dueISO.localeCompare(b.dueISO))[0];
-  const debtSub = lateDebts > 0 ? toFa(lateDebts) + ' مورد سررسید گذشته' : nextDebt ? 'سررسید بعدی ' + dayTxt(daysUntilDue(nextDebt.dueISO)) : debts.length ? '' : 'موردی باز نیست';
+  const debtSub = lateDebts > 0 ? tr('as.overdueDebts', { n: toFa(lateDebts) }) : nextDebt ? tr('as.dueNext', { when: dayTxt(daysUntilDue(nextDebt.dueISO)) }) : debts.length ? '' : tr('as.noOpen');
   const nextRow = dueRows(3650)[0];
-  const instSub = lateInst > 0 ? toFa(lateInst) + ' قسط عقب‌افتاده' : nextRow ? 'قسط بعدی ' + dayTxt(nextRow.days) + ' · ' + fmtShort(rowTotal(nextRow.row)) : plans ? '' : 'وام یا خرید قسطی نداری';
+  const instSub = lateInst > 0 ? tr('as.overdueInst', { n: toFa(lateInst) }) : nextRow ? tr('as.nextInst', { when: dayTxt(nextRow.days), amt: fmtShort(rowTotal(nextRow.row)) }) : plans ? '' : tr('as.noPlans');
   box.innerHTML = `
     <div class="hero">
-      <div style="min-width:0"><div class="lbl">${icon('wallet')} خالص دارایی</div>
+      <div style="min-width:0"><div class="lbl">${icon('wallet')} ${tr('as.netWorth')}</div>
       <div class="hero-num">${fmtShort(nw)}</div>
-      <div class="sub">نقد ${fmtShort(cash)} · سرمایه ${fmtShort(inv)}</div></div>
+      <div class="sub">${tr('as.cashInv', { cash: fmtShort(cash), inv: fmtShort(inv) })}</div></div>
       <span class="ib lg">${icon('wallet')}</span>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
-      ${entry('accounts', 'card', '', 'حساب‌ها', state.accounts.length, accSub, fmtShort(cash))}
-      ${entry('invest', 'trend', 'green', 'سرمایه', state.investments.length, invSub, fmtShort(inv))}
-      ${entry('debts', 'handshake', 'purple', 'طلب و بدهی', debts.length, debtSub, `<span style="color:var(--green)">+${fmtShort(rec)}</span> <span class="small muted">/</span> <span style="color:var(--red)">−${fmtShort(pay)}</span>`, lateDebts > 0)}
-      ${entry('installments', 'calendar', 'orange', 'اقساط', plans, instSub, plans ? fmtShort(inst) : '—', lateInst > 0)}
+      ${entry('accounts', 'card', '', tr('nav.accounts'), state.accounts.length, accSub, fmtShort(cash))}
+      ${entry('invest', 'trend', 'green', tr('nav.invest'), state.investments.length, invSub, fmtShort(inv))}
+      ${entry('debts', 'handshake', 'purple', tr('nav.debts'), debts.length, debtSub, `<span style="color:var(--green)">+${fmtShort(rec)}</span> <span class="small muted">/</span> <span style="color:var(--red)">−${fmtShort(pay)}</span>`, lateDebts > 0)}
+      ${entry('installments', 'calendar', 'orange', tr('nav.installments'), plans, instSub, plans ? fmtShort(inst) : '—', lateInst > 0)}
     </div>
     ${oblig > 0 ? `<div class="card oblig">
-      <div class="oblig-head"><span class="ib red">${icon('alert')}</span><span class="t1" style="flex:1">تعهدات${infoTip('جمع بدهی‌های باز و اقساط پرداخت‌نشده. در خالص دارایی بالا لحاظ نشده است.')}</span><span class="amt out">${fmtShort(oblig)}</span></div>
+      <div class="oblig-head"><span class="ib red">${icon('alert')}</span><span class="t1" style="flex:1">${tr('as.oblig')}${infoTip(tr('as.obligTip'))}</span><span class="amt out">${fmtShort(oblig)}</span></div>
       <div class="oblig-rows">
-        ${pay > 0 ? `<div class="oblig-row"><span>بدهی به دیگران</span><b>${fmtShort(pay)}</b></div>` : ''}
-        ${inst > 0 ? `<div class="oblig-row"><span>اقساط باقی‌مانده</span><b>${fmtShort(inst)}</b></div>` : ''}
+        ${pay > 0 ? `<div class="oblig-row"><span>${tr('as.debtOthers')}</span><b>${fmtShort(pay)}</b></div>` : ''}
+        ${inst > 0 ? `<div class="oblig-row"><span>${tr('as.instLeft')}</span><b>${fmtShort(inst)}</b></div>` : ''}
       </div>
     </div>` : ''}`;
 }
@@ -745,8 +745,9 @@ export function renderAll() {
 }
 
 export function setTodayLabel() {
-  const [y, m, d] = jalaliNow();
-  const txt = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
+  const d0 = new Date();
+  const iso = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0');
+  const txt = fmtDate(iso);
   const today = document.getElementById('todayLbl');
-  if (today) today.textContent = txt + ' · واحد: ' + baseCur();
+  if (today) today.textContent = txt + ' · ' + tr('unit') + ': ' + baseCur();
 }

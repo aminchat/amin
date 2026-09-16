@@ -1,4 +1,5 @@
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip } from './utils.js';
+import { t, LANGS, langPref, lang, calPref, calendar } from './i18n.js';
 import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
@@ -791,7 +792,7 @@ function settingsRow(ic, color, title, sub, onclick, extra) {
 function settingsHeader(title, back) {
   return back
     ? `<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-       <button type="button" class="sback" onclick="${back}">${icon('chevR')} بازگشت</button>
+       <button type="button" class="sback" onclick="${back}">${icon('chevR')} ${t('act.back')}</button>
        <h2 style="margin-top:6px">${title}</h2>`
     : `<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button><h2>${title}</h2>`;
 }
@@ -806,6 +807,7 @@ export function openSettings() {
     ${settingsHeader('تنظیمات')}
     <div class="sgroup">
       ${settingsRow('palette', '#8b5cf6', 'ظاهر', 'تم و رنگ برنامه', 'openSettingsAppearance()', theme.name)}
+      ${settingsRow('globe', '#0891b2', t('set.language'), t('set.languageSub'), 'openSettingsLanguage()', (LANGS.find((l) => l.id === lang()) || {}).name + (langPref() === 'auto' ? ' · ' + t('set.auto').split(' ')[0] : ''))}
     </div>
     <div class="sgroup">
       ${settingsRow(
@@ -1114,4 +1116,28 @@ export function applyBaseCurrency() {
   render();
   if (window.setTodayLabel) window.setTodayLabel();
   toast('واحد پایه شد: ' + next);
+}
+
+// ─── زبان و تقویم ───
+export function openSettingsLanguage() {
+  const pref = langPref();
+  const cp = calPref();
+  const opt = (id, name, on, click) => `<button type="button" class="srow" onclick="${click}">
+      <span class="smid"><span class="st1">${name}</span></span>
+      <span class="sval">${on ? icon('check') : ''}</span>
+    </button>`;
+  openModal(`
+    ${settingsHeader(t('set.language'), 'openSettings()')}
+    <div class="sgroup">
+      ${opt('auto', t('set.auto'), pref === 'auto', "changeLanguage('auto')")}
+      ${LANGS.map((l) => opt(l.id, l.name, pref === l.id, "changeLanguage('" + l.id + "')")).join('')}
+    </div>
+    <h3 class="muted" style="margin:14px 0 6px">${t('set.calendar')}</h3>
+    <div class="sgroup">
+      ${opt('auto', t('set.auto'), cp === 'auto', "changeCalendar('auto')")}
+      ${opt('jalali', t('set.cal.jalali'), cp === 'jalali', "changeCalendar('jalali')")}
+      ${opt('gregorian', t('set.cal.greg'), cp === 'gregorian', "changeCalendar('gregorian')")}
+    </div>
+    <p class="small muted" style="margin-top:12px">${t('set.langNote')}</p>
+  `);
 }

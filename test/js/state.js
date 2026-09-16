@@ -1,17 +1,18 @@
 import { store, setBaseInfo, setBigUnits } from './utils.js';
+import { t } from './i18n.js';
 import { curMonthKey } from './jalali.js';
 import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
 export const KEY = 'capital_app_v1';
 
 export const CATS = [
-  { id: 'need', label: 'ضروریات', color: '#3d8bfd', target: 60, emoji: '🏠' },
-  { id: 'invest', label: 'سرمایه‌گذاری', color: '#22c55e', target: 20, emoji: '📈' },
-  { id: 'fun', label: 'تفریح', color: '#f59e0b', target: 15, emoji: '🎮' },
-  { id: 'charity', label: 'نیکوکاری', color: '#a78bfa', target: 5, emoji: '🤲' },
-  { id: 'waste', label: 'هدررفت', color: '#ef4444', target: 0, emoji: '🚨' },
+  { id: 'need', get label() { return t('cat.need'); }, color: '#3d8bfd', target: 60, emoji: '🏠' },
+  { id: 'invest', get label() { return t('cat.invest'); }, color: '#22c55e', target: 20, emoji: '📈' },
+  { id: 'fun', get label() { return t('cat.fun'); }, color: '#f59e0b', target: 15, emoji: '🎮' },
+  { id: 'charity', get label() { return t('cat.charity'); }, color: '#a78bfa', target: 5, emoji: '🤲' },
+  { id: 'waste', get label() { return t('cat.waste'); }, color: '#ef4444', target: 0, emoji: '🚨' },
   // پاکت قرض/امانت: جابه‌جایی پول است نه خرج/درآمد واقعی؛ سقف ندارد و در بودجهٔ ماه حساب نمی‌شود
-  { id: 'loan', label: 'قرض / امانت', color: '#14b8a6', target: 0, emoji: '🤝', loan: true },
+  { id: 'loan', get label() { return t('cat.loan'); }, color: '#14b8a6', target: 0, emoji: '🤝', loan: true },
 ];
 
 export const LOAN_CAT = 'loan';
