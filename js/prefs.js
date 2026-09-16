@@ -1,9 +1,9 @@
-import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION } from './utils.js';
+import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip } from './utils.js';
 import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
-import { state, replaceState } from './state.js';
+import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES } from './state.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -39,11 +39,11 @@ export const THEMES = [
 ];
 
 export function currentTheme() {
-  return store.get(THEME_KEY) || 'night';
+  return store.get(THEME_KEY) || 'light';
 }
 
 export function applyTheme(id) {
-  const t = THEMES.find((x) => x.id === id) ? id : 'night';
+  const t = THEMES.find((x) => x.id === id) ? id : 'light';
   document.documentElement.setAttribute('data-theme', t);
   store.set(THEME_KEY, t);
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -360,13 +360,13 @@ export function setLockMode(mode, sub) {
   const lbl = document.getElementById('lockSub');
   const inp = document.getElementById('lockPin');
   const bio = document.getElementById('lockBio');
-  if (title) title.textContent = mode === 'pass' ? 'بازکردن داده‌ها' : 'ورود به برنامه';
+  if (title) title.textContent = 'ورود';
   if (lbl)
     lbl.textContent =
       sub ||
       (mode === 'pass'
-        ? 'رمز عبور را وارد کن (در همهٔ دستگاه‌هایت یکسان است)'
-        : 'رمز را وارد کن');
+        ? 'رمز عبور'
+        : 'رمز ورود');
   if (inp) {
     inp.value = '';
     inp.placeholder = mode === 'pass' ? 'رمز عبور' : 'پین';
@@ -451,7 +451,7 @@ function autoBioPrompt() {
 }
 
 export function showLockForRemote() {
-  setLockMode('pass', 'رمز عبور را وارد کن تا داده‌ها از گوگل باز شود (در همهٔ دستگاه‌ها یکسان است)');
+  setLockMode('pass', 'رمز عبور (همان رمز دستگاه‌های دیگر)');
   lockApp();
 }
 
@@ -570,7 +570,7 @@ export async function recoveryStep2() {
     <div class="field"><label>تکرار رمز عبور</label>
       <input class="input" id="recPass2" type="password" autocomplete="new-password" dir="ltr"></div>
     <div id="recPassErr" class="hint" style="display:none;color:#fb7185"></div>
-    <button class="btn primary block" id="recFinishBtn" style="margin-top:12px" onclick="recoveryFinish()">بازکردن داده‌ها</button>
+    <button class="btn primary block" id="recFinishBtn" style="margin-top:12px" onclick="recoveryFinish()">ورود</button>
   `);
   setTimeout(() => {
     const p1 = document.getElementById('recPass');
@@ -606,7 +606,7 @@ export async function recoveryFinish() {
   const btn = document.getElementById('recFinishBtn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'در حال بازکردن…';
+    btn.textContent = 'در حال ورود…';
   }
   try {
     const st = await sec.recoverWithPhrase(phrase, a);
@@ -618,7 +618,7 @@ export async function recoveryFinish() {
     if (window.__capLog) window.__capLog('recoveryFinish', e);
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'بازکردن داده‌ها';
+      btn.textContent = 'ورود';
     }
     recPassError('بازیابی انجام نشد: ' + ((e && e.message) || e));
   }
@@ -825,6 +825,7 @@ export function openSettings() {
       )}
     </div>
     <div class="sgroup">
+      ${settingsRow('coin', '#0ea5e9', 'ارز', ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('receipt', '#f97316', 'خواندن فاکتور از عکس', 'کلید هوش مصنوعی گوگل', 'openSettingsScan()', gemini ? 'فعال' : 'خاموش')}
       ${settingsRow('info', '#64748b', 'دربارهٔ برنامه', 'نسخه ' + APP_VERSION, 'openSettingsAbout()')}
     </div>
@@ -856,7 +857,6 @@ export function openSettingsSecurity() {
   if (enc) {
     body += `
     <div class="sgroup">
-      <div class="hint">✅ رمزنگاری فعال است — داده‌ها روی گوشی و گوگل‌درایو رمزشده‌اند و فقط با رمز عبور تو باز می‌شوند.</div>
       ${settingsRow('key', '#3d8bfd', 'تغییر رمز عبور', 'روی همهٔ دستگاه‌ها اعمال می‌شود', 'changePassPrompt()')}
       ${settingsRow('scroll', '#a78bfa', 'عبارت بازیابی جدید', 'اگر کاغذ قبلی گم شده', 'rotatePhrasePrompt()')}
     </div>
@@ -878,8 +878,7 @@ export function openSettingsSecurity() {
   } else {
     body += `
     <div class="sgroup">
-      <div class="hint">⚠️ داده‌هایت هنوز به‌صورت ساده ذخیره می‌شوند. با فعال‌کردن رمزنگاری، حتی در گوگل‌درایو هم خواندنی نخواهند بود.</div>
-      ${settingsRow('shield', '#22c55e', 'فعال‌کردن رمزنگاری', 'رمز عبور + عبارت بازیابی', 'openEncryptSetup()')}
+      ${settingsRow('shield', '#f59e0b', 'فعال‌کردن رمزنگاری', 'داده‌ها الان ساده ذخیره می‌شوند', 'openEncryptSetup()')}
     </div>
     <div class="sgroup">
       ${
@@ -931,6 +930,40 @@ export function openSettingsGoogle() {
     </div>`;
   }
   openModal(`${settingsHeader('☁️ گوگل درایو', 'openSettings()')}${body}`);
+}
+
+// ─── نرخ ارز ───
+function usedCurrencies() {
+  const used = new Set();
+  for (const a of state.accounts) if (a.currency && a.currency !== baseCur()) used.add(a.currency);
+  for (const i of state.investments || []) if (i.currency && i.currency !== baseCur()) used.add(i.currency);
+  for (const c of Object.keys(state.rates || {})) used.add(c);
+  return [...used];
+}
+function ratesSummary() {
+  const used = usedCurrencies();
+  if (!used.length) return 'برای حساب‌ها و دارایی‌های ارزی';
+  const missing = used.filter((c) => !rateOf(c));
+  return missing.length ? 'نرخ ' + missing.join('، ') + ' ثبت نشده' : used.map((c) => c + ' ' + toFaNum(rateOf(c))).join(' · ');
+}
+function toFaNum(n) {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',').replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+}
+export function openSettingsRates() {
+  const used = usedCurrencies();
+  const others = allCurrencies().filter((c) => c !== baseCur() && !used.includes(c));
+  const row = (c) => `<div class="srow" style="cursor:default">
+      <span class="sic" style="background:${rateOf(c) ? '#0ea5e9' : '#f59e0b'}">${icon('coin')}</span>
+      <span class="smid"><span class="st1">${esc(c)}</span><span class="st2">${rateOf(c) ? 'هر واحد ' + toFaNum(rateOf(c)) + ' ' + baseCur() : 'ثبت نشده'}</span></span>
+      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${baseCur()}" onchange="saveRateFrom('${esc(c)}')">
+    </div>`;
+  openModal(`
+    ${settingsHeader('ارز', 'openSettings()')}
+    <div class="sgroup" style="margin-bottom:12px">${settingsRow('coin', '#0ea5e9', 'واحد پایهٔ برنامه', 'همهٔ جمع‌ها و گزارش‌ها به این واحد', 'openBaseCurrency()', baseCur())}</div>
+    <p class="small muted">${baseCur()} به ازای هر واحد. فقط برای محاسبهٔ ارزش کلِ حساب‌ها، دارایی‌ها و طلب/بدهی‌های ارزی استفاده می‌شود؛ نرخ هر انتقال را موقع همان انتقال جدا وارد می‌کنی.</p>
+    ${used.length ? `<div class="sgroup">${used.map(row).join('')}</div>` : '<div class="hint">هنوز حساب یا دارایی ارزی نداری.</div>'}
+    ${others.length ? `<h3 class="muted" style="margin:14px 0 6px">سایر واحدها</h3><div class="sgroup">${others.map(row).join('')}</div>` : ''}
+  `);
 }
 
 export function openSettingsScan() {
@@ -1034,4 +1067,51 @@ export function initPrefs() {
     else if ((sec.isEncrypted() || hasPin()) && hiddenAt && Date.now() - hiddenAt > 45000)
       lockApp();
   });
+}
+
+// ─── تغییر واحد پایه ───
+export function openBaseCurrency() {
+  const cur = baseCur();
+  const opts = allCurrencies()
+    .map((c) => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)} (${esc(currencyInfo(c).code)})</option>`)
+    .join('');
+  openModal(`
+    ${settingsHeader('واحد پایه', 'openSettingsRates()')}
+    <p class="small muted">واحدی که جمع‌ها، بودجه و گزارش‌ها با آن نمایش داده می‌شود. حساب‌ها و تراکنش‌ها به واحد خودشان می‌مانند؛ فقط نرخ‌ها و بودجه‌ها به واحد جدید تبدیل می‌شوند.</p>
+    <div class="field"><label>واحد جدید</label>
+      <select class="input" id="bcSel" onchange="bcSync()">${opts}</select></div>
+    <div class="field" id="bcRateWrap"><label id="bcRateLbl"></label>
+      <input class="input" id="bcRate" type="number" step="any" inputmode="decimal" placeholder="نرخ"></div>
+    <button class="btn primary block" onclick="applyBaseCurrency()">تغییر واحد پایه</button>
+  `);
+  bcSync();
+}
+export function bcSync() {
+  const sel = document.getElementById('bcSel');
+  const wrap = document.getElementById('bcRateWrap');
+  const lbl = document.getElementById('bcRateLbl');
+  const inp = document.getElementById('bcRate');
+  if (!sel || !wrap) return;
+  const next = sel.value;
+  const cur = baseCur();
+  if (next === cur) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  lbl.textContent = 'هر ۱ ' + next + ' چند ' + cur + ' است؟';
+  inp.dataset.cur = cur;
+  if (state.rates[next]) inp.value = state.rates[next];
+}
+export function applyBaseCurrency() {
+  const next = document.getElementById('bcSel').value;
+  const rate = parseFloat(document.getElementById('bcRate').value);
+  if (next === baseCur()) return closeModal();
+  if (!(rate > 0)) return toast('نرخ تبدیل را وارد کن');
+  if (!changeBaseCurrency(next, rate)) return toast('تغییر انجام نشد');
+  save();
+  closeModal();
+  render();
+  if (window.setTodayLabel) window.setTodayLabel();
+  toast('واحد پایه شد: ' + next);
 }

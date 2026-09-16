@@ -825,7 +825,7 @@ export function openSettings() {
       )}
     </div>
     <div class="sgroup">
-      ${settingsRow('coin', '#0ea5e9', 'نرخ ارز', ratesSummary(), 'openSettingsRates()')}
+      ${settingsRow('coin', '#0ea5e9', 'ارز', ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('receipt', '#f97316', 'خواندن فاکتور از عکس', 'کلید هوش مصنوعی گوگل', 'openSettingsScan()', gemini ? 'فعال' : 'خاموش')}
       ${settingsRow('info', '#64748b', 'دربارهٔ برنامه', 'نسخه ' + APP_VERSION, 'openSettingsAbout()')}
     </div>
@@ -958,7 +958,7 @@ export function openSettingsRates() {
       <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${baseCur()}" onchange="saveRateFrom('${esc(c)}')">
     </div>`;
   openModal(`
-    ${settingsHeader('نرخ ارز', 'openSettings()')}
+    ${settingsHeader('ارز', 'openSettings()')}
     <div class="sgroup" style="margin-bottom:12px">${settingsRow('coin', '#0ea5e9', 'واحد پایهٔ برنامه', 'همهٔ جمع‌ها و گزارش‌ها به این واحد', 'openBaseCurrency()', baseCur())}</div>
     <p class="small muted">${baseCur()} به ازای هر واحد. فقط برای محاسبهٔ ارزش کلِ حساب‌ها، دارایی‌ها و طلب/بدهی‌های ارزی استفاده می‌شود؛ نرخ هر انتقال را موقع همان انتقال جدا وارد می‌کنی.</p>
     ${used.length ? `<div class="sgroup">${used.map(row).join('')}</div>` : '<div class="hint">هنوز حساب یا دارایی ارزی نداری.</div>'}

@@ -963,7 +963,7 @@ function qaPaint() {
   const n = Number(qa.amount) || 0;
   disp.textContent = n ? fmt(n) : '۰';
   disp.classList.toggle('empty', !n);
-  if (words) words.textContent = amountWords(n);
+  if (words) words.textContent = amountWords(n).replace(/\s\S+$/, '');
 }
 
 export function qaKey(k) {

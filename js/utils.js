@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.2.2';
+export const APP_VERSION = '2.8.1';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -42,9 +42,17 @@ export function fmt(n) {
   return (n < 0 ? '−' : '') + toFa(s);
 }
 
+// واحد پایه (از state تزریق می‌شود تا وابستگی چرخه‌ای نباشد)
+let baseInfo = { name: 'تومان', big: true, dec: 0 };
+export function setBaseInfo(name, info) {
+  baseInfo = Object.assign({ name }, info || {});
+}
+export function baseName() {
+  return baseInfo.name;
+}
 export function fmtT(n) {
   if (hideMoney) return '••••';
-  return fmt(n) + ' تومان';
+  return fmt(n) + ' ' + baseInfo.name;
 }
 
 export function uid() {
@@ -127,19 +135,183 @@ export function haptic(ms = 10) {
   } catch (e) {}
 }
 
-// عدد کوتاه برای کارت‌های خلاصه: ۲٫۴ میلیون / ۸۵۰ هزار
-export function fmtShort(n) {
+// عدد کوتاه برای کارت‌های خلاصه: ۲٫۴ میلیون / ۸۵۰ هزار (ارزهای بزرگ‌واحد) یا 1.2M / 850K (بقیه)
+export function fmtShort(n, cur) {
   if (isMoneyHidden()) return '••••';
   n = Number(n) || 0;
   const abs = Math.abs(n);
   const sign = n < 0 ? '−' : '';
-  const one = (v) => {
-    let t = v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0);
-    if (t.includes('.')) t = t.replace(/0+$/, '').replace(/\.$/, '');
-    return toFa(t.replace('.', '٫'));
-  };
-  if (abs >= 1e9) return sign + one(abs / 1e9) + ' میلیارد';
-  if (abs >= 1e6) return sign + one(abs / 1e6) + ' میلیون';
-  if (abs >= 1e3) return sign + one(abs / 1e3) + ' هزار';
+  const big = cur ? !!(cur.big) : baseInfo.big;
+  const digits = (v) => (v < 10 ? 2 : v < 100 ? 1 : 0);
+  const fa = (t) => toFa(t.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', '٫'));
+  const units = big ? [[1e9, ' میلیارد'], [1e6, ' میلیون'], [1e3, ' هزار']] : [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+  for (let i = 0; i < units.length; i++) {
+    const [div, name] = units[i];
+    if (abs < div) continue;
+    const v = abs / div;
+    const r = Number(v.toFixed(digits(v)));
+    if (r >= 1000 && i > 0) {
+      const [d2, n2] = units[i - 1];
+      return sign + fa((abs / d2).toFixed(2)) + n2;
+    }
+    return sign + fa(r.toFixed(digits(v))) + name;
+  }
   return fmt(n);
+}
+
+// دکمهٔ ⓘ که توضیح را فقط در صورت درخواست کاربر نشان می‌دهد (چند ثانیه یا تا ضربهٔ بعدی)
+export function infoTip(text, cls) {
+  return `<button type="button" class="info-btn ${cls || ''}" data-tip="${esc(text)}" onclick="event.stopPropagation();showTip(this)" aria-label="راهنما">i</button>`;
+}
+let tipEl = null, tipTimer = 0;
+export function hideTip() {
+  if (tipEl) tipEl.remove();
+  tipEl = null;
+  clearTimeout(tipTimer);
+}
+export function showTip(btn) {
+  const same = tipEl && tipEl._for === btn;
+  hideTip();
+  if (same) return;
+  const t = document.createElement('div');
+  t.className = 'tip';
+  t.textContent = btn.dataset.tip || '';
+  t._for = btn;
+  document.body.appendChild(t);
+  const r = btn.getBoundingClientRect();
+  const w = Math.min(300, window.innerWidth - 24);
+  t.style.width = w + 'px';
+  let left = r.left + r.width / 2 - w / 2;
+  left = Math.max(12, Math.min(window.innerWidth - w - 12, left));
+  t.style.left = left + 'px';
+  const below = r.bottom + 8;
+  t.style.top = below + 'px';
+  requestAnimationFrame(() => {
+    const th = t.offsetHeight;
+    if (below + th > window.innerHeight - 12) t.style.top = Math.max(12, r.top - th - 8) + 'px';
+    t.classList.add('show');
+  });
+  tipEl = t;
+  tipTimer = setTimeout(hideTip, 6000);
+}
+document.addEventListener('pointerdown', (e) => {
+  if (tipEl && !e.target.closest('.info-btn') && !e.target.closest('.tip')) hideTip();
+}, true);
+document.addEventListener('scroll', () => hideTip(), true);
+
+// ── ورودی مبلغ: کاما هنگام تایپ + «به حروف» زیر فیلد ──
+// همهٔ <input type="number"> که شمارش/درصد نیستند خودکار تبدیل می‌شوند؛
+// el.value همچنان عدد خام (بدون کاما) برمی‌گرداند تا کدهای فعلی دست نخورند.
+const PLAIN_IDS = /^(txQty|lnQty_|iQty|plCount|plRate|plEvery|plPrepaid)/;
+const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+const AR = '٠١٢٣٤٥٦٧٨٩';
+export function normNum(str) {
+  str = String(str == null ? '' : str)
+    .replace(/[۰-۹]/g, (d) => FA.indexOf(d))
+    .replace(/[٠-٩]/g, (d) => AR.indexOf(d))
+    .replace(/[٫،,\s]/g, (c) => (c === '٫' ? '.' : ''));
+  const neg = str.trim().startsWith('-');
+  str = str.replace(/[^\d.]/g, '');
+  const i = str.indexOf('.');
+  if (i >= 0) str = str.slice(0, i + 1) + str.slice(i + 1).replace(/\./g, '');
+  return (neg ? '-' : '') + str;
+}
+function groupNum(raw) {
+  if (!raw) return '';
+  const neg = raw.startsWith('-');
+  if (neg) raw = raw.slice(1);
+  const [int, dec] = raw.split('.');
+  const g = (int || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (neg ? '-' : '') + g + (dec !== undefined ? '.' + dec : '');
+}
+export function amountWords(n, cur) {
+  n = Math.abs(Number(n) || 0);
+  if (!n) return '';
+  const trim = (t) => (t.includes('.') ? t.replace(/0+$/, '').replace(/\.$/, '') : t);
+  const u = cur || baseInfo.name;
+  const big = cur ? cur === baseInfo.name ? baseInfo.big : !!(bigUnits && bigUnits.has(cur)) : baseInfo.big;
+  if (big) {
+    if (n >= 1e9) return toFa(trim((n / 1e9).toFixed(2)).replace('.', '٫')) + ' میلیارد ' + u;
+    if (n >= 1e6) return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
+    if (n >= 1e3) return toFa(trim((n / 1e3).toFixed(1)).replace('.', '٫')) + ' هزار ' + u;
+  } else if (n >= 1e6) {
+    return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
+  }
+  return fmt(n) + ' ' + u;
+}
+let bigUnits = null;
+export function setBigUnits(set) {
+  bigUnits = set;
+}
+function moneyize(el) {
+  if (el.dataset.money) return;
+  el.dataset.money = '1';
+  const raw0 = normNum(nativeValue.get.call(el));
+  el.type = 'text';
+  el.inputMode = el.getAttribute('inputmode') === 'numeric' ? 'numeric' : 'decimal';
+  el.setAttribute('dir', 'ltr');
+  el.classList.add('money');
+  const ph = el.getAttribute('placeholder') || '';
+  if (ph) {
+    const d = normNum(ph);
+    el.setAttribute('placeholder', d ? groupNum(d) : '');
+  }
+  let words = null;
+  const showWords = () => {
+    const raw = normNum(nativeValue.get.call(el));
+    const n = Number(raw) || 0;
+    const txt = n >= 1000 ? amountWords(n, el.dataset.cur) : '';
+    if (!txt) {
+      if (words) words.textContent = '';
+      return;
+    }
+    if (!words || !words.isConnected) {
+      words = document.createElement('div');
+      words.className = 'money-words';
+      el.insertAdjacentElement('afterend', words);
+    }
+    words.textContent = txt;
+  };
+  const paint = (raw) => {
+    nativeValue.set.call(el, groupNum(raw));
+    showWords();
+  };
+  Object.defineProperty(el, 'value', {
+    configurable: true,
+    get() {
+      return normNum(nativeValue.get.call(el));
+    },
+    set(v) {
+      paint(normNum(v));
+    },
+  });
+  paint(raw0);
+  el.addEventListener('input', () => {
+    const cur = nativeValue.get.call(el);
+    const caret = el.selectionStart || cur.length;
+    const digitsBefore = cur.slice(0, caret).replace(/[^\d.-]/g, '').length;
+    paint(normNum(cur));
+    // بازگرداندن نشانگر بعد از همان تعداد رقم
+    const out = nativeValue.get.call(el);
+    let pos = 0, seen = 0;
+    while (pos < out.length && seen < digitsBefore) {
+      if (/[\d.-]/.test(out[pos])) seen++;
+      pos++;
+    }
+    try {
+      el.setSelectionRange(pos, pos);
+    } catch (e) {}
+  });
+}
+export function enhanceMoneyInputs(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll('input[type="number"]').forEach((el) => {
+    if (el.dataset.money || el.dataset.plain != null || PLAIN_IDS.test(el.id)) return;
+    moneyize(el);
+  });
+}
+if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+  new MutationObserver((muts) => {
+    for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) enhanceMoneyInputs(n.matches('input') ? n.parentNode : n);
+  }).observe(document.documentElement, { childList: true, subtree: true });
 }

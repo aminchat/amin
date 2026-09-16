@@ -1,4 +1,4 @@
-import { esc, fmt, store, toast, uid, todayISO, haptic, toFa } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
 import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
@@ -25,8 +25,7 @@ import {
   state,
   accountGroups,
   accountOptGroups,
-  institutionOf,
-} from './state.js';
+  institutionOf, baseCur } from './state.js';
 
 const LAST_ACCT_KEY = 'capital_last_account';
 
@@ -65,7 +64,7 @@ export function toggleCustomCurrency(prefix) {
 // خواندن واحد پول انتخاب‌شده؛ اگر دستی بود، به لیست واحدها هم اضافه می‌شود
 function readCurrencyChoice(prefix) {
   const sel = document.getElementById(prefix + 'Cur');
-  if (!sel) return 'تومان';
+  if (!sel) return baseCur();
   if (sel.value !== CUSTOM_CUR) return sel.value;
   const inp = document.getElementById(prefix + 'CurCustom');
   const name = (inp ? inp.value : '').trim();
@@ -105,6 +104,11 @@ export function openTxForm(tx, opts) {
     openTransferForm(tx);
     return;
   }
+  if (tx && tx.planId) {
+    import('./installments.js').then((m) => m.openPlanDetail(tx.planId));
+    toast('این تراکنش از بخش اقساط ساخته شده؛ همان‌جا ویرایشش کن');
+    return;
+  }
   if (tx && tx.debtId) {
     // تراکنشِ وصل به طلب/بدهی از خودِ آن بخش ویرایش می‌شود تا هماهنگ بماند
     const d = (state.debts || []).find((x) => x.id === tx.debtId);
@@ -139,7 +143,7 @@ export function openTxForm(tx, opts) {
 
   const selectedAccountId = tx ? tx.accountId : pre.accountId || lastAccountId();
   const selectedAccount = accountById(selectedAccountId);
-  const amountCur = selectedAccount ? selectedAccount.currency : 'تومان';
+  const amountCur = selectedAccount ? selectedAccount.currency : baseCur();
   const acctOpts = accountOptGroups(selectedAccountId);
   const defaultCat = tx && !isInvoice(tx) ? (tx.cat === 'loan' ? 'need' : tx.cat) : presetCat || 'need';
   const showReflect = !!(defaultCat === 'waste' && type === 'out' && txMode === 'simple');
@@ -168,7 +172,6 @@ export function openTxForm(tx, opts) {
       <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : pre.amount || ''}" oninput="onTxAmountInput()">
     </div>
     <div id="txUnitWrap" style="${txMode === 'invoice' ? 'display:none' : ''}">
-      <div class="hint" style="margin:0 0 12px">اگر قیمت واحد و مقدار را بزنی، مبلغ کل خودش حساب می‌شود.</div>
       <div class="row">
         <div class="col field"><label>قیمت واحد</label>
           <input class="input" id="txUnitPrice" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 80000" value="${tx && tx.unitPrice ? tx.unitPrice : ''}" oninput="syncTxUnitTotal()">
@@ -193,7 +196,6 @@ export function openTxForm(tx, opts) {
       <textarea class="input" id="txReflect" placeholder="مثلاً: می‌توانستم همان پول را پس‌انداز کنم...">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
     </div>
     <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
-      <div class="hint" style="margin:0 0 10px">اول مبلغ کل را بزن، بعد اقلام را وارد کن. هر قلم پاکت خودش را دارد. جمع اقلام باید با مبلغ کل یکی شود. از حساب فقط همان مبلغ کل کم می‌شود.</div>
       <div id="txLines"></div>
       <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
       <div class="row" style="margin-bottom:12px">
@@ -222,8 +224,15 @@ export function syncTxAmountLabel() {
   const a = accountById(document.getElementById('txAccount').value);
   const lbl = document.getElementById('txAmountLbl');
   if (!lbl) return;
-  const cur = a ? a.currency : 'تومان';
+  const cur = a ? a.currency : baseCur();
   lbl.textContent = (txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ') + ' (' + cur + ')';
+  ['txAmount', 'txUnitPrice'].forEach((id) => {
+    const inp = document.getElementById(id);
+    if (inp) {
+      inp.dataset.cur = cur;
+      if (inp.value) inp.value = inp.value; // بازنویسی «به حروف»
+    }
+  });
 }
 
 export function onTxAmountInput() {
@@ -883,17 +892,6 @@ const qa = { amount: '', type: 'out', cat: 'need', accountId: '', dateISO: '', n
 
 // عدد به حروف کوتاه (برای تأیید مبلغ زیر صفحه‌کلید)
 // حذف صفرهای اضافی فقط در بخش اعشاری («۵۰» دست‌نخورده می‌ماند)
-function trimDec(str) {
-  return str.includes('.') ? str.replace(/0+$/, '').replace(/\.$/, '') : str;
-}
-function amountWords(n) {
-  if (!n) return '';
-  if (n >= 1e9) return toFa(trimDec((n / 1e9).toFixed(2))) + ' میلیارد تومان';
-  if (n >= 1e6) return toFa(trimDec((n / 1e6).toFixed(2))) + ' میلیون تومان';
-  if (n >= 1e3) return toFa(trimDec((n / 1e3).toFixed(1))) + ' هزار تومان';
-  return toFa(n) + ' تومان';
-}
-
 function acctLabel(a) {
   const inst = institutionOf(a);
   return inst && inst !== a.name ? inst + ' · ' + a.name : a.name;
@@ -911,7 +909,7 @@ export function openQuickTx(opts) {
   txMode = 'simple';
   draftLines = [];
   const acct = accountById(qa.accountId);
-  const cur = acct ? acct.currency : 'تومان';
+  const cur = acct ? acct.currency : baseCur();
 
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
@@ -965,7 +963,7 @@ function qaPaint() {
   const n = Number(qa.amount) || 0;
   disp.textContent = n ? fmt(n) : '۰';
   disp.classList.toggle('empty', !n);
-  if (words) words.textContent = amountWords(n);
+  if (words) words.textContent = amountWords(n).replace(/\s\S+$/, '');
 }
 
 export function qaKey(k) {
@@ -1085,6 +1083,14 @@ export function delTx(id) {
     isPair ? 'این انتقال (هر دو طرف) حذف شود؟' : inv ? 'این فاکتور و همه اقلامش حذف شود؟' : 'این تراکنش حذف شود؟',
     () => {
     const ids = new Set(group.map((x) => x.id));
+    // اگر تراکنش قسط بود، ردیفش هم به حالت پرداخت‌نشده برگردد
+    for (const g of group) {
+      if (g.planId && g.planRowId && state.installments) {
+        const p = state.installments.find((x) => x.id === g.planId);
+        const r = p && (p.rows || []).find((x) => x.id === g.planRowId);
+        if (r) { r.paidISO = null; r.txId = null; p.updatedAt = Date.now(); }
+      }
+    }
     state.transactions = state.transactions.filter((t) => !ids.has(t.id));
     save();
     render();
@@ -1095,7 +1101,7 @@ export function delTx(id) {
 export function openAccountForm(a, presetBank) {
   editingAcctId = a ? a.id : null;
   const isEdit = !!a;
-  if (!a && presetBank) a = { bank: presetBank, name: '', type: ACCT_TYPES[0], currency: 'تومان', initial: '' , __preset: true };
+  if (!a && presetBank) a = { bank: presetBank, name: '', type: ACCT_TYPES[0], currency: baseCur(), initial: '' , __preset: true };
   if (a && a.__preset) { editingAcctId = null; }
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
@@ -1117,7 +1123,7 @@ export function openAccountForm(a, presetBank) {
     </div>
     <div class="field"><label>واحد پول</label>
       <select class="input" id="aCur" onchange="toggleCustomCurrency('a')">
-        ${currencyOptions(a ? a.currency : 'تومان')}
+        ${currencyOptions(a ? a.currency : baseCur())}
       </select>
     </div>
     <div class="field" id="aCurCustomWrap" style="display:none"><label>نام واحد پول جدید</label>
@@ -1253,14 +1259,13 @@ export function openPocketLedger(catId, mk) {
     <h2>${c.emoji} ${c.label}</h2>
     <p class="small muted">پولی که قرض می‌دهی یا می‌گیری خرج یا درآمد واقعی نیست؛ این‌جا جدا نگه داشته می‌شود و وارد پاکت‌های دیگر و بودجهٔ ماه نمی‌شود.</p>
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">داده‌ام (قرض دادن / پس دادن)</div><div class="val red">${fmt(f.out)}</div></div>
-      <div class="stat"><div class="lbl">گرفته‌ام (قرض گرفتن / برگشت طلب)</div><div class="val green">${fmt(f.in)}</div></div>
+      <div class="stat"><div class="lbl">داده‌ام (قرض دادن / پس دادن)</div><div class="val red">${fmtShort(f.out)}</div></div>
+      <div class="stat"><div class="lbl">گرفته‌ام (قرض گرفتن / برگشت طلب)</div><div class="val green">${fmtShort(f.in)}</div></div>
     </div>
     <div class="row" style="margin-bottom:12px">
       <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ثبت طلب / بدهی</button>
       <button class="btn sm" style="flex:1" onclick="closeModal();switchTab('debts')">فهرست طلب و بدهی</button>
     </div>
-    <div class="hint" style="margin-bottom:10px">این پاکت خودکار از بخش «طلب و بدهی» پر می‌شود (وقتی برای هر مورد حساب انتخاب کنی).</div>
     <div style="max-height:44vh;overflow:auto">${rows}</div>
   `);
     return;
@@ -1270,7 +1275,7 @@ export function openPocketLedger(catId, mk) {
     <h2>${c.emoji} ${c.label}</h2>
     <div class="stat" style="background:var(--bg2);margin-bottom:12px">
       <div class="lbl">${monthLabel(mk)} · سهم ${c.target}٪</div>
-      <div class="val ${over ? 'red' : 'green'}">${fmt(spent)} تومان</div>
+      <div class="val ${over ? 'red' : 'green'}">${fmt(spent)} ${baseCur()}</div>
       <div class="sub">${ceil ? 'سقف ' + fmt(ceil) + (over ? ' · از سقف رد شد' : ' · مانده ' + fmt(left)) : 'بودجه این ماه ثبت نشده'}</div>
     </div>
     <button class="btn sm primary block" style="margin-bottom:12px" onclick="openTxForm(null,{cat:'${c.id}'})">+ خرج در این پاکت</button>
@@ -1309,7 +1314,7 @@ export function openInvestForm(inv) {
   const isEdit = !!inv;
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${isEdit ? 'ویرایش دارایی' : 'دارایی جدید'}</h2>
+    <h2 style="display:flex;align-items:center">${isEdit ? 'ویرایش دارایی' : 'دارایی جدید'}${infoTip('این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در تراکنش‌ها (پاکت سرمایه‌گذاری) ثبت کن.', 'lg')}</h2>
     <div class="field"><label>نام دارایی</label>
       <input class="input" id="iName" placeholder="مثلاً طلا، زمین، ماشین" value="${inv ? esc(inv.name) : ''}">
     </div>
@@ -1323,7 +1328,7 @@ export function openInvestForm(inv) {
     </div>
     <div class="field"><label>واحد پول</label>
       <select class="input" id="iCur" onchange="toggleCustomCurrency('i')">
-        ${currencyOptions(inv ? inv.currency : 'تومان')}
+        ${currencyOptions(inv ? inv.currency : baseCur())}
       </select>
     </div>
     <div class="field" id="iCurCustomWrap" style="display:none"><label>نام واحد پول جدید</label>
@@ -1338,7 +1343,6 @@ export function openInvestForm(inv) {
         <input class="input" id="iPriceNow" type="number" step="any" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.cur : ''}">
       </div>
     </div>
-    <div class="hint">این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در بخش تراکنش‌ها (دسته سرمایه‌گذاری) ثبت کن.</div>
     <div style="height:12px"></div>
     <button class="btn primary block" onclick="saveInvest()">${isEdit ? 'ذخیره' : 'افزودن دارایی'}</button>
   `);
@@ -1439,7 +1443,7 @@ export function openBudgetForm(mk) {
         <select class="input" id="bYear">${yearOpts}</select>
       </div>
     </div>
-    <div class="field"><label>مبلغ بودجه (تومان)</label>
+    <div class="field"><label>مبلغ بودجه (${baseCur()})</label>
       <input class="input" id="bAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 15000000" value="${b ? b.amount : ''}">
     </div>
     <button class="btn primary block" onclick="saveBudget()">${b ? 'ذخیره تغییرات' : 'ذخیره بودجه'}</button>
@@ -1466,8 +1470,8 @@ export function openRateEdit(cur) {
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
     <h2>نرخ روز ${esc(cur)}</h2>
-    <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند تومان است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)</p>
-    <div class="field"><label>تومان به ازای هر واحد</label>
+    <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند ${baseCur()} است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)</p>
+    <div class="field"><label>${baseCur()} به ازای هر واحد</label>
       <input class="input" id="rVal" type="number" step="any" inputmode="decimal" min="0" value="${state.rates[cur] || ''}">
     </div>
     <button class="btn primary block" onclick="saveRate('${cur}')">ذخیره نرخ</button>
@@ -1522,14 +1526,13 @@ export function openTransferForm(tx) {
   }
   const opts = accountOptGroups('');
   openModal(`<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${pair ? 'ویرایش انتقال' : 'انتقال بین حساب‌ها'}</h2>
-    <div class="hint" style="margin-bottom:12px">این انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.</div>
+    <h2 style="display:flex;align-items:center">${pair ? 'ویرایش انتقال' : 'انتقال بین حساب‌ها'}${infoTip('انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.', 'lg')}</h2>
     <div class="field"><label>از حساب</label><select class="input" id="trFrom" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>به حساب</label><select class="input" id="trTo" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>مبلغ از حساب مبدأ</label><input class="input" id="trAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مبلغ به واحد حساب مبدأ" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
     <div id="trBalance" class="small muted" style="margin:-8px 0 12px"></div>
     <div id="trRates"></div>
-    <div id="trPreview" class="hint" style="margin-bottom:12px">مبلغ حساب مقصد بعد از تبدیل اینجا نمایش داده می‌شود.</div>
+    <div id="trPreview" class="hint" style="margin-bottom:12px;display:none"></div>
     <div class="field"><label>توضیح (اختیاری)</label><input class="input" id="trNote" placeholder="مثلاً انتقال به کارت خرید" value="${esc((out && out.note) || (inn && inn.note) || '')}"></div>
     <div class="field"><label>تاریخ</label><input class="input" id="trDate" type="date" value="${(out && out.dateISO) || (inn && inn.dateISO) || todayISO()}"></div>
     <button class="btn primary block" onclick="saveTransfer()">${pair ? 'ذخیره انتقال' : 'ثبت انتقال'}</button>
@@ -1592,19 +1595,18 @@ function renderTransferRates() {
         : transferStoredRates[cur] !== undefined
           ? transferStoredRates[cur]
           : state.rates[cur] || '';
-    return `<div class="field"><label>نرخ ${esc(cur)} برای این انتقال (تومان به ازای هر واحد)</label>
+    return `<div class="field"><label>نرخ ${esc(cur)} برای این انتقال (${baseCur()} به ازای هر واحد)</label>
       <input class="input" id="trRate${which}" data-cur="${esc(cur)}" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 90000" value="${val}" oninput="updateTransferPreview()">
     </div>`;
   };
 
   let html = '';
   if (from && to && from.currency !== to.currency) {
-    if (from.currency !== 'تومان') html += rateField('From', from);
-    if (to.currency !== 'تومان') html += rateField('To', to);
+    if (from.currency !== baseCur()) html += rateField('From', from);
+    if (to.currency !== baseCur()) html += rateField('To', to);
   }
   if (html) {
     html =
-      `<div class="hint" style="margin-bottom:12px">این نرخ فقط برای همین انتقال استفاده می‌شود و روی نرخ روزِ محاسبه دارایی کل اثری ندارد.</div>` +
       html;
   }
   wrap.innerHTML = html;
@@ -1621,8 +1623,8 @@ function readTransferRates(from, to) {
     const el = document.getElementById('trRate' + which);
     return parseFloat(el ? el.value : '') || 0;
   };
-  const fromRate = from.currency === 'تومان' ? 1 : read('From');
-  const toRate = to.currency === 'تومان' ? 1 : read('To');
+  const fromRate = from.currency === baseCur() ? 1 : read('From');
+  const toRate = to.currency === baseCur() ? 1 : read('To');
   return { fromRate, toRate };
 }
 
@@ -1636,9 +1638,10 @@ export function updateTransferPreview() {
   const to = accountById(toEl.value);
   const amount = parseFloat(amtEl.value) || 0;
   if (!from || !to || !amount) {
-    box.textContent = 'مبلغ حساب مقصد بعد از تبدیل اینجا نمایش داده می‌شود.';
+    box.style.display = 'none';
     return;
   }
+  box.style.display = '';
   const avail = transferSourceAvailable(from.id);
   if (amount > avail + 1e-9) {
     box.innerHTML = `<span style="color:var(--red)">مبلغ از موجودی حساب مبدأ بیشتر است. حداکثر برداشت: <b>${fmt(Math.max(0, avail))} ${esc(from.currency)}</b></span>`;
@@ -1655,7 +1658,7 @@ export function updateTransferPreview() {
   }
   const toman = amount * fromRate;
   const dest = toman / toRate;
-  box.innerHTML = `ارزش انتقال: <b>${fmt(toman)} تومان</b><br>واریز به مقصد: <b>${fmt(dest)} ${esc(to.currency)}</b><br><span class="small muted">نرخ این انتقال — ${esc(from.currency)}: ${fmt(fromRate)} تومان · ${esc(to.currency)}: ${fmt(toRate)} تومان</span>`;
+  box.innerHTML = `ارزش انتقال: <b>${fmt(toman)} ${baseCur()}</b><br>واریز به مقصد: <b>${fmt(dest)} ${esc(to.currency)}</b><br><span class="small muted">نرخ این انتقال — ${esc(from.currency)}: ${fmt(fromRate)} ${baseCur()} · ${esc(to.currency)}: ${fmt(toRate)} ${baseCur()}</span>`;
 }
 
 export function saveTransfer() {

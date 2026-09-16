@@ -1,9 +1,11 @@
 import { icon } from './icons.js';
+import { enhanceMoneyInputs } from './utils.js';
 const overlay = document.getElementById('overlay');
 const sheet = document.getElementById('sheet');
 
 export function openModal(html) {
   sheet.innerHTML = '<div class="handle"></div>' + html;
+  enhanceMoneyInputs(sheet);
   overlay.classList.add('show');
 }
 
