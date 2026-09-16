@@ -133,6 +133,16 @@ export function whenPersisted() {
   return persistChain;
 }
 
+// یک پاکت مستقل با همان کلید (برای آرشیو)
+export async function encryptStandalone(plain) {
+  if (!dk || !envelope) return plain;
+  const copy = JSON.parse(JSON.stringify(envelope));
+  copy.wraps = copy.wraps.filter((w) => w.kind !== 'pin');
+  copy.data = await encryptData(dk, plain);
+  copy.meta = Object.assign({}, copy.meta || {}, { updatedAt: Date.now(), archive: true });
+  return JSON.stringify(copy);
+}
+
 // نسخهٔ درایو: بدون پیچیدگی پین
 export function remoteEnvelopeJson() {
   if (!envelope) return null;

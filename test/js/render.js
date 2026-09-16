@@ -2,7 +2,7 @@ import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign } from './utils
 import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
-import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS } from './jalali.js';
+import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS, bookNow, daysInMonthKey } from './jalali.js';
 import { renderSyncCard } from './sync.js';
 import * as sec from './securestore.js';
 import { debtHomeBanner, overdueCount, renderDebts } from './debts.js';
@@ -213,8 +213,8 @@ export function renderHome() {
   const hasBudget = !!(state.budgets[mk] && state.budgets[mk].amount);
   const base = s.available > 0 ? s.available : s.budget;
   const pct = base > 0 ? Math.round((s.spent / base) * 100) : 0;
-  const [jy, jm, jd] = jalaliNow();
-  const daysLeft = Math.max(1, jDaysInMonth(jy, jm) - jd + 1);
+  const [by, bm, bd] = bookNow();
+  const daysLeft = Math.max(1, daysInMonthKey(by + '/' + String(bm).padStart(2, '0')) - bd + 1);
   const perDay = s.remaining > 0 ? Math.floor(s.remaining / daysLeft) : 0;
   let html = '';
 

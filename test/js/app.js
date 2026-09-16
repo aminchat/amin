@@ -2,6 +2,7 @@ import { store, toast, showTip, hideTip } from './utils.js';
 import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i18n.js';
 import { icon } from './icons.js';
 import * as inst from './installments.js';
+import { openNewBook, bookToggle, bookCreate } from './book.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
@@ -397,6 +398,9 @@ Object.assign(window, {
   openSettingsSecurity,
   openSettingsGoogle,
   openSettingsScan,
+  openNewBook,
+  bookToggle,
+  bookCreate,
   openSettingsBackup,
   exportBackup,
   importBackup,
@@ -451,10 +455,12 @@ async function changeLanguage(pref) {
 }
 function changeCalendar(v) {
   setCalendar(v);
-  setTodayLabel();
-  render();
-  if (window.openSettingsLanguage) window.openSettingsLanguage();
 }
+window.onBookChanged = () => {
+  setTodayLabel();
+  buildAssetTabs();
+  switchTab('home');
+};
 paintShellIcons();
 document.getElementById('fab').onclick = () => {
   if (curTab === 'assets' && curAsset === 'debts') openDebtForm();

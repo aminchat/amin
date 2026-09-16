@@ -4,7 +4,7 @@ import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
-import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES, curName } from './state.js';
+import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES, curName, bookCal } from './state.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -1196,9 +1196,8 @@ export function openSettingsLanguage() {
     </div>
     <h3 class="muted" style="margin:14px 0 6px">${t('set.calendar')}</h3>
     <div class="sgroup">
-      ${opt('auto', t('set.auto'), cp === 'auto', "changeCalendar('auto')")}
-      ${opt('jalali', t('set.cal.jalali'), cp === 'jalali', "changeCalendar('jalali')")}
-      ${opt('gregorian', t('set.cal.greg'), cp === 'gregorian', "changeCalendar('gregorian')")}
+      ${settingsRow('calendar', '#0ea5e9', bookCal() === 'gregorian' ? t('set.cal.greg') : t('set.cal.jalali'), tr('تقویم این دفتر ثابت است'), '', '')}
+      ${settingsRow('refresh', '#f59e0b', tr('دفتر جدید با تقویم {c}', { c: bookCal() === 'gregorian' ? tr('شمسی') : tr('میلادی') }), tr('آرشیو دفتر فعلی و انتقال گزینشی'), 'openNewBook()')}
     </div>
     <p class="small muted" style="margin-top:12px">${t('set.langNote')}</p>
   `);

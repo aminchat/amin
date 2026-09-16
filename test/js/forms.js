@@ -1,8 +1,8 @@
 import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
-import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey } from './jalali.js';
-import { jalaliMonths, calendar } from './i18n.js';
+import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, bookNow, bookCalendar } from './jalali.js';
+import { jalaliMonths, gregMonths } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import {
@@ -1445,23 +1445,17 @@ export function savePrice(id) {
 }
 
 export function openBudgetForm(mk) {
-  mk = mk || (function () {
-    const [y, m] = jalaliNow();
-    return y + '/' + String(m).padStart(2, '0');
-  })();
+  mk = mk || curMonthKey();
   const b = state.budgets[mk];
   const [sy, sm] = mk.split('/').map(Number);
-  const cur = jalaliNow();
+  const cur = bookNow();
   const years = [];
   for (let y = cur[0] - 2; y <= cur[0] + 2; y++) years.push(y);
-  const greg = calendar() === 'gregorian';
-  // در تقویم میلادی: یک فهرست از ماه‌های بودجه (شمسی) با برچسب بازهٔ میلادی
+  const greg = false;
+  const names = bookCalendar() === 'gregorian' ? gregMonths() : jalaliMonths();
   const monthOpts = greg
-    ? years
-        .flatMap((y) => Array.from({ length: 12 }, (_, i) => y + '/' + String(i + 1).padStart(2, '0')))
-        .map((k) => `<option value="${k}" ${k === mk ? 'selected' : ''}>${monthLabel(k)}</option>`)
-        .join('')
-    : jalaliMonths().map(
+    ? ''
+    : names.map(
         (name, i) => `<option value="${i + 1}" ${i + 1 === sm ? 'selected' : ''}>${name}</option>`
       ).join('');
   const yearOpts = years

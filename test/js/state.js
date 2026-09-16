@@ -1,6 +1,7 @@
 import { store, setBaseInfo, setBigUnits, setCurDisplay } from './utils.js';
 import { t, lang } from './i18n.js';
-import { curMonthKey } from './jalali.js';
+import { curMonthKey, setBookCalendar } from './jalali.js';
+import { langInfo } from './i18n.js';
 import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
 export const KEY = 'capital_app_v1';
@@ -147,6 +148,7 @@ export function defaultState() {
     budgets: {},
     rates: {},
     baseCurrency: DEFAULT_BASE,
+    calendar: 'jalali',
     customCurrencies: [],
     updatedAt: 0,
     rev: 0,
@@ -160,12 +162,19 @@ function loadState() {
     const s = store.get(KEY);
     if (s) return Object.assign(defaultState(), JSON.parse(s));
   } catch (e) {}
-  return defaultState();
+  // کاربر تازه: تقویم دفتر از زبان دستگاه
+  const fresh = defaultState();
+  fresh.calendar = langInfo().cal === 'gregorian' ? 'gregorian' : 'jalali';
+  return fresh;
+}
+export function bookCal() {
+  return state.calendar || 'jalali';
 }
 
 export let state = loadState();
 syncBase();
 export function syncBase() {
+  setBookCalendar(state.calendar || 'jalali');
   setBaseInfo(baseCur(), currencyInfo(baseCur()));
   setBigUnits(new Set(Object.keys(CURRENCY_INFO).filter((c) => CURRENCY_INFO[c].big)));
 }

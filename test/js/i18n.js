@@ -33,10 +33,9 @@ export function langInfo() {
 export function isRTL() {
   return langInfo().dir === 'rtl';
 }
-// تقویم: 'auto' → بر اساس زبان
+// تقویم نمایش = تقویم دفتر (در jalali.js نگه داشته می‌شود)؛ این تابع فقط برای سازگاری
 export function calendar() {
-  const p = store.get(CAL_KEY) || 'auto';
-  return p === 'auto' ? langInfo().cal : p;
+  return langInfo().cal;
 }
 export function calPref() {
   return store.get(CAL_KEY) || 'auto';

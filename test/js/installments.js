@@ -9,6 +9,7 @@
 import { icon } from './icons.js';
 import { esc, fmt, fmtShort, toFa, toast, uid, todayISO, haptic, infoTip } from './utils.js';
 import { fmtDate, monthOfISO, toJalali, toGregorian } from './jalali.js';
+import { addBookMonths } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import { save, state, accountById, accountOptGroups, CATS, LOAN_CAT, baseCur, curName } from './state.js';
@@ -22,24 +23,7 @@ export function findPlan(id) {
   return allPlans().find((p) => p.id === id);
 }
 
-// ── تاریخ: n ماه جلالی بعد از تاریخ میلادی، با حفظ روزِ ماه ──
-function addJMonths(iso, n) {
-  const [gy, gm, gd] = iso.split('-').map(Number);
-  let [jy, jm, jd] = toJalali(gy, gm, gd);
-  jm += n;
-  while (jm > 12) {
-    jm -= 12;
-    jy++;
-  }
-  while (jm < 1) {
-    jm += 12;
-    jy--;
-  }
-  const maxDay = jm <= 6 ? 31 : jm <= 11 ? 30 : toGregorian(jy, 12, 30) ? 30 : 29;
-  const g = toGregorian(jy, jm, Math.min(jd, maxDay));
-  if (!g) return iso;
-  return g[0] + '-' + String(g[1]).padStart(2, '0') + '-' + String(g[2]).padStart(2, '0');
-}
+const addJMonths = addBookMonths;
 
 function daysUntil(iso) {
   if (!iso) return null;

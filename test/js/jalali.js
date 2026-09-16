@@ -1,5 +1,31 @@
 import { toFa } from './utils.js';
-import { calendar, jalaliMonths, gregMonths } from './i18n.js';
+import { jalaliMonths, gregMonths } from './i18n.js';
+
+// تقویم بودجه (ماه حسابداری): 'jalali' | 'gregorian' — از state می‌آید و برای هر دفتر ثابت است
+let bookCal = 'jalali';
+export function setBookCalendar(c) {
+  bookCal = c === 'gregorian' ? 'gregorian' : 'jalali';
+}
+export function bookCalendar() {
+  return bookCal;
+}
+const calendar = () => bookCal;
+export function isoToday() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// تعداد روزهای ماهِ کلید (در هر دو تقویم)
+export function daysInMonthKey(key) {
+  const [y, m] = key.split('/').map(Number);
+  if (bookCal === 'gregorian') return new Date(y, m, 0).getDate();
+  return m <= 6 ? 31 : m <= 11 ? 30 : toGregorian(y, 12, 30) ? 30 : 29;
+}
+// [سال، ماه، روز] امروز در تقویم بودجه
+export function bookNow() {
+  const d = new Date();
+  if (bookCal === 'gregorian') return [d.getFullYear(), d.getMonth() + 1, d.getDate()];
+  return toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
 
 export function toJalali(gy, gm, gd) {
   const gdm = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -46,7 +72,7 @@ export const MONTHS = [
 ];
 
 export function curMonthKey() {
-  const [y, m] = jalaliNow();
+  const [y, m] = bookNow();
   return y + '/' + String(m).padStart(2, '0');
 }
 
@@ -67,24 +93,14 @@ export function shiftMonth(key, delta) {
 // برچسب ماه (کلید همیشه شمسی است؛ در تقویم میلادی بازهٔ معادل نمایش داده می‌شود)
 export function monthLabel(key) {
   const [y, m] = key.split('/').map(Number);
-  if (calendar() === 'gregorian') {
-    const a = toGregorian(y, m, 1);
-    const days = m <= 6 ? 31 : m <= 11 ? 30 : toGregorian(y, 12, 30) ? 30 : 29;
-    const b = toGregorian(y, m, days);
-    if (a && b) {
-      const G = gregMonths();
-      const s1 = G[a[1] - 1].slice(0, 3) + ' ' + toFa(a[2]) + (a[0] !== b[0] ? ' ' + toFa(a[0]) : '');
-      const s2 = G[b[1] - 1].slice(0, 3) + ' ' + toFa(b[2]) + ' ' + toFa(b[0]);
-      return s1 + ' – ' + s2;
-    }
-  }
+  if (bookCal === 'gregorian') return gregMonths()[m - 1] + ' ' + toFa(y);
   return jalaliMonths()[m - 1] + ' ' + toFa(y);
 }
 
 export function fmtDate(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-').map(Number);
-  if (calendar() === 'gregorian') return toFa(d) + ' ' + gregMonths()[m - 1].slice(0, 3) + ' ' + toFa(y);
+  if (bookCal === 'gregorian') return toFa(d) + ' ' + gregMonths()[m - 1].slice(0, 3) + ' ' + toFa(y);
   const [jy, jm, jd] = toJalali(y, m, d);
   return toFa(jd) + ' ' + jalaliMonths()[jm - 1] + ' ' + toFa(jy);
 }
@@ -92,8 +108,27 @@ export function fmtDate(iso) {
 export function monthOfISO(iso) {
   if (!iso) return curMonthKey();
   const [y, m, d] = iso.split('-').map(Number);
+  if (bookCal === 'gregorian') return y + '/' + String(m).padStart(2, '0');
   const [jy, jm] = toJalali(y, m, d);
   return jy + '/' + String(jm).padStart(2, '0');
+}
+// n ماهِ تقویم بودجه بعد از یک تاریخ ISO، با حفظ روز ماه (برای اقساط)
+export function addBookMonths(iso, n) {
+  const [gy, gm, gd] = iso.split('-').map(Number);
+  if (bookCal === 'gregorian') {
+    const d = new Date(gy, gm - 1 + n, 1);
+    const max = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(gd, max));
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  let [jy, jm, jd] = toJalali(gy, gm, gd);
+  jm += n;
+  while (jm > 12) { jm -= 12; jy++; }
+  while (jm < 1) { jm += 12; jy--; }
+  const maxDay = jm <= 6 ? 31 : jm <= 11 ? 30 : toGregorian(jy, 12, 30) ? 30 : 29;
+  const g = toGregorian(jy, jm, Math.min(jd, maxDay));
+  if (!g) return iso;
+  return g[0] + '-' + String(g[1]).padStart(2, '0') + '-' + String(g[2]).padStart(2, '0');
 }
 
 export function toGregorian(jy, jm, jd) {

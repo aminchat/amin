@@ -769,6 +769,29 @@ export function scheduleSync() {
   pushToDrive(false);
 }
 
+// آرشیو: یک فایل جداگانه با نام داده‌شده در درایو (رمزشده اگر رمزنگاری فعال باشد)
+export function archiveToDrive(name, plainJson) {
+  return new Promise(function (resolve, reject) {
+    const go = function () {
+      const build = sec.isEncrypted() && sec.isUnlocked() ? sec.encryptStandalone(plainJson) : Promise.resolve(plainJson);
+      build
+        .then(function (content) {
+          const fd = new FormData();
+          fd.append('metadata', new Blob([JSON.stringify({ name: name, mimeType: 'application/json' })], { type: 'application/json' }));
+          fd.append('file', new Blob([content], { type: 'application/json' }));
+          return driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', { method: 'POST', body: fd });
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Drive archive ' + r.status);
+          resolve(true);
+        })
+        .catch(reject);
+    };
+    if (tokenAlive()) go();
+    else requestAccessToken(function (ok) { if (ok) go(); else reject(new Error('no token')); }, true);
+  });
+}
+
 export function pushToDrive(interactive, onDone) {
   if (sec.isEncrypted() && !sec.isUnlocked()) {
     if (onDone) onDone(false);
