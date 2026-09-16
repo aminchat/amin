@@ -364,6 +364,7 @@ function driveUpdate(id, content) {
 
 function hasRemoteData(r) {
   return (
+    !!r.bookId ||
     (r.accounts && r.accounts.length) ||
     (r.transactions && r.transactions.length) ||
     (r.investments && r.investments.length) ||

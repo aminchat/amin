@@ -77,6 +77,7 @@ function download(name, text) {
 export function buildNewBook(src, target, opts) {
   const n = defaultState();
   n.calendar = target;
+  n.bookId = uid();
   n.baseCurrency = src.baseCurrency;
   n.customCurrencies = (src.customCurrencies || []).slice();
   if (opts.rates) n.rates = Object.assign({}, src.rates || {});
