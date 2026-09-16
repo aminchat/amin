@@ -1,4 +1,4 @@
-import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip } from './utils.js';
+import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain } from './utils.js';
 import { t, t as tr, LANGS, langPref, lang, calPref, calendar } from './i18n.js';
 import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
@@ -947,10 +947,10 @@ function ratesSummary() {
   const used = usedCurrencies();
   if (!used.length) return tr('برای حساب‌ها و دارایی‌های ارزی');
   const missing = used.filter((c) => !rateOf(c));
-  return missing.length ? (tr('نرخ') + ' ') + missing.join('، ') + (' ' + tr('ثبت نشده')) : used.map((c) => c + ' ' + toFaNum(rateOf(c))).join(' · ');
+  return missing.length ? (tr('نرخ') + ' ') + missing.join('، ') + (' ' + tr('ثبت نشده')) : used.map((c) => curName(c) + ' ' + toFaNum(rateOf(c))).join(' · ');
 }
 function toFaNum(n) {
-  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',').replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+  return toFa(fmtPlain(n));
 }
 export function openSettingsRates() {
   const used = usedCurrencies();
@@ -958,7 +958,7 @@ export function openSettingsRates() {
   const row = (c) => `<div class="srow" style="cursor:default">
       <span class="sic" style="background:${rateOf(c) ? '#0ea5e9' : '#f59e0b'}">${icon('coin')}</span>
       <span class="smid"><span class="st1">${esc(curName(c))}</span><span class="st2">${rateOf(c) ? (tr('هر واحد') + ' ') + toFaNum(rateOf(c)) + ' ' + curName(baseCur()) : tr('ثبت نشده')}</span></span>
-      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${baseCur()}" onchange="saveRateFrom('${esc(c)}')">
+      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${curName(baseCur())}" onchange="saveRateFrom('${esc(c)}')">
     </div>`;
   openModal(`
     ${settingsHeader(tr('ارز'), 'openSettings()')}

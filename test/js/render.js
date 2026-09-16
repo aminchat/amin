@@ -180,7 +180,7 @@ function txRow(t, opts = {}) {
           : cat
             ? cat.label
             : tr('tx.expense');
-  const unitHint = !inv && t.qty && t.unitPrice ? toFa(t.qty) + (t.unit ? ' ' + esc(t.unit) : '') + ' × ' + fmt(t.unitPrice) : '';
+  const unitHint = !inv && t.qty && t.unitPrice ? toFa(t.qty) + (t.unit ? ' ' + esc(tr(t.unit)) : '') + ' × ' + fmt(t.unitPrice) : '';
   const amtClass = transfer ? 'transfer' : t.type;
   const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
   const balTxt = opts.bal == null ? '' : `<div class="bal">${tr('tx.balance', { amt: fmt(opts.bal) })}</div>`;

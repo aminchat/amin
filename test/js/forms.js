@@ -1,4 +1,4 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey } from './jalali.js';
@@ -14,6 +14,7 @@ import {
   addCustomCurrency,
   allCurrencies,
   curName,
+  isBigUnit,
   catById,
   loanFlow,
   catCeiling,
@@ -930,7 +931,7 @@ export function openQuickTx(opts) {
     </div>
     <div class="kbd" id="qaKbd">
       ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button type="button" onclick="qaKey('${d}')">${toFa(d)}</button>`).join('')}
-      <button type="button" class="fn" onclick="qaKey('000')">${toFa('000')}</button>
+      <button type="button" class="fn" id="qaFnKey" onclick="qaFn()">${isBigUnit(cur) ? toFa('000') : decSep()}</button>
       <button type="button" onclick="qaKey('0')">${toFa(0)}</button>
       <button type="button" class="fn del" onclick="qaKey('del')" aria-label="${tr('پاک کردن')}">${icon('back')}</button>
     </div>
@@ -964,18 +965,40 @@ function qaPaint() {
   const words = document.getElementById('qaWords');
   if (!disp) return;
   const n = Number(qa.amount) || 0;
-  disp.textContent = n ? fmt(n) : toFa(0);
+  disp.textContent = qa.amount ? fmt(n) + (qa.amount.endsWith('.') ? decSep() : /\.\d*0$/.test(qa.amount) ? '' : '') : toFa(0);
+  if (qa.amount && /\.(\d*)$/.test(qa.amount) && !qa.amount.endsWith('.')) {
+    // نمایش دقیق اعشار تایپ‌شده (fmt ممکن است صفرهای انتهایی را حذف کند)
+    const [ip, dp] = qa.amount.split('.');
+    disp.textContent = fmt(Number(ip)) + decSep() + toFa(dp);
+  }
   disp.classList.toggle('empty', !n);
   if (words) words.textContent = amountWords(n).replace(/\s\S+$/, '');
 }
 
 export function qaKey(k) {
   if (k === 'del') qa.amount = qa.amount.slice(0, -1);
-  else if (k === '000') { if (qa.amount) qa.amount += '000'; }
-  else qa.amount += k;
-  qa.amount = qa.amount.replace(/^0+(?=\d)/, '').slice(0, 13);
+  else if (k === '000') { if (qa.amount && !qa.amount.includes('.')) qa.amount += '000'; }
+  else if (k === '.') { if (!qa.amount.includes('.')) qa.amount = (qa.amount || '0') + '.'; }
+  else {
+    const dec = qa.amount.split('.')[1];
+    if (dec != null && dec.length >= 8) return;
+    qa.amount += k;
+  }
+  qa.amount = qa.amount.replace(/^0+(?=\d)/, '').slice(0, 16);
   haptic(4);
   qaPaint();
+}
+// کلید تابعی کیبورد: «۰۰۰» برای واحدهای بزرگ (تومان)، «.» برای بقیه
+function qaCurrency() {
+  const a = accountById(qa.accountId);
+  return (a && a.currency) || baseCur();
+}
+export function qaFn() {
+  qaKey(isBigUnit(qaCurrency()) ? '000' : '.');
+}
+function qaPaintFnKey() {
+  const b = document.getElementById('qaFnKey');
+  if (b) b.textContent = isBigUnit(qaCurrency()) ? toFa('000') : decSep();
 }
 
 export function qaSetType(t) {
@@ -1026,6 +1049,9 @@ export function qaChooseAccount(id) {
   const cu = document.getElementById('qaCur');
   if (nm && a) nm.textContent = acctLabel(a);
   if (cu && a) cu.textContent = curName(a.currency);
+  if (a && isBigUnit(a.currency) && qa.amount.includes('.')) qa.amount = String(Math.round(Number(qa.amount) || 0) || '');
+  qaPaintFnKey();
+  qaPaint();
   const l = document.getElementById('qaAcctList');
   if (l) l.remove();
 }
