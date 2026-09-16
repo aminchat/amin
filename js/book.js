@@ -27,8 +27,8 @@ function summary() {
   };
 }
 
-export function openNewBook() {
-  W.target = (state.calendar || 'jalali') === 'jalali' ? 'gregorian' : 'jalali';
+export function openNewBook(target) {
+  W.target = target || ((state.calendar || 'jalali') === 'jalali' ? 'gregorian' : 'jalali');
   W.archived = false;
   const s = summary();
   const cur = state.calendar || 'jalali';

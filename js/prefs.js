@@ -1212,6 +1212,22 @@ export function changeDigits(p) {
   openSettingsLanguage();
 }
 
+export function openBookCalendar() {
+  const cal = bookCal();
+  const opt = (id, name, sub) => `<button type="button" class="srow" onclick="${id === cal ? 'openSettingsBook()' : "openNewBook('" + id + "')"}">
+      <span class="smid"><span class="st1">${name}</span>${sub ? `<span class="st2">${sub}</span>` : ''}</span>
+      <span class="sval">${id === cal ? icon('check') : icon('chevL')}</span>
+    </button>`;
+  openModal(`
+    ${settingsHeader(t('set.calendar'), 'openSettingsBook()')}
+    <div class="sgroup">
+      ${opt('jalali', t('set.cal.jalali'), cal === 'jalali' ? tr('تقویم فعلی این دفتر') : tr('دفتر جدید با آرشیو دفتر فعلی'))}
+      ${opt('gregorian', t('set.cal.greg'), cal === 'gregorian' ? tr('تقویم فعلی این دفتر') : tr('دفتر جدید با آرشیو دفتر فعلی'))}
+    </div>
+    <p class="small muted" style="margin-top:12px">${tr('تقویم هر دفتر ثابت است. با انتخاب تقویم دیگر، از دفتر فعلی آرشیو گرفته می‌شود و دفتر جدیدی با انتقال گزینشی ساخته می‌شود.')}</p>
+  `);
+}
+
 export function openSettingsBook() {
   const cal = bookCal();
   const n = state.transactions.length;
@@ -1220,12 +1236,8 @@ export function openSettingsBook() {
   openModal(`
     ${settingsHeader(t('set.book'), 'openSettings()')}
     <div class="sgroup">
-      ${settingsRow('calendar', '#0ea5e9', t('set.calendar'), tr('تقویم این دفتر ثابت است'), '', cal === 'gregorian' ? t('set.cal.greg') : t('set.cal.jalali'))}
+      ${settingsRow('calendar', '#0ea5e9', t('set.calendar'), tr('برای تغییر، دفتر جدید ساخته می‌شود'), 'openBookCalendar()', cal === 'gregorian' ? t('set.cal.greg') : t('set.cal.jalali'))}
       ${settingsRow('list', '#64748b', t('nav.tx'), first ? tr('از {d}', { d: fmtDate(first) }) : tr('هنوز تراکنشی ثبت نشده'), '', toFa(n))}
-    </div>
-    <h3 class="muted" style="margin:14px 0 6px">${tr('دفتر جدید')}</h3>
-    <div class="sgroup">
-      ${settingsRow('refresh', '#f59e0b', tr('دفتر جدید با تقویم {c}', { c: cal === 'gregorian' ? tr('شمسی') : tr('میلادی') }), tr('آرشیو دفتر فعلی و انتقال گزینشی'), 'openNewBook()')}
     </div>
     <h3 class="muted" style="margin:14px 0 6px">${tr('پشتیبان‌گیری')}</h3>
     <div class="sgroup">
