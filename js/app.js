@@ -1,4 +1,5 @@
 import { store, toast, showTip, hideTip } from './utils.js';
+import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i18n.js';
 import { icon } from './icons.js';
 import * as inst from './installments.js';
 import { closeModal, openModal } from './modal.js';
@@ -40,6 +41,10 @@ import {
   openSettingsSecurity,
   openSettingsGoogle,
   openSettingsScan,
+  openSettingsBackup,
+  exportBackup,
+  importBackup,
+  openSettingsLanguage,
   openSettingsRates,
   openBaseCurrency,
   bcSync,
@@ -131,17 +136,17 @@ setRender(renderAll);
 setOnSave(scheduleSync);
 
 const TABS = [
-  { id: 'home', lbl: 'خانه' },
-  { id: 'tx', lbl: 'تراکنش‌ها' },
-  { id: 'report', lbl: 'گزارش' },
-  { id: 'assets', lbl: 'دارایی' },
+  { id: 'home', get lbl() { return t('nav.home'); } },
+  { id: 'tx', get lbl() { return t('nav.tx'); } },
+  { id: 'report', get lbl() { return t('nav.report'); } },
+  { id: 'assets', get lbl() { return t('nav.assets'); } },
 ];
 // زیرصفحه‌های تب «دارایی» (بعد از صفحهٔ مرور)
 const ASSET_VIEWS = {
-  accounts: { lbl: 'حساب‌ها', el: 'accountsContent', acts: () => `<button class="btn sm icon" title="انتقال" onclick="openTransferForm()">${icon('swap')}</button><button class="btn sm icon primary" title="حساب جدید" onclick="openAccountForm()">${icon('plus')}</button>` },
-  invest: { lbl: 'سرمایه', el: 'investContent', acts: () => `<button class="btn sm icon primary" title="دارایی جدید" onclick="openInvestForm()">${icon('plus')}</button>` },
-  debts: { lbl: 'طلب و بدهی', el: 'debtsContent', acts: () => `<button class="btn sm icon primary" title="مورد جدید" onclick="openDebtForm()">${icon('plus')}</button>` },
-  installments: { lbl: 'اقساط', el: 'installmentsContent', acts: () => `<button class="btn sm icon primary" title="قسط جدید" onclick="openPlanForm()">${icon('plus')}</button>` },
+  accounts: { get lbl() { return t('nav.accounts'); }, el: 'accountsContent', acts: () => `<button class="btn sm icon" title="${t('act.transfer')}" onclick="openTransferForm()">${icon('swap')}</button><button class="btn sm icon primary" title="${t('act.newAccount')}" onclick="openAccountForm()">${icon('plus')}</button>` },
+  invest: { get lbl() { return t('nav.invest'); }, el: 'investContent', acts: () => `<button class="btn sm icon primary" title="${t('act.newInvest')}" onclick="openInvestForm()">${icon('plus')}</button>` },
+  debts: { get lbl() { return t('nav.debts'); }, el: 'debtsContent', acts: () => `<button class="btn sm icon primary" title="${t('act.newDebt')}" onclick="openDebtForm()">${icon('plus')}</button>` },
+  installments: { get lbl() { return t('nav.installments'); }, el: 'installmentsContent', acts: () => `<button class="btn sm icon primary" title="${t('act.newPlan')}" onclick="openPlanForm()">${icon('plus')}</button>` },
 };
 
 let curTab = 'home';
@@ -161,13 +166,13 @@ function paintAssetView() {
   });
   if (bar) {
     bar.innerHTML = v
-      ? `<button type="button" class="back" onclick="setAssetTab('')" aria-label="بازگشت">${icon('chevR')}</button><h2>${v.lbl}</h2><div class="acts">${v.acts()}</div>`
+      ? `<button type="button" class="back" onclick="setAssetTab('')" aria-label="${t('act.back')}"><span class="dir-chev">${icon('chevR')}</span></button><h2>${v.lbl}</h2><div class="acts">${v.acts()}</div>`
       : '';
   }
   const title = document.getElementById('pageTitle');
-  if (title && curTab === 'assets') title.textContent = v ? v.lbl : 'دارایی';
+  if (title && curTab === 'assets') title.textContent = v ? v.lbl : t('nav.assets');
   const fab = document.getElementById('fab');
-  if (fab) fab.title = curAsset === 'debts' ? 'طلب یا بدهی جدید' : curAsset === 'installments' ? 'قسط جدید' : 'تراکنش جدید';
+  if (fab) fab.title = curAsset === 'debts' ? t('act.newDebt') : curAsset === 'installments' ? t('act.newPlan') : t('act.newTx');
   fitNumbers();
 }
 
@@ -204,6 +209,8 @@ function switchTab(id) {
 function paintShellIcons() {
   document.querySelectorAll('#bottomNav .bn[data-ic]').forEach((b) => {
     if (!b.querySelector('svg')) b.insertAdjacentHTML('afterbegin', icon(b.dataset.ic));
+    const l = b.querySelector('.bnl');
+    if (l) l.textContent = t('nav.' + b.dataset.tab);
   });
   const set = (id, name) => {
     const el = document.getElementById(id);
@@ -244,10 +251,10 @@ function askLeaveApp() {
   openModal(`
     <div style="text-align:center;padding:10px 4px">
       <span class="ib lg red" style="margin-bottom:12px">${icon('logout')}</span>
-      <p style="font-size:15px;margin:0 0 18px">می‌خوای از برنامه خارج شوی؟</p>
+      <p style="font-size:15px;margin:0 0 18px">${tr('می‌خوای از برنامه خارج شوی؟')}</p>
       <div class="row">
-        <button class="btn" style="flex:1" onclick="closeModal()">نه، بمون</button>
-        <button class="btn danger" style="flex:1" onclick="leaveApp()">بله، خارج شو</button>
+        <button class="btn" style="flex:1" onclick="closeModal()">${tr('نه، بمون')}</button>
+        <button class="btn danger" style="flex:1" onclick="leaveApp()">${tr('بله، خارج شو')}</button>
       </div>
     </div>`);
 }
@@ -388,7 +395,13 @@ Object.assign(window, {
   openSettingsSecurity,
   openSettingsGoogle,
   openSettingsScan,
+  openSettingsBackup,
+  exportBackup,
+  importBackup,
+  openSettingsLanguage,
   openSettingsRates,
+  changeLanguage,
+  changeCalendar,
   setTodayLabel,
   openBaseCurrency,
   bcSync,
@@ -426,6 +439,20 @@ Object.assign(window, {
   toggleLockMode,
 });
 
+async function changeLanguage(pref) {
+  await setLang(pref);
+  paintShellIcons();
+  setTodayLabel();
+  buildAssetTabs();
+  switchTab(curTab);
+  if (window.openSettingsLanguage) window.openSettingsLanguage();
+}
+function changeCalendar(v) {
+  setCalendar(v);
+  setTodayLabel();
+  render();
+  if (window.openSettingsLanguage) window.openSettingsLanguage();
+}
 paintShellIcons();
 document.getElementById('fab').onclick = () => {
   if (curTab === 'assets' && curAsset === 'debts') openDebtForm();
@@ -451,11 +478,11 @@ try {
   notifyDueDebts();
 } catch (err) {
   console.error(err);
-  if (window.__capLog) window.__capLog('شروع برنامه', err);
+  if (window.__capLog) window.__capLog(tr('شروع برنامه'), err);
   const dbg = document.getElementById('lockDebug');
-  if (dbg) dbg.textContent = 'خطا در شروع: ' + ((err && err.message) || err);
+  if (dbg) dbg.textContent = (tr('خطا در شروع:') + ' ') + ((err && err.message) || err);
   const home = document.getElementById('homeContent');
-  if (home) home.innerHTML = '<div class="card">برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.</div>';
+  if (home) home.innerHTML = ('<div class="card">' + tr('برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.') + '</div>');
 }
 
 if (typeof google !== 'undefined') {

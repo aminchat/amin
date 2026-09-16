@@ -1,8 +1,23 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.8.2';
+export const APP_VERSION = '2.9.2';
 
+let faDigits = true;
+export function setFaDigits(on) {
+  faDigits = !!on;
+}
+// نام واحدهای بزرگ و جداکنندهٔ اعشار بر اساس زبان
+const UNIT_NAMES = { fa: { b: 'میلیارد', m: 'میلیون', k: 'هزار' }, en: { b: 'billion', m: 'million', k: 'thousand' } };
+export function unitName(k) {
+  return (faDigits ? UNIT_NAMES.fa : UNIT_NAMES.en)[k];
+}
+export function decSep() {
+  return faDigits ? '٫' : '.';
+}
+export function pctSign() {
+  return faDigits ? '٪' : '%';
+}
 export function toFa(n) {
-  return String(n).replace(/\d/g, (d) => FA[d]);
+  return faDigits ? String(n).replace(/\d/g, (d) => FA[d]) : String(n);
 }
 
 let hideMoney = false;
@@ -50,9 +65,17 @@ export function setBaseInfo(name, info) {
 export function baseName() {
   return baseInfo.name;
 }
+// نمایش نام واحد (در انگلیسی کد ارز)
+let curDisplay = (c) => c;
+export function setCurDisplay(fn) {
+  curDisplay = fn;
+}
+export function curLabel(c) {
+  return curDisplay(c);
+}
 export function fmtT(n) {
   if (hideMoney) return '••••';
-  return fmt(n) + ' ' + baseInfo.name;
+  return fmt(n) + ' ' + curDisplay(baseInfo.name);
 }
 
 export function uid() {
@@ -143,8 +166,8 @@ export function fmtShort(n, cur) {
   const sign = n < 0 ? '−' : '';
   const big = cur ? !!(cur.big) : baseInfo.big;
   const digits = (v) => (v < 10 ? 2 : v < 100 ? 1 : 0);
-  const fa = (t) => toFa(t.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', '٫'));
-  const units = big ? [[1e9, ' میلیارد'], [1e6, ' میلیون'], [1e3, ' هزار']] : [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+  const fa = (t) => toFa(t.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', decSep()));
+  const units = big ? [[1e9, ' ' + unitName('b')], [1e6, ' ' + unitName('m')], [1e3, ' ' + unitName('k')]] : [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
   for (let i = 0; i < units.length; i++) {
     const [div, name] = units[i];
     if (abs < div) continue;
@@ -228,14 +251,14 @@ export function amountWords(n, cur) {
   n = Math.abs(Number(n) || 0);
   if (!n) return '';
   const trim = (t) => (t.includes('.') ? t.replace(/0+$/, '').replace(/\.$/, '') : t);
-  const u = cur || baseInfo.name;
+  const u = curDisplay(cur || baseInfo.name);
   const big = cur ? cur === baseInfo.name ? baseInfo.big : !!(bigUnits && bigUnits.has(cur)) : baseInfo.big;
   if (big) {
-    if (n >= 1e9) return toFa(trim((n / 1e9).toFixed(2)).replace('.', '٫')) + ' میلیارد ' + u;
-    if (n >= 1e6) return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
-    if (n >= 1e3) return toFa(trim((n / 1e3).toFixed(1)).replace('.', '٫')) + ' هزار ' + u;
+    if (n >= 1e9) return toFa(trim((n / 1e9).toFixed(2)).replace('.', decSep())) + ' ' + unitName('b') + ' ' + u;
+    if (n >= 1e6) return toFa(trim((n / 1e6).toFixed(2)).replace('.', decSep())) + ' ' + unitName('m') + ' ' + u;
+    if (n >= 1e3) return toFa(trim((n / 1e3).toFixed(1)).replace('.', decSep())) + ' ' + unitName('k') + ' ' + u;
   } else if (n >= 1e6) {
-    return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
+    return toFa(trim((n / 1e6).toFixed(2)).replace('.', decSep())) + ' ' + unitName('m') + ' ' + u;
   }
   return fmt(n) + ' ' + u;
 }

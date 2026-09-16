@@ -1,4 +1,5 @@
 import { toFa } from './utils.js';
+import { calendar, jalaliMonths, gregMonths } from './i18n.js';
 
 export function toJalali(gy, gm, gd) {
   const gdm = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -63,16 +64,29 @@ export function shiftMonth(key, delta) {
   return y + '/' + String(m).padStart(2, '0');
 }
 
+// برچسب ماه (کلید همیشه شمسی است؛ در تقویم میلادی بازهٔ معادل نمایش داده می‌شود)
 export function monthLabel(key) {
-  const [y, m] = key.split('/');
-  return MONTHS[+m - 1] + ' ' + toFa(y);
+  const [y, m] = key.split('/').map(Number);
+  if (calendar() === 'gregorian') {
+    const a = toGregorian(y, m, 1);
+    const days = m <= 6 ? 31 : m <= 11 ? 30 : toGregorian(y, 12, 30) ? 30 : 29;
+    const b = toGregorian(y, m, days);
+    if (a && b) {
+      const G = gregMonths();
+      const s1 = G[a[1] - 1].slice(0, 3) + ' ' + toFa(a[2]) + (a[0] !== b[0] ? ' ' + toFa(a[0]) : '');
+      const s2 = G[b[1] - 1].slice(0, 3) + ' ' + toFa(b[2]) + ' ' + toFa(b[0]);
+      return s1 + ' – ' + s2;
+    }
+  }
+  return jalaliMonths()[m - 1] + ' ' + toFa(y);
 }
 
 export function fmtDate(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-').map(Number);
+  if (calendar() === 'gregorian') return toFa(d) + ' ' + gregMonths()[m - 1].slice(0, 3) + ' ' + toFa(y);
   const [jy, jm, jd] = toJalali(y, m, d);
-  return toFa(jd) + ' ' + MONTHS[jm - 1] + ' ' + toFa(jy);
+  return toFa(jd) + ' ' + jalaliMonths()[jm - 1] + ' ' + toFa(jy);
 }
 
 export function monthOfISO(iso) {

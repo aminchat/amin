@@ -11,6 +11,7 @@ import {
 } from './state.js';
 import * as sec from './securestore.js';
 import { showLockForRemote, unlockApp, clearBioRecord } from './prefs.js';
+import { t as tr } from './i18n.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -97,13 +98,13 @@ export function handleCredential(resp) {
   } catch (e) {}
   requestAccessToken(function (ok) {
     if (!ok) {
-      toast('نتوانستم به درایو دسترسی بگیرم');
+      toast(tr('نتوانستم به درایو دسترسی بگیرم'));
       render();
       return;
     }
     loadFromDrive(function () {
       render();
-      toast('ورود موفق ✓ همگام‌سازی فعال شد');
+      toast((tr('ورود موفق') + ' ✓ ' + tr('همگام‌سازی فعال شد')));
     }, true);
   }, true);
 }
@@ -189,16 +190,16 @@ export function requestAccessToken(cb, interactive) {
 function tokenErrorHint() {
   switch (lastTokenError) {
     case 'gsi-not-loaded':
-      return 'کتابخانهٔ گوگل بارگذاری نشده (اینترنت/فیلترشکن را چک کن و صفحه را دوباره باز کن).';
+      return tr('کتابخانهٔ گوگل بارگذاری نشده (اینترنت/فیلترشکن را چک کن و صفحه را دوباره باز کن).');
     case 'popup_closed':
     case 'popup':
-      return 'پنجرهٔ ورود گوگل بسته شد یا مرورگر آن را بلاک کرد؛ اجازهٔ پاپ‌آپ بده و دوباره بزن.';
+      return tr('پنجرهٔ ورود گوگل بسته شد یا مرورگر آن را بلاک کرد؛ اجازهٔ پاپ‌آپ بده و دوباره بزن.');
     case 'popup_failed_to_open':
-      return 'مرورگر پنجرهٔ ورود را باز نکرد؛ پاپ‌آپ را برای این سایت آزاد کن.';
+      return tr('مرورگر پنجرهٔ ورود را باز نکرد؛ پاپ‌آپ را برای این سایت آزاد کن.');
     case 'access_denied':
-      return 'دسترسی به درایو داده نشد؛ در پنجرهٔ گوگل تیک دسترسی به Drive را بزن.';
+      return tr('دسترسی به درایو داده نشد؛ در پنجرهٔ گوگل تیک دسترسی به Drive را بزن.');
     case 'timeout':
-      return 'گوگل جواب نداد؛ اتصال اینترنت را چک کن.';
+      return tr('گوگل جواب نداد؛ اتصال اینترنت را چک کن.');
     default:
       return '';
   }
@@ -206,26 +207,26 @@ function tokenErrorHint() {
 
 export function googleSignIn() {
   if (typeof google === 'undefined' || !google.accounts) {
-    toast('در حال بارگذاری گوگل…');
+    toast(tr('در حال بارگذاری گوگل…'));
     return;
   }
   requestDriveSignIn();
 }
 
 function requestDriveSignIn() {
-  toast('در حال اتصال به گوگل…');
+  toast(tr('در حال اتصال به گوگل…'));
   requestAccessToken(function (ok) {
     if (!ok) {
-      toast('ورود انجام نشد. ' + tokenErrorHint());
+      toast((tr('ورود انجام نشد.') + ' ') + tokenErrorHint());
       render();
       return;
     }
     if (!gUser) {
-      setSignedIn({ name: 'حساب گوگل', email: '', picture: '' });
+      setSignedIn({ name: tr('حساب گوگل'), email: '', picture: '' });
     }
     loadFromDrive(function () {
       render();
-      toast('ورود موفق ✓ همگام‌سازی فعال شد');
+      toast((tr('ورود موفق') + ' ✓ ' + tr('همگام‌سازی فعال شد')));
     }, true);
   }, true);
 }
@@ -233,11 +234,11 @@ function requestDriveSignIn() {
 export function openProfileMenu() {
   if (!gUser) return;
   openModalSafe(
-    '<button class="x" onclick="closeModal()" aria-label="بستن">' + icon('x') + '</button><h2>حساب کاربری</h2><div class="hint" style="margin:14px 0">' +
+    ('<button class="x" onclick="closeModal()" aria-label="' + tr('بستن') + '">') + icon('x') + ('</button><h2>' + tr('حساب کاربری') + '</h2><div class="hint" style="margin:14px 0">') +
       esc(gUser.name) +
       '<br><span class="small muted">' +
       esc(gUser.email) +
-      '</span></div><button class="btn primary block" onclick="closeModal();pushToDrive(true)">الان در گوگل ذخیره کن</button><button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast(\'دریافت از گوگل انجام شد ✓\');},true)">دریافت از گوگل</button><button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">خروج از حساب گوگل</button>'
+      ('</span></div><button class="btn primary block" onclick="closeModal();pushToDrive(true)">' + tr('الان در گوگل ذخیره کن') + '</button><button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast(\'' + tr('دریافت از گوگل انجام شد') + ' ✓\');},true)">' + tr('دریافت از گوگل') + '</button><button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">' + tr('خروج از حساب گوگل') + '</button>')
   );
 }
 
@@ -251,7 +252,7 @@ export function googleSignOut() {
     google.accounts.id.disableAutoSelect();
   }
   render();
-  toast('از حساب خارج شدی');
+  toast(tr('از حساب خارج شدی'));
 }
 
 function driveFetch(url, opts) {
@@ -403,7 +404,7 @@ export function loadFromDrive(cb, interactive, quiet) {
           if (sec.isEncrypted() && !sec.isUnlocked()) return; // هنوز قفل است
           return driveCreate(syncContent()).then(function () {
             pendingLocalSave = false;
-            if (!quiet) toast('اطلاعات در Google Drive ذخیره شد ✓');
+            if (!quiet) toast(tr('اطلاعات در Google Drive ذخیره شد') + ' ✓');
           });
         }
         return driveRead(f.id).then(function (text) {
@@ -446,7 +447,7 @@ export function loadFromDrive(cb, interactive, quiet) {
         lastPullAt = Date.now();
       })
       .catch(function () {
-        if (!quiet && interactive) toast('خطا در دریافت از درایو؛ دوباره مجوز را تأیید کن');
+        if (!quiet && interactive) toast(tr('خطا در دریافت از درایو؛ دوباره مجوز را تأیید کن'));
       })
       .then(function () {
         pullInFlight = false;
@@ -458,7 +459,7 @@ export function loadFromDrive(cb, interactive, quiet) {
     requestAccessToken(function (ok) {
       if (ok) run();
       else {
-        if (!quiet && interactive) toast('مجوز Google Drive داده نشد');
+        if (!quiet && interactive) toast(tr('مجوز Google Drive داده نشد'));
         cb();
       }
     }, !!interactive);
@@ -563,7 +564,7 @@ async function handleRemoteEnvelope(env, fileId) {
     if (rW > lW) {
       // رمز عبور روی دستگاه دیگر عوض شده؛ کلیدهای جدید را می‌گیریم (پین این گوشی می‌ماند)
       wrapsChanged = sec.adoptRemoteWraps(env);
-      if (wrapsChanged) toast('رمز عبور از دستگاه دیگر به‌روز شد ✓');
+      if (wrapsChanged) toast((tr('رمز عبور از دستگاه دیگر به‌روز شد') + ' ✓'));
     } else if (lW > rW) {
       // رمز این دستگاه جدیدتر است؛ باید به گوگل برود
       pendingLocalSave = true;
@@ -595,7 +596,7 @@ async function handleRemoteEnvelope(env, fileId) {
       } else {
         pendingLocalSave = false;
       }
-      toast('داده‌های جدیدتر از گوگل دریافت شد ✓');
+      toast((tr('داده‌های جدیدتر از گوگل دریافت شد') + ' ✓'));
     } catch (e) {
       pendingRemoteEnv = env;
       openRemotePassModal();
@@ -650,15 +651,15 @@ async function tryRepairMerge(env) {
 
 function openRemotePassModal() {
   openModalSafe(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>🔑 یکی‌کردن دستگاه‌ها</h2>
-    <p class="small muted">نسخهٔ داخل گوگل با رمز عبور دیگری ساخته شده — احتمالاً رمزنگاری را روی دستگاه دیگر جداگانه فعال کرده‌ای.
-    برای یکی‌کردن داده‌ها، <b>رمز عبوری که روی آن دستگاه ساختی</b> را وارد کن. بعد از یکی‌شدن، همان رمز روی همهٔ دستگاه‌ها معتبر می‌شود.</p>
-    <div class="field"><label>رمز عبورِ دستگاه دیگر</label>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>🔑 ${tr('یکی‌کردن دستگاه‌ها')}</h2>
+    <p class="small muted">${tr('نسخهٔ داخل گوگل با رمز عبور دیگری ساخته شده — احتمالاً رمزنگاری را روی دستگاه دیگر جداگانه فعال کرده‌ای.')}
+    ${tr('برای یکی‌کردن داده‌ها،')} <b>${tr('رمز عبوری که روی آن دستگاه ساختی')}</b> ${tr('را وارد کن. بعد از یکی‌شدن، همان رمز روی همهٔ دستگاه‌ها معتبر می‌شود.')}</p>
+    <div class="field"><label>${tr('رمز عبورِ دستگاه دیگر')}</label>
       <input class="input" id="remotePass" type="password" dir="ltr" autocomplete="off"></div>
     <div id="remotePassErr" class="hint" style="display:none;color:#fb7185"></div>
-    <button class="btn primary block" style="margin-top:12px" onclick="submitRemotePass()">یکی‌کردن داده‌ها</button>
-    <button class="btn block" style="margin-top:8px" onclick="closeModal()">بعداً</button>
+    <button class="btn primary block" style="margin-top:12px" onclick="submitRemotePass()">${tr('یکی‌کردن داده‌ها')}</button>
+    <button class="btn block" style="margin-top:8px" onclick="closeModal()">${tr('بعداً')}</button>
   `);
 }
 
@@ -670,7 +671,7 @@ export async function submitRemotePass() {
   }
   const val = String((document.getElementById('remotePass') || {}).value || '');
   if (!val) {
-    toast('رمز عبور را وارد کن');
+    toast(tr('رمز عبور را وارد کن'));
     return;
   }
   try {
@@ -681,7 +682,7 @@ export async function submitRemotePass() {
     const err = document.getElementById('remotePassErr');
     if (err) {
       err.style.display = '';
-      err.textContent = 'این رمز به داده‌های گوگل نخورد؛ رمز همان دستگاه دیگر را وارد کن.';
+      err.textContent = tr('این رمز به داده‌های گوگل نخورد؛ رمز همان دستگاه دیگر را وارد کن.');
     }
   }
 }
@@ -698,7 +699,7 @@ async function applyRemoteMerge(env, got) {
   if (document.body.classList.contains('locked')) unlockApp();
   render();
   pendingLocalSave = true;
-  toast('داده‌ها یکی شد ✓ از این پس با این رمز باز می‌شود');
+  toast((tr('داده‌ها یکی شد') + ' ✓ ' + tr('از این پس با این رمز باز می‌شود')));
   pushToDrive(false);
 }
 
@@ -723,7 +724,7 @@ async function processPendingRemote() {
     if (hasLocalData(state)) next = mergeStates(state, next);
     replaceState(next);
     render();
-    toast('داده‌ها از گوگل باز شد ✓');
+    toast((tr('داده‌ها از گوگل باز شد') + ' ✓'));
   } catch (e) {
     // رمز این دستگاه به نسخهٔ گوگل نمی‌خورد → پرسیدن رمز دستگاه دیگر
     openRemotePassModal();
@@ -747,8 +748,8 @@ document.addEventListener('cap:wraps-changed', function () {
   if (!gUser && !tokenAlive()) return;
   pendingLocalSave = true;
   pushToDrive(false, function (ok) {
-    if (ok) toast('رمز جدید در گوگل ذخیره شد ✓ دستگاه‌های دیگر هم به‌روز می‌شوند');
-    else toast('رمز جدید هنوز به گوگل نرفته؛ از منوی حساب «الان در گوگل ذخیره کن» را بزن');
+    if (ok) toast((tr('رمز جدید در گوگل ذخیره شد') + ' ✓ ' + tr('دستگاه‌های دیگر هم به‌روز می‌شوند')));
+    else toast(tr('رمز جدید هنوز به گوگل نرفته؛ از منوی حساب «الان در گوگل ذخیره کن» را بزن'));
   });
 });
 
@@ -793,10 +794,10 @@ export function pushToDrive(interactive, onDone) {
       .then(function () {
         pendingLocalSave = false;
         pushOk = true;
-        if (interactive) toast('در Google Drive ذخیره شد ✓');
+        if (interactive) toast(tr('در Google Drive ذخیره شد') + ' ✓');
       })
       .catch(function () {
-        if (interactive) toast('ذخیره در گوگل نشد؛ یک‌بار دیگر ثبت را بزن');
+        if (interactive) toast(tr('ذخیره در گوگل نشد؛ یک‌بار دیگر ثبت را بزن'));
       })
       .then(finish);
   };
@@ -806,7 +807,7 @@ export function pushToDrive(interactive, onDone) {
       if (ok) run();
       else {
         // ذخیرهٔ محلی انجام شده؛ بعداً بی‌صدا دوباره تلاش می‌شود
-        if (interactive) toast('برای ذخیره در گوگل دوباره ثبت را بزن');
+        if (interactive) toast(tr('برای ذخیره در گوگل دوباره ثبت را بزن'));
         finish();
       }
     }, interactive === true);
@@ -824,23 +825,23 @@ export function renderSyncCard() {
   if (gUser) {
     if (tokenRequesting) {
       return (
-        '<div class="card"><h3>' + icon('cloud') + ' اتصال به گوگل</h3>' +
-        '<div class="small muted">در حال تمدید اتصال…</div></div>'
+        '<div class="card"><h3>' + icon('cloud') + (' ' + tr('اتصال به گوگل') + '</h3>') +
+        ('<div class="small muted">' + tr('در حال تمدید اتصال…') + '</div></div>')
       );
     }
     const hint = tokenErrorHint();
     return (
-      '<div class="card"><h3>' + icon('cloud') + ' اتصال به گوگل</h3>' +
-      '<div class="small muted" style="margin-bottom:12px">اعتبار اتصال به درایو تمام شده (هر ساعت تمدید می‌شود). ' +
-      (hint ? hint : 'با یک ضربه دوباره وصل می‌شود.') +
+      '<div class="card"><h3>' + icon('cloud') + (' ' + tr('اتصال به گوگل') + '</h3>') +
+      ('<div class="small muted" style="margin-bottom:12px">' + tr('اعتبار اتصال به درایو تمام شده (هر ساعت تمدید می‌شود).') + ' ') +
+      (hint ? hint : tr('با یک ضربه دوباره وصل می‌شود.')) +
       '</div>' +
-      '<button class="btn primary block" onclick="googleSignIn()">اتصال دوباره</button></div>'
+      ('<button class="btn primary block" onclick="googleSignIn()">' + tr('اتصال دوباره') + '</button></div>')
     );
   }
   return (
-    '<div class="card"><h3>' + icon('cloud') + ' همگام‌سازی ابری</h3>' +
-    '<div class="small muted" style="margin-bottom:12px">با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.</div>' +
-    '<button class="btn primary block" onclick="googleSignIn()">ورود با گوگل</button></div>'
+    '<div class="card"><h3>' + icon('cloud') + (' ' + tr('همگام‌سازی ابری') + '</h3>') +
+    ('<div class="small muted" style="margin-bottom:12px">' + tr('با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.') + '</div>') +
+    ('<button class="btn primary block" onclick="googleSignIn()">' + tr('ورود با گوگل') + '</button></div>')
   );
 }
 

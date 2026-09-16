@@ -53,6 +53,8 @@ It is designed around the **envelope (“pocket”) method** — every month’s
 - **Biometric unlock** (WebAuthn platform authenticator: fingerprint / Face ID) as a convenience on top of the password.
 - Password change and device‑merge flows when several devices use different passwords.
 - “Hide amounts” toggle for using the app in public.
+- **Backup**: export all data as JSON and restore it later (Settings → Backup).
+- [Privacy Policy](./privacy.html) · [Terms of Service](./terms.html) (also linked from Settings → About).
 
 ### Sync & offline
 - Installable PWA with a service worker; works fully offline.
@@ -106,7 +108,7 @@ All amounts are stored in the account’s own currency; the base currency is use
 
 ## Version
 
-Current: `2.8.2` (root) / `2.9.1-test` (test build). The version string is in `js/utils.js` (`APP_VERSION`) and shown in Settings → About.
+Current: `2.9.2` (root) / `2.9.2-test` (test build). The version string is in `js/utils.js` (`APP_VERSION`) and shown in Settings → About.
 
 ## License
 

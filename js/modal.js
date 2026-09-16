@@ -1,5 +1,6 @@
 import { icon } from './icons.js';
 import { enhanceMoneyInputs } from './utils.js';
+import { t as tr } from './i18n.js';
 const overlay = document.getElementById('overlay');
 const sheet = document.getElementById('sheet');
 
@@ -27,8 +28,8 @@ export function askConfirm(msg, onYes) {
       <span class="ib lg red" style="margin-bottom:12px">${icon('trash')}</span>
       <p style="font-size:15px;margin:0 0 18px">${msg}</p>
       <div class="row">
-        <button class="btn" style="flex:1" onclick="closeModal()">انصراف</button>
-        <button class="btn danger" style="flex:1" id="cfYes">بله، حذف کن</button>
+        <button class="btn" style="flex:1" onclick="closeModal()">${tr('انصراف')}</button>
+        <button class="btn danger" style="flex:1" id="cfYes">${tr('بله، حذف کن')}</button>
       </div>
     </div>`);
   document.getElementById('cfYes').onclick = () => {

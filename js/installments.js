@@ -11,7 +11,8 @@ import { esc, fmt, fmtShort, toFa, toast, uid, todayISO, haptic, infoTip } from 
 import { fmtDate, monthOfISO, toJalali, toGregorian } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
-import { save, state, accountById, accountOptGroups, CATS, LOAN_CAT } from './state.js';
+import { save, state, accountById, accountOptGroups, CATS, LOAN_CAT, baseCur, curName } from './state.js';
+import { t as tr } from './i18n.js';
 
 export function allPlans() {
   if (!state.installments) state.installments = [];
@@ -106,10 +107,10 @@ function upsertTx(existingId, payload) {
   return t.id;
 }
 function rowLabel(p, r) {
-  if (r.kind === 'down') return 'پیش‌پرداخت ' + p.title;
-  if (r.kind === 'interest') return 'سود ' + p.title;
+  if (r.kind === 'down') return (tr('پیش‌پرداخت') + ' ') + p.title;
+  if (r.kind === 'interest') return (tr('سود') + ' ') + p.title;
   const n = (p.rows || []).filter((x) => x.kind !== 'down' && x.kind !== 'interest').indexOf(r) + 1;
-  return 'قسط ' + toFa(n) + ' ' + p.title;
+  return (tr('قسط') + ' ') + toFa(n) + ' ' + p.title;
 }
 function syncRowTx(p, r) {
   const acc = accountById(r.accountId || p.accountId);
@@ -118,7 +119,7 @@ function syncRowTx(p, r) {
     r.txId = null;
     return;
   }
-  const note = rowLabel(p, r) + (r.penalty ? ' (با جریمه)' : '');
+  const note = rowLabel(p, r) + (r.penalty ? (' ' + tr('(با جریمه)')) : '');
   r.txId = upsertTx(r.txId, {
     amount: rowTotal(r),
     accountId: acc.id,
@@ -145,7 +146,7 @@ function syncDisburseTx(p) {
   p.disburseTxId = upsertTx(p.disburseTxId, {
     amount: p.principal,
     accountId: acc.id,
-    note: 'دریافت وام ' + p.title,
+    note: (tr('دریافت وام') + ' ') + p.title,
     dateISO: p.startISO || todayISO(),
     month: monthOfISO(p.startISO || todayISO()),
     type: 'in',
@@ -197,36 +198,36 @@ function catOptions(sel) {
 export function openPlanForm(p) {
   editingId = p ? p.id : null;
   if (!state.accounts.length) {
-    toast('اول یک حساب بساز');
+    toast(tr('اول یک حساب بساز'));
     return;
   }
   F.kind = p ? p.kind : 'loan';
   F.mode = p ? p.mode || 'equal' : 'equal';
   const acc = p ? p.accountId : state.accounts[0].id;
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${p ? 'ویرایش مشخصات' : 'قسط جدید'}</h2>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${p ? tr('ویرایش مشخصات') : tr('قسط جدید')}</h2>
     <div class="seg" id="plKind" style="margin-bottom:14px">
-      <button type="button" class="${F.kind === 'loan' ? 'on' : ''}" data-k="loan" onclick="plSetKind('loan')">وام</button>
-      <button type="button" class="${F.kind === 'purchase' ? 'on' : ''}" data-k="purchase" onclick="plSetKind('purchase')">خرید قسطی</button>
+      <button type="button" class="${F.kind === 'loan' ? 'on' : ''}" data-k="loan" onclick="plSetKind('loan')">${tr('وام')}</button>
+      <button type="button" class="${F.kind === 'purchase' ? 'on' : ''}" data-k="purchase" onclick="plSetKind('purchase')">${tr('خرید قسطی')}</button>
     </div>
-    <div class="field"><label>عنوان</label>
-      <input class="input" id="plTitle" placeholder="${F.kind === 'loan' ? 'مثلاً وام مسکن' : 'مثلاً گوشی'}" value="${p ? esc(p.title) : ''}"></div>
+    <div class="field"><label>${tr('عنوان')}</label>
+      <input class="input" id="plTitle" placeholder="${F.kind === 'loan' ? tr('مثلاً وام مسکن') : tr('مثلاً گوشی')}" value="${p ? esc(p.title) : ''}"></div>
 
     <div id="plLoanBox" style="${F.kind === 'loan' ? '' : 'display:none'}">
       <div class="row">
-        <div class="col field"><label>مبلغ دریافتی (اصل وام)</label>
-          <input class="input" id="plPrincipal" type="number" inputmode="numeric" placeholder="مثلاً 100000000" value="${p && p.principal ? p.principal : ''}"></div>
-        <div class="col field"><label>تاریخ دریافت</label>
+        <div class="col field"><label>${tr('مبلغ دریافتی (اصل وام)')}</label>
+          <input class="input" id="plPrincipal" type="number" inputmode="numeric" placeholder="${tr('مثلاً 100000000')}" value="${p && p.principal ? p.principal : ''}"></div>
+        <div class="col field"><label>${tr('تاریخ دریافت')}</label>
           <input class="input" id="plStart" type="date" value="${p ? p.startISO : todayISO()}"></div>
       </div>
-      <div class="field"><label>واریز اصل وام به حساب ${infoTip('فقط اگر همین الان وام گرفته‌ای و هنوز موجودی‌اش را در حساب وارد نکرده‌ای، حساب را انتخاب کن. برای وام‌های قدیمی که پولش الان در حساب‌هایت هست «ثبت نشود» بماند وگرنه دوبار حساب می‌شود.')}</label>
-        <select class="input" id="plDisburseAcc" onchange="plRecalc()"><option value="" ${!p || !p.disburseAccountId ? 'selected' : ''}>ثبت نشود — پول قبلاً در حسابم هست</option>${accountOptGroups(p ? p.disburseAccountId : '')}</select>
+      <div class="field"><label>${tr('واریز اصل وام به حساب')} ${infoTip(tr('فقط اگر همین الان وام گرفته‌ای و هنوز موجودی‌اش را در حساب وارد نکرده‌ای، حساب را انتخاب کن. برای وام‌های قدیمی که پولش الان در حساب‌هایت هست «ثبت نشود» بماند وگرنه دوبار حساب می‌شود.'))}</label>
+        <select class="input" id="plDisburseAcc" onchange="plRecalc()"><option value="" ${!p || !p.disburseAccountId ? 'selected' : ''}>${tr('ثبت نشود — پول قبلاً در حسابم هست')}</option>${accountOptGroups(p ? p.disburseAccountId : '')}</select>
         <div class="hint" id="plDisburseHint" style="margin-top:6px;display:none"></div>
       </div>
     </div>
 
-    <div class="field"><label>هر قسط از کدام حساب و پاکت؟ ${infoTip('پرداخت قسط خرجِ واقعی ماه است و از بودجهٔ همان پاکت کم می‌شود.')}</label>
+    <div class="field"><label>${tr('هر قسط از کدام حساب و پاکت؟')} ${infoTip(tr('پرداخت قسط خرجِ واقعی ماه است و از بودجهٔ همان پاکت کم می‌شود.'))}</label>
       <div class="row">
         <select class="input col" id="plAcc">${accountOptGroups(acc)}</select>
         <select class="input col" id="plCat">${catOptions(p ? p.cat : 'need')}</select>
@@ -235,54 +236,54 @@ export function openPlanForm(p) {
 
     ${p ? '' : `
     <div class="divider"></div>
-    <h3 style="margin-bottom:10px;display:flex;align-items:center">جدول اقساط ${infoTip('این فقط نقطهٔ شروع است؛ بعداً هر ردیف را جدا می‌توانی عوض کنی (مبلغ، تاریخ، سود، جریمه).')}</h3>
+    <h3 style="margin-bottom:10px;display:flex;align-items:center">${tr('جدول اقساط')} ${infoTip(tr('این فقط نقطهٔ شروع است؛ بعداً هر ردیف را جدا می‌توانی عوض کنی (مبلغ، تاریخ، سود، جریمه).'))}</h3>
     <div id="plModeBox" style="${F.kind === 'loan' ? '' : 'display:none'}">
       <div class="seg" style="margin-bottom:12px">
-        <button type="button" class="${F.mode === 'equal' ? 'on' : ''}" onclick="plSetMode('equal')">اقساط مساوی</button>
-        <button type="button" class="${F.mode === 'periodic' ? 'on' : ''}" onclick="plSetMode('periodic')">اصل ماهانه + سود دوره‌ای</button>
+        <button type="button" class="${F.mode === 'equal' ? 'on' : ''}" onclick="plSetMode('equal')">${tr('اقساط مساوی')}</button>
+        <button type="button" class="${F.mode === 'periodic' ? 'on' : ''}" onclick="plSetMode('periodic')">${tr('اصل ماهانه + سود دوره‌ای')}</button>
       </div>
     </div>
     <div id="plPurchaseBox" style="${F.kind === 'purchase' ? '' : 'display:none'}">
-      <div class="field"><label>قیمت نقدی (اختیاری، برای مقایسه)</label>
-        <input class="input" id="plCash" type="number" inputmode="numeric" placeholder="مثلاً 40000000" oninput="plRecalc()"></div>
+      <div class="field"><label>${tr('قیمت نقدی (اختیاری، برای مقایسه)')}</label>
+        <input class="input" id="plCash" type="number" inputmode="numeric" placeholder="${tr('مثلاً 40000000')}" oninput="plRecalc()"></div>
       <div class="row">
-        <div class="col field"><label>پیش‌پرداخت</label>
+        <div class="col field"><label>${tr('پیش‌پرداخت')}</label>
           <input class="input" id="plDown" type="number" inputmode="numeric" placeholder="0"></div>
-        <div class="col field"><label>تاریخ خرید</label>
+        <div class="col field"><label>${tr('تاریخ خرید')}</label>
           <input class="input" id="plBuyDate" type="date" value="${todayISO()}"></div>
       </div>
-      <label class="row" style="gap:8px;align-items:center;margin:-4px 0 12px;font-size:var(--fs-sm)"><input type="checkbox" id="plDownPaid" checked> پیش‌پرداخت را الان از حساب کم کن</label>
+      <label class="row" style="gap:8px;align-items:center;margin:-4px 0 12px;font-size:var(--fs-sm)"><input type="checkbox" id="plDownPaid" checked> ${tr('پیش‌پرداخت را الان از حساب کم کن')}</label>
     </div>
     <div class="row">
-      <div class="col field"><label>مدت (ماه)</label>
-        <input class="input" id="plCount" type="number" inputmode="numeric" placeholder="مثلاً 36" oninput="plRecalc()"></div>
-      <div class="col field" id="plRateBox" style="${F.kind === 'loan' ? '' : 'display:none'}"><label>نرخ سود سالانه ٪ (اختیاری)</label>
-        <input class="input" id="plRate" type="number" inputmode="decimal" step="any" placeholder="مثلاً 23" oninput="plRecalc(true)"></div>
+      <div class="col field"><label>${tr('مدت (ماه)')}</label>
+        <input class="input" id="plCount" type="number" inputmode="numeric" placeholder="${tr('مثلاً 36')}" oninput="plRecalc()"></div>
+      <div class="col field" id="plRateBox" style="${F.kind === 'loan' ? '' : 'display:none'}"><label>${tr('نرخ سود سالانه ٪ (اختیاری)')}</label>
+        <input class="input" id="plRate" type="number" inputmode="decimal" step="any" placeholder="${tr('مثلاً 23')}" oninput="plRecalc(true)"></div>
     </div>
-    <div class="field"><label><span id="plPerLbl">${F.kind === 'loan' && F.mode === 'periodic' ? 'اصل هر ماه' : 'مبلغ هر قسط'}</span>${F.kind === 'loan' ? infoTip('با نرخ سود پیشنهاد می‌شود؛ عدد قرارداد بانک را هر وقت خواستی جایگزین کن.') : ''}</label>
-      <input class="input" id="plPer" type="number" inputmode="numeric" placeholder="مثلاً 15000000" oninput="plPerTouched=true;plRecalc()"></div>
+    <div class="field"><label><span id="plPerLbl">${F.kind === 'loan' && F.mode === 'periodic' ? tr('اصل هر ماه') : tr('مبلغ هر قسط')}</span>${F.kind === 'loan' ? infoTip(tr('با نرخ سود پیشنهاد می‌شود؛ عدد قرارداد بانک را هر وقت خواستی جایگزین کن.')) : ''}</label>
+      <input class="input" id="plPer" type="number" inputmode="numeric" placeholder="${tr('مثلاً 15000000')}" oninput="plPerTouched=true;plRecalc()"></div>
     <div id="plEqualBox" style="${F.kind === 'loan' && F.mode === 'equal' ? '' : 'display:none'}">
-      <div class="field"><label>سودِ داخل هر قسط ${infoTip('با نرخ سود خودکار پر می‌شود (تقسیم ساده). مثلاً قسط ۱۵ میلیون که ۲ میلیونش سود است.')}</label>
-        <input class="input" id="plPerInt" type="number" inputmode="numeric" placeholder="مثلاً 2000000" oninput="plIntTouched=true;plRecalc()"></div>
+      <div class="field"><label>${tr('سودِ داخل هر قسط')} ${infoTip(tr('با نرخ سود خودکار پر می‌شود (تقسیم ساده). مثلاً قسط ۱۵ میلیون که ۲ میلیونش سود است.'))}</label>
+        <input class="input" id="plPerInt" type="number" inputmode="numeric" placeholder="${tr('مثلاً 2000000')}" oninput="plIntTouched=true;plRecalc()"></div>
     </div>
     <div id="plPeriodicBox" style="${F.kind === 'loan' && F.mode === 'periodic' ? '' : 'display:none'}">
       <div class="row">
-        <div class="col field"><label>سود هر دوره</label>
-          <input class="input" id="plPeriodInt" type="number" inputmode="numeric" placeholder="مثلاً 24000000" oninput="plIntTouched=true;plRecalc()"></div>
-        <div class="col field"><label>هر چند ماه یک‌بار؟</label>
+        <div class="col field"><label>${tr('سود هر دوره')}</label>
+          <input class="input" id="plPeriodInt" type="number" inputmode="numeric" placeholder="${tr('مثلاً 24000000')}" oninput="plIntTouched=true;plRecalc()"></div>
+        <div class="col field"><label>${tr('هر چند ماه یک‌بار؟')}</label>
           <input class="input" id="plEvery" type="number" inputmode="numeric" value="12" oninput="plRecalc()"></div>
       </div>
     </div>
-    <div class="field" id="plFirstBox" style="${F.kind === 'loan' ? '' : 'display:none'}"><label>تاریخ اولین قسط</label>
+    <div class="field" id="plFirstBox" style="${F.kind === 'loan' ? '' : 'display:none'}"><label>${tr('تاریخ اولین قسط')}</label>
       <input class="input" id="plFirst" type="date" value="${addJMonths(todayISO(), 1)}"></div>
-    <div class="field"><label>قسط‌های پرداخت‌شدهٔ قبلی ${infoTip('برای وام‌های در جریان. این‌ها فقط تیک می‌خورند؛ تراکنشی ساخته نمی‌شود و از حسابی کم نمی‌شود — چون آن پرداخت‌ها قبلاً از موجودی فعلی‌ات رفته‌اند.')}</label>
+    <div class="field"><label>${tr('قسط‌های پرداخت‌شدهٔ قبلی')} ${infoTip(tr('برای وام‌های در جریان. این‌ها فقط تیک می‌خورند؛ تراکنشی ساخته نمی‌شود و از حسابی کم نمی‌شود — چون آن پرداخت‌ها قبلاً از موجودی فعلی‌ات رفته‌اند.'))}</label>
       <input class="input" id="plPrepaid" type="number" inputmode="numeric" value="0" oninput="plRecalc()"></div>
     <div class="hint" id="plSummary" style="margin-bottom:12px"></div>`}
 
-    <div class="field"><label>توضیح (اختیاری)</label>
+    <div class="field"><label>${tr('توضیح (اختیاری)')}</label>
       <input class="input" id="plNote" value="${p ? esc(p.note || '') : ''}"></div>
-    <button class="btn primary block" onclick="savePlan()">${p ? 'ذخیره' : 'ساخت جدول اقساط'}</button>
-    ${p ? `<button class="btn danger block" style="margin-top:8px" onclick="delPlan('${p.id}')">حذف کامل این طرح</button>` : ''}
+    <button class="btn primary block" onclick="savePlan()">${p ? tr('ذخیره') : tr('ساخت جدول اقساط')}</button>
+    ${p ? `<button class="btn danger block" style="margin-top:8px" onclick="delPlan('${p.id}')">${tr('حذف کامل این طرح')}</button>` : ''}
   `);
   if (!p) plRecalc();
 }
@@ -304,7 +305,7 @@ export function plSetKind(k) {
   show('plEqualBox', k === 'loan' && F.mode === 'equal');
   show('plPeriodicBox', k === 'loan' && F.mode === 'periodic');
   const t = document.getElementById('plTitle');
-  if (t) t.placeholder = k === 'loan' ? 'مثلاً وام مسکن' : 'مثلاً گوشی';
+  if (t) t.placeholder = k === 'loan' ? tr('مثلاً وام مسکن') : tr('مثلاً گوشی');
   plRecalc();
 }
 export function plSetMode(m) {
@@ -315,7 +316,7 @@ export function plSetMode(m) {
   if (eq) eq.style.display = m === 'equal' ? '' : 'none';
   if (pe) pe.style.display = m === 'periodic' ? '' : 'none';
   const l = document.getElementById('plPerLbl');
-  if (l) l.textContent = m === 'periodic' ? 'اصل هر ماه' : 'مبلغ هر قسط';
+  if (l) l.textContent = m === 'periodic' ? tr('اصل هر ماه') : tr('مبلغ هر قسط');
   plPerTouched = false;
   plIntTouched = false;
   plRecalc();
@@ -351,14 +352,14 @@ export function plRecalc(fromRate) {
   }
   const per = v('plPer');
   if (!count || !per) {
-    box.textContent = 'مدت و مبلغ قسط را بنویس تا خلاصه را ببینی.';
+    box.textContent = tr('مدت و مبلغ قسط را بنویس تا خلاصه را ببینی.');
     return;
   }
   let principal = 0, interest = 0, extra = '', markup = 0;
   if (F.kind === 'purchase') {
     const down = v('plDown');
     principal = down + count * per; // کل بازپرداخت خرید قسطی = پیش‌پرداخت + اقساط
-    extra = down ? ' (پیش‌پرداخت ' + fmtShort(down) + ' + ' : ' (';
+    extra = down ? ' (' + tr('پیش‌پرداخت') + ' ' + fmtShort(down) + ' + ' : ' (';
     extra += toFa(count) + ' × ' + fmtShort(per) + ')';
     const cash = v('plCash');
     if (cash > 0 && principal > cash) markup = principal - cash;
@@ -376,11 +377,11 @@ export function plRecalc(fromRate) {
   const eff = F.kind === 'loan' && principal > 0 && yrs > 0 ? (interest / principal / yrs) * 100 : 0;
   const total = principal + interest;
   box.innerHTML =
-    `کل بازپرداخت: <b>${fmt(total)}</b>${extra}` +
-    (interest ? `<br>از این مبلغ <b style="color:var(--orange)">${fmt(interest)}</b> سود است${eff ? ' (≈ ' + toFa(eff.toFixed(1).replace('.0', '')) + '٪ در سال).' : ''}` : '') +
-    (markup ? `<br>نسبت به نقدی <b style="color:var(--orange)">${fmt(markup)}</b> بیشتر می‌پردازی.` : '') +
-    (F.kind === 'loan' && principal0 > 0 && Math.abs(principal - principal0) > count ? `<br><span style="color:var(--orange)">جمع اصلِ اقساط (${fmtShort(principal)}) با مبلغ وام (${fmtShort(principal0)}) یکی نیست؛ اگر عمدی نیست مبلغ قسط را چک کن.</span>` : '') +
-    (pre > 0 ? `<br>${toFa(pre)} قسط اول پرداخت‌شده تیک می‌خورد؛ ماندهٔ فعلی ≈ <b>${fmt(Math.max(0, total - pre * per))}</b>.` : '');
+    `${tr('کل بازپرداخت:')} <b>${fmt(total)}</b>${extra}` +
+    (interest ? `<br>${tr('از این مبلغ {a} سود است', { a: '<b style="color:var(--orange)">' + fmt(interest) + '</b>' })}${eff ? ' (≈ ' + toFa(eff.toFixed(1).replace('.0', '')) + tr('٪ در سال') + ')' : ''}` : '') +
+    (markup ? `<br>${tr('نسبت به نقدی {a} بیشتر می‌پردازی.', { a: '<b style="color:var(--orange)">' + fmt(markup) + '</b>' })}` : '') +
+    (F.kind === 'loan' && principal0 > 0 && Math.abs(principal - principal0) > count ? `<br><span style="color:var(--orange)">${tr('جمع اصلِ اقساط ({a}) با مبلغ وام ({b}) یکی نیست؛ اگر عمدی نیست مبلغ قسط را چک کن.', { a: fmtShort(principal), b: fmtShort(principal0) })}</span>` : '') +
+    (pre > 0 ? `<br>${toFa(pre)} ${tr('قسط اول پرداخت‌شده تیک می‌خورد؛ ماندهٔ فعلی')} ≈ <b>${fmt(Math.max(0, total - pre * per))}</b>.` : '');
   const dh = document.getElementById('plDisburseHint');
   const da = document.getElementById('plDisburseAcc');
   if (dh && da) {
@@ -388,13 +389,13 @@ export function plRecalc(fromRate) {
     const warn = !!da.value && old;
     dh.style.display = warn ? '' : 'none';
     dh.style.color = warn ? 'var(--red)' : '';
-    dh.textContent = warn ? 'توجه: این وام مربوط به گذشته است؛ با انتخاب حساب، مبلغ وام دوباره به موجودی اضافه می‌شود. اگر پول از قبل در حسابت هست «ثبت نشود» را انتخاب کن.' : '';
+    dh.textContent = warn ? tr('توجه: این وام مربوط به گذشته است؛ با انتخاب حساب، مبلغ وام دوباره به موجودی اضافه می‌شود. اگر پول از قبل در حسابت هست «ثبت نشود» را انتخاب کن.') : '';
   }
 }
 
 export function savePlan() {
   const title = (document.getElementById('plTitle').value || '').trim();
-  if (!title) return toast('عنوان را بنویس');
+  if (!title) return toast(tr('عنوان را بنویس'));
   const accountId = document.getElementById('plAcc').value;
   const cat = document.getElementById('plCat').value;
   const note = (document.getElementById('plNote').value || '').trim();
@@ -413,14 +414,14 @@ export function savePlan() {
     save();
     closeModal();
     render();
-    toast('ذخیره شد');
+    toast(tr('ذخیره شد'));
     return;
   }
 
   const count = v('plCount');
   const per = v('plPer');
-  if (!count || count > 600) return toast('مدت را به ماه وارد کن');
-  if (!per) return toast('مبلغ هر قسط را بنویس');
+  if (!count || count > 600) return toast(tr('مدت را به ماه وارد کن'));
+  if (!per) return toast(tr('مبلغ هر قسط را بنویس'));
   const kind = F.kind;
   const p = { id: uid(), kind, mode: F.mode, title, accountId, cat, note, createdISO: todayISO(), updatedAt: stamp, rows: [] };
   if (kind === 'loan') p.rate = v('plRate') || 0;
@@ -466,7 +467,7 @@ export function savePlan() {
   closeModal();
   render();
   haptic(10);
-  toast('طرح اقساط ساخته شد ✓');
+  toast((tr('طرح اقساط ساخته شد') + ' ✓'));
   openPlanDetail(p.id);
 }
 
@@ -474,14 +475,14 @@ export function delPlan(id) {
   const p = findPlan(id);
   if (!p) return;
   const linked = (p.rows || []).some((r) => r.txId) || p.disburseTxId;
-  askConfirm(linked ? 'این طرح و همهٔ تراکنش‌های وصل‌شده (واریز و اقساط) حذف شود؟' : 'این طرح حذف شود؟', () => {
+  askConfirm(linked ? tr('این طرح و همهٔ تراکنش‌های وصل‌شده (واریز و اقساط) حذف شود؟') : tr('این طرح حذف شود؟'), () => {
     removeTx(p.disburseTxId);
     for (const r of p.rows || []) removeTx(r.txId);
     state.installments = allPlans().filter((x) => x.id !== id);
     save();
     closeModal();
     render();
-    toast('حذف شد');
+    toast(tr('حذف شد'));
   });
 }
 
@@ -498,7 +499,7 @@ export function payRow(planId, rowId, opts) {
   save();
   render();
   haptic(10);
-  toast(rowLabel(p, r) + ' پرداخت شد ✓');
+  toast(rowLabel(p, r) + (' ' + tr('پرداخت شد') + ' ✓'));
   if (document.getElementById('plDetail')) openPlanDetail(planId);
 }
 export function unpayRow(planId, rowId) {
@@ -511,7 +512,7 @@ export function unpayRow(planId, rowId) {
   p.updatedAt = Date.now();
   save();
   render();
-  toast('پرداخت لغو شد');
+  toast(tr('پرداخت لغو شد'));
   openPlanDetail(planId);
 }
 
@@ -522,14 +523,14 @@ export function openPayRow(planId, rowId) {
   if (!r) return;
   const acc = r.accountId || p.accountId;
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${rowLabel(p, r)}</h2>
-    <div class="stat" style="margin-bottom:12px"><div class="lbl">مبلغ پرداخت</div><div class="val">${fmt(rowTotal(r))} <span class="small muted">تومان</span></div>
-      ${r.interest || r.penalty ? `<div class="sub">اصل ${fmt(r.amount)}${r.interest ? ' + سود ' + fmt(r.interest) : ''}${r.penalty ? ' + جریمه ' + fmt(r.penalty) : ''}</div>` : ''}</div>
-    <div class="field"><label>از کدام حساب؟</label><select class="input" id="prAcc">${accountOptGroups(acc)}</select></div>
-    <div class="field"><label>تاریخ پرداخت</label><input class="input" id="prDate" type="date" value="${todayISO()}"></div>
-    <div class="field"><label>جریمهٔ دیرکرد (اختیاری)</label><input class="input" id="prPenalty" type="number" inputmode="numeric" value="${r.penalty || ''}" placeholder="0"></div>
-    <button class="btn primary block" onclick="confirmPayRow('${p.id}','${r.id}')">${icon('check')} ثبت پرداخت</button>
+    <div class="stat" style="margin-bottom:12px"><div class="lbl">${tr('مبلغ پرداخت')}</div><div class="val">${fmt(rowTotal(r))} <span class="small muted">${curName(baseCur())}</span></div>
+      ${r.interest || r.penalty ? `<div class="sub">${tr('اصل')} ${fmt(r.amount)}${r.interest ? (' + ' + tr('سود') + ' ') + fmt(r.interest) : ''}${r.penalty ? (' + ' + tr('جریمه') + ' ') + fmt(r.penalty) : ''}</div>` : ''}</div>
+    <div class="field"><label>${tr('از کدام حساب؟')}</label><select class="input" id="prAcc">${accountOptGroups(acc)}</select></div>
+    <div class="field"><label>${tr('تاریخ پرداخت')}</label><input class="input" id="prDate" type="date" value="${todayISO()}"></div>
+    <div class="field"><label>${tr('جریمهٔ دیرکرد (اختیاری)')}</label><input class="input" id="prPenalty" type="number" inputmode="numeric" value="${r.penalty || ''}" placeholder="0"></div>
+    <button class="btn primary block" onclick="confirmPayRow('${p.id}','${r.id}')">${icon('check')} ${tr('ثبت پرداخت')}</button>
   `);
 }
 export function confirmPayRow(planId, rowId) {
@@ -546,24 +547,24 @@ export function openRowEdit(planId, rowId) {
   const p = findPlan(planId);
   const r = rowId ? (p.rows || []).find((x) => x.id === rowId) : null;
   openModal(`
-    <button class="x" onclick="openPlanDetail('${planId}')" aria-label="بستن">${icon('x')}</button>
-    <h2>${r ? 'ویرایش ردیف' : 'ردیف جدید'}</h2>
-    <div class="field"><label>نوع</label>
+    <button class="x" onclick="openPlanDetail('${planId}')" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${r ? tr('ویرایش ردیف') : tr('ردیف جدید')}</h2>
+    <div class="field"><label>${tr('نوع')}</label>
       <select class="input" id="rwKind">
-        <option value="pay" ${!r || r.kind === 'pay' ? 'selected' : ''}>قسط</option>
-        <option value="interest" ${r && r.kind === 'interest' ? 'selected' : ''}>سود (جداگانه)</option>
-        <option value="down" ${r && r.kind === 'down' ? 'selected' : ''}>پیش‌پرداخت</option>
+        <option value="pay" ${!r || r.kind === 'pay' ? 'selected' : ''}>${tr('قسط')}</option>
+        <option value="interest" ${r && r.kind === 'interest' ? 'selected' : ''}>${tr('سود (جداگانه)')}</option>
+        <option value="down" ${r && r.kind === 'down' ? 'selected' : ''}>${tr('پیش‌پرداخت')}</option>
       </select></div>
     <div class="row">
-      <div class="col field"><label>اصل</label><input class="input" id="rwAmount" type="number" inputmode="numeric" value="${r ? r.amount || '' : ''}"></div>
-      <div class="col field"><label>سود</label><input class="input" id="rwInterest" type="number" inputmode="numeric" value="${r ? r.interest || '' : ''}"></div>
-      <div class="col field"><label>جریمه</label><input class="input" id="rwPenalty" type="number" inputmode="numeric" value="${r ? r.penalty || '' : ''}"></div>
+      <div class="col field"><label>${tr('اصل')}</label><input class="input" id="rwAmount" type="number" inputmode="numeric" value="${r ? r.amount || '' : ''}"></div>
+      <div class="col field"><label>${tr('سود')}</label><input class="input" id="rwInterest" type="number" inputmode="numeric" value="${r ? r.interest || '' : ''}"></div>
+      <div class="col field"><label>${tr('جریمه')}</label><input class="input" id="rwPenalty" type="number" inputmode="numeric" value="${r ? r.penalty || '' : ''}"></div>
     </div>
-    <div class="field"><label>سررسید</label><input class="input" id="rwDue" type="date" value="${r ? r.dueISO : todayISO()}"></div>
-    <div class="field"><label>تاریخ پرداخت (خالی = پرداخت نشده)</label><input class="input" id="rwPaid" type="date" value="${r && r.paidISO ? r.paidISO : ''}"></div>
-    <div class="field"><label>حساب پرداخت</label><select class="input" id="rwAcc">${accountOptGroups(r ? r.accountId || p.accountId : p.accountId)}</select></div>
-    <button class="btn primary block" onclick="saveRow('${planId}','${r ? r.id : ''}')">ذخیره</button>
-    ${r ? `<button class="btn danger block" style="margin-top:8px" onclick="delRow('${planId}','${r.id}')">حذف این ردیف</button>` : ''}
+    <div class="field"><label>${tr('سررسید')}</label><input class="input" id="rwDue" type="date" value="${r ? r.dueISO : todayISO()}"></div>
+    <div class="field"><label>${tr('تاریخ پرداخت (خالی = پرداخت نشده)')}</label><input class="input" id="rwPaid" type="date" value="${r && r.paidISO ? r.paidISO : ''}"></div>
+    <div class="field"><label>${tr('حساب پرداخت')}</label><select class="input" id="rwAcc">${accountOptGroups(r ? r.accountId || p.accountId : p.accountId)}</select></div>
+    <button class="btn primary block" onclick="saveRow('${planId}','${r ? r.id : ''}')">${tr('ذخیره')}</button>
+    ${r ? `<button class="btn danger block" style="margin-top:8px" onclick="delRow('${planId}','${r.id}')">${tr('حذف این ردیف')}</button>` : ''}
   `);
 }
 export function saveRow(planId, rowId) {
@@ -587,7 +588,7 @@ export function saveRow(planId, rowId) {
   p.updatedAt = Date.now();
   save();
   render();
-  toast('ذخیره شد');
+  toast(tr('ذخیره شد'));
   openPlanDetail(planId);
 }
 export function delRow(planId, rowId) {
@@ -617,15 +618,15 @@ export function openPlanDetail(id) {
       const n = daysUntil(r.dueISO);
       const late = !r.paidISO && n < 0;
       const soon = !r.paidISO && n >= 0 && n <= 3;
-      const lbl = r.kind === 'down' ? 'پیش‌پرداخت' : r.kind === 'interest' ? 'سود دوره' : 'قسط ' + toFa(payN);
+      const lbl = r.kind === 'down' ? tr('پیش‌پرداخت') : r.kind === 'interest' ? tr('سود دوره') : (tr('قسط') + ' ') + toFa(payN);
       const sub = r.paidISO
-        ? 'پرداخت شد ' + fmtDate(r.paidISO) + (r.noTx ? ' · بدون تراکنش' : '')
+        ? (tr('پرداخت شد') + ' ') + fmtDate(r.paidISO) + (r.noTx ? (' · ' + tr('بدون تراکنش')) : '')
         : late
-          ? '<span style="color:var(--red)">عقب‌افتاده · ' + fmtDate(r.dueISO) + '</span>'
-          : (soon ? '<span style="color:var(--orange)">' : '') + 'سررسید ' + fmtDate(r.dueISO) + (soon ? '</span>' : '');
+          ? ('<span style="color:var(--red)">' + tr('عقب‌افتاده') + ' · ') + fmtDate(r.dueISO) + '</span>'
+          : (soon ? '<span style="color:var(--orange)">' : '') + (tr('سررسید') + ' ') + fmtDate(r.dueISO) + (soon ? '</span>' : '');
       const parts = [];
-      if (r.interest) parts.push('سود ' + fmtShort(r.interest));
-      if (r.penalty) parts.push('جریمه ' + fmtShort(r.penalty));
+      if (r.interest) parts.push((tr('سود') + ' ') + fmtShort(r.interest));
+      if (r.penalty) parts.push((tr('جریمه') + ' ') + fmtShort(r.penalty));
       return `<div class="item" style="min-height:56px;${r.paidISO ? 'opacity:.7' : ''}">
         <div class="ic" style="background:${r.paidISO ? 'var(--green-soft)' : late ? 'var(--red-soft)' : 'var(--card2)'};color:${r.paidISO ? 'var(--green)' : late ? 'var(--red)' : 'var(--muted)'}">${icon(r.paidISO ? 'check' : r.kind === 'interest' ? 'coin' : 'calendar')}</div>
         <div class="mid" onclick="openRowEdit('${p.id}','${r.id}')">
@@ -635,27 +636,27 @@ export function openPlanDetail(id) {
         <div class="amt-col">
           <div class="amt ${r.paidISO ? '' : 'out'}">${fmt(rowTotal(r))}</div>
           ${r.paidISO
-            ? `<button class="btn sm" style="margin-top:4px" onclick="unpayRow('${p.id}','${r.id}')">لغو</button>`
-            : `<button class="btn sm primary" style="margin-top:4px" onclick="openPayRow('${p.id}','${r.id}')">پرداخت</button>`}
+            ? `<button class="btn sm" style="margin-top:4px" onclick="unpayRow('${p.id}','${r.id}')">${tr('لغو')}</button>`
+            : `<button class="btn sm primary" style="margin-top:4px" onclick="openPayRow('${p.id}','${r.id}')">${tr('پرداخت')}</button>`}
         </div>
       </div>`;
     })
     .join('');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <div id="plDetail">
-    <h2>${esc(p.title)} <span class="badge">${p.kind === 'loan' ? 'وام' : 'خرید قسطی'}</span></h2>
+    <h2>${esc(p.title)} <span class="badge">${p.kind === 'loan' ? tr('وام') : tr('خرید قسطی')}</span></h2>
     <div class="grid2" style="margin-bottom:10px">
-      <div class="stat"><div class="lbl">مانده</div><div class="val red">${fmtShort(st.remain)}</div></div>
-      <div class="stat"><div class="lbl">پرداختی</div><div class="val green">${fmtShort(st.paidSum)}</div></div>
+      <div class="stat"><div class="lbl">${tr('مانده')}</div><div class="val red">${fmtShort(st.remain)}</div></div>
+      <div class="stat"><div class="lbl">${tr('پرداختی')}</div><div class="val green">${fmtShort(st.paidSum)}</div></div>
     </div>
     <div class="pbar" style="margin:4px 0 6px"><div style="width:${pct}%"></div></div>
-    <div class="small muted" style="display:flex;justify-content:space-between;margin-bottom:12px"><span>${toFa(st.paid.length)} از ${toFa(st.rows.length)} قسط</span>${st.interestAll ? `<span>سود ${fmtShort(st.interestPaid)} از ${fmtShort(st.interestAll)}</span>` : ''}<span>${toFa(pct)}٪</span></div>
+    <div class="small muted" style="display:flex;justify-content:space-between;margin-bottom:12px"><span>${tr('{a} از {b} قسط', { a: toFa(st.paid.length), b: toFa(st.rows.length) })}</span>${st.interestAll ? `<span>${tr('سود')} ${fmtShort(st.interestPaid)} ${tr('از')} ${fmtShort(st.interestAll)}</span>` : ''}<span>${toFa(pct)}${'٪'}</span></div>
     <div class="row" style="margin-bottom:12px">
-      <button class="btn sm" style="flex:1" onclick="openRowEdit('${p.id}','')">${icon('plus')} ردیف</button>
-      <button class="btn sm" style="flex:1" onclick="openPlanForm(findPlan('${p.id}'))">${icon('edit')} مشخصات</button>
+      <button class="btn sm" style="flex:1" onclick="openRowEdit('${p.id}','')">${icon('plus')} ${tr('ردیف')}</button>
+      <button class="btn sm" style="flex:1" onclick="openPlanForm(findPlan('${p.id}'))">${icon('edit')} ${tr('مشخصات')}</button>
     </div>
-    <div style="max-height:52vh;overflow:auto">${rows || '<div class="empty">ردیفی نیست.</div>'}</div>
+    <div style="max-height:52vh;overflow:auto">${rows || ('<div class="empty">' + tr('ردیفی نیست.') + '</div>')}</div>
     </div>
   `);
 }
@@ -669,12 +670,12 @@ function planCard(p) {
   const late = !st.done && n !== null && n < 0;
   const soon = !st.done && n !== null && n >= 0 && n <= 7;
   const when = st.done
-    ? 'تسویه شد'
+    ? tr('تسویه شد')
     : nxt
-      ? n < 0 ? toFa(-n) + ' روز عقب‌افتاده' : n === 0 ? 'امروز' : n <= 7 ? toFa(n) + ' روز دیگر' : fmtDate(nxt.dueISO)
+      ? n < 0 ? toFa(-n) + (' ' + tr('روز عقب‌افتاده')) : n === 0 ? tr('امروز') : n <= 7 ? toFa(n) + (' ' + tr('روز دیگر')) : fmtDate(nxt.dueISO)
       : '';
-  const t2 = [p.kind === 'loan' ? 'وام' : 'خرید قسطی', toFa(st.paid.length) + ' از ' + toFa(st.rows.length)]
-    .concat(nxt && !st.done ? ['قسط بعدی ' + fmtShort(rowTotal(nxt))] : [])
+  const t2 = [p.kind === 'loan' ? tr('وام') : tr('خرید قسطی'), tr('{a} از {b}', { a: toFa(st.paid.length), b: toFa(st.rows.length) })]
+    .concat(nxt && !st.done ? [(tr('قسط بعدی') + ' ') + fmtShort(rowTotal(nxt))] : [])
     .join(' · ');
   return `
     <div class="item" style="${st.done ? 'opacity:.62' : ''}">
@@ -686,12 +687,12 @@ function planCard(p) {
       </div>
       <div class="amt-col">
         <div class="amt ${st.done ? '' : 'out'}">${st.done ? fmtShort(st.total) : fmtShort(st.remain)}</div>
-        <div class="bal">${st.done ? 'پرداخت‌شده' : 'مانده'}</div>
-        ${nxt && !st.done && n <= 7 ? `<button class="btn sm ${late ? 'primary' : ''}" style="margin-top:6px" onclick="openPayRow('${p.id}','${nxt.id}')">پرداخت</button>` : `<button class="btn sm" style="margin-top:6px" onclick="openPlanDetail('${p.id}')">جزئیات</button>`}
+        <div class="bal">${st.done ? tr('پرداخت‌شده') : tr('مانده')}</div>
+        ${nxt && !st.done && n <= 7 ? `<button class="btn sm ${late ? 'primary' : ''}" style="margin-top:6px" onclick="openPayRow('${p.id}','${nxt.id}')">${tr('پرداخت')}</button>` : `<button class="btn sm" style="margin-top:6px" onclick="openPlanDetail('${p.id}')">${tr('جزئیات')}</button>`}
       </div>
     </div>
     ${late ? '<div class="small" style="color:var(--red);margin:-4px 0 10px 52px">' + when + '</div>' : ''}
-    ${soon ? '<div class="small" style="color:var(--orange);margin:-4px 0 10px 52px">سررسید ' + when + '</div>' : ''}`;
+    ${soon ? ('<div class="small" style="color:var(--orange);margin:-4px 0 10px 52px">' + tr('سررسید') + ' ') + when + '</div>' : ''}`;
 }
 
 export function renderInstallments() {
@@ -707,14 +708,14 @@ export function renderInstallments() {
   let html = '';
   if (plans.length) {
     html += `<div class="hero">
-      <div style="min-width:0"><div class="lbl">${icon('calendar')} ماندهٔ اقساط</div>
+      <div style="min-width:0"><div class="lbl">${icon('calendar')} ${tr('ماندهٔ اقساط')}</div>
       <div class="hero-num">${fmtShort(remain)}</div>
-      <div class="sub">پرداختی ${fmtShort(paidAll)}</div></div>
+      <div class="sub">${tr('پرداختی')} ${fmtShort(paidAll)}</div></div>
       <span class="ib lg ${overdueInstallments() ? 'red' : ''}">${icon('calendar')}</span>
     </div>`;
     html += plans.map(planCard).join('');
   } else {
-    html += `<div class="empty"><span class="ib lg muted">${icon('calendar')}</span>وام یا خرید قسطی ثبت نکرده‌ای.<br>با دکمهٔ + بالا یا پایین صفحه شروع کن.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('calendar')}</span>${tr('وام یا خرید قسطی ثبت نکرده‌ای.')}<br>${tr('با دکمهٔ + بالا یا پایین صفحه شروع کن.')}</div>`;
   }
   box.innerHTML = html;
 }
@@ -727,9 +728,9 @@ export function installmentsSection() {
   });
   const remain = totalRemaining();
   return `<div class="divider"></div>
-    <div class="card-head"><h3>${icon('calendar')} اقساط</h3>${plans.length ? `<span class="small muted">ماندهٔ کل ${fmtShort(remain)}</span>` : ''}</div>
-    ${plans.length ? plans.map(planCard).join('') : `<div class="empty" style="padding:var(--sp-4)">وام یا خرید قسطی نداری.</div>`}
-    <button class="btn block" style="margin-bottom:12px" onclick="openPlanForm()">${icon('plus')} وام / خرید قسطی جدید</button>`;
+    <div class="card-head"><h3>${icon('calendar')} ${tr('اقساط')}</h3>${plans.length ? `<span class="small muted">${tr('ماندهٔ کل')} ${fmtShort(remain)}</span>` : ''}</div>
+    ${plans.length ? plans.map(planCard).join('') : `<div class="empty" style="padding:var(--sp-4)">${tr('وام یا خرید قسطی نداری.')}</div>`}
+    <button class="btn block" style="margin-bottom:12px" onclick="openPlanForm()">${icon('plus')} ${tr('وام / خرید قسطی جدید')}</button>`;
 }
 
 // ── کارت یادآوری خانه ──
@@ -744,12 +745,12 @@ export function installmentHomeCard() {
       <span class="ib ${lateN ? 'red' : 'orange'}">${icon('bell')}</span>
       <div style="flex:1;min-width:0">
         <div class="t1">${rowLabel(first.plan, first.row)} · ${fmtShort(rowTotal(first.row))}</div>
-        <div class="t2">${first.days < 0 ? '<span style="color:var(--red)">' + toFa(-first.days) + ' روز عقب‌افتاده</span>' : first.days === 0 ? 'امروز سررسید است' : toFa(first.days) + ' روز دیگر'}${more ? ' · ' + toFa(more) + ' مورد دیگر' : ''}</div>
+        <div class="t2">${first.days < 0 ? '<span style="color:var(--red)">' + toFa(-first.days) + (' ' + tr('روز عقب‌افتاده') + '</span>') : first.days === 0 ? tr('امروز سررسید است') : toFa(first.days) + (' ' + tr('روز دیگر'))}${more ? ' · ' + toFa(more) + (' ' + tr('مورد دیگر')) : ''}</div>
       </div>
     </div>
     <div class="row" style="margin-top:var(--sp-3)">
-      <button class="btn sm primary" style="flex:1" onclick="openPayRow('${first.plan.id}','${first.row.id}')">${icon('check')} پرداخت شد</button>
-      <button class="btn sm" style="flex:1" onclick="switchTab('debts')">${more ? 'همه' : 'جزئیات'}</button>
+      <button class="btn sm primary" style="flex:1" onclick="openPayRow('${first.plan.id}','${first.row.id}')">${icon('check')} ${tr('پرداخت شد')}</button>
+      <button class="btn sm" style="flex:1" onclick="switchTab('debts')">${more ? tr('همه') : tr('جزئیات')}</button>
     </div>
   </div>`;
 }

@@ -1,7 +1,8 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
-import { jalaliNow, monthOfISO, MONTHS, fmtDate, monthLabel, curMonthKey } from './jalali.js';
+import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey } from './jalali.js';
+import { jalaliMonths } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import {
@@ -12,6 +13,7 @@ import {
   accountCurrent,
   addCustomCurrency,
   allCurrencies,
+  curName,
   catById,
   loanFlow,
   catCeiling,
@@ -26,6 +28,7 @@ import {
   accountGroups,
   accountOptGroups,
   institutionOf, baseCur } from './state.js';
+import { t as tr } from './i18n.js';
 
 const LAST_ACCT_KEY = 'capital_last_account';
 
@@ -45,8 +48,8 @@ const CUSTOM_CUR = '__custom__';
 function currencyOptions(selected) {
   return (
     allCurrencies()
-      .map((c) => `<option value="${esc(c)}" ${c === selected ? 'selected' : ''}>${esc(c)}</option>`)
-      .join('') + `<option value="${CUSTOM_CUR}">سایر (افزودن دستی…)</option>`
+      .map((c) => `<option value="${esc(c)}" ${c === selected ? 'selected' : ''}>${esc(curName(c))}</option>`)
+      .join('') + `<option value="${CUSTOM_CUR}">${tr('سایر (افزودن دستی…)')}</option>`
   );
 }
 
@@ -106,7 +109,7 @@ export function openTxForm(tx, opts) {
   }
   if (tx && tx.planId) {
     import('./installments.js').then((m) => m.openPlanDetail(tx.planId));
-    toast('این تراکنش از بخش اقساط ساخته شده؛ همان‌جا ویرایشش کن');
+    toast(tr('این تراکنش از بخش اقساط ساخته شده؛ همان‌جا ویرایشش کن'));
     return;
   }
   if (tx && tx.debtId) {
@@ -114,16 +117,16 @@ export function openTxForm(tx, opts) {
     const d = (state.debts || []).find((x) => x.id === tx.debtId);
     if (d) {
       import('./debts.js').then((m) => m.openDebtForm(d));
-      toast('این تراکنش از بخش طلب/بدهی ساخته شده؛ همان‌جا ویرایشش کن');
+      toast(tr('این تراکنش از بخش طلب/بدهی ساخته شده؛ همان‌جا ویرایشش کن'));
       return;
     }
   }
 
   if (state.accounts.length === 0) {
     openModal(`
-      <h2>ابتدا یک حساب بساز</h2>
-      <div class="empty"><span class="ib lg muted">${icon('card')}</span>برای ثبت تراکنش باید حداقل یک حساب یا کارت تعریف کنی.</div>
-      <button class="btn primary block" onclick="closeModal();switchTab('accounts');openAccountForm()">ساخت حساب</button>`);
+      <h2>${tr('ابتدا یک حساب بساز')}</h2>
+      <div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('برای ثبت تراکنش باید حداقل یک حساب یا کارت تعریف کنی.')}</div>
+      <button class="btn primary block" onclick="closeModal();switchTab('accounts');openAccountForm()">${tr('ساخت حساب')}</button>`);
     return;
   }
   // تراکنش جدید → فرم سریع دو مرحله‌ای (مگر اینکه فرم کامل خواسته شده باشد)
@@ -149,68 +152,68 @@ export function openTxForm(tx, opts) {
   const showReflect = !!(defaultCat === 'waste' && type === 'out' && txMode === 'simple');
 
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${isEdit ? (txMode === 'invoice' ? 'ویرایش فاکتور' : 'ویرایش تراکنش') : 'تراکنش جدید'}</h2>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${isEdit ? (txMode === 'invoice' ? tr('ویرایش فاکتور') : tr('ویرایش تراکنش')) : tr('تراکنش جدید')}</h2>
     <div class="seg" id="txTypeSeg" style="margin-bottom:10px">
-      <button class="${type === 'out' ? 'on out' : ''}" data-t="out" onclick="setTxType(this)">خرج −</button>
-      <button class="${type === 'in' ? 'on' : ''}" data-t="in" onclick="setTxType(this)">درآمد +</button>
+      <button class="${type === 'out' ? 'on out' : ''}" data-t="out" onclick="setTxType(this)">${tr('خرج')} −</button>
+      <button class="${type === 'in' ? 'on' : ''}" data-t="in" onclick="setTxType(this)">${tr('درآمد +')}</button>
     </div>
     <div class="seg" id="txModeSeg" style="margin-bottom:14px;${type === 'in' ? 'display:none' : ''}">
-      <button class="${txMode === 'simple' ? 'on' : ''}" data-m="simple" onclick="setTxMode(this)">خرج ساده</button>
-      <button class="${txMode === 'invoice' ? 'on' : ''}" data-m="invoice" onclick="setTxMode(this)">فاکتور</button>
+      <button class="${txMode === 'simple' ? 'on' : ''}" data-m="simple" onclick="setTxMode(this)">${tr('خرج ساده')}</button>
+      <button class="${txMode === 'invoice' ? 'on' : ''}" data-m="invoice" onclick="setTxMode(this)">${tr('فاکتور')}</button>
     </div>
     <div id="txScanWrap" style="${isEdit ? 'display:none' : ''}">
       <input id="invPhotoCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onInvoicePhoto(this)">
       <input id="invPhotoGal" type="file" accept="image/*" style="display:none" onchange="onInvoicePhoto(this)">
       <div class="row" id="txInvScanRow" style="margin-bottom:8px;${type === 'in' ? 'display:none' : ''}">
-        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('cam')">${icon('camera')} عکس فاکتور</button>
-        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('gal')">${icon('folder')} فاکتور از گالری</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('cam')">${icon('camera')} ${tr('عکس فاکتور')}</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('gal')">${icon('folder')} ${tr('فاکتور از گالری')}</button>
       </div>
-      <button type="button" class="btn block" style="margin-bottom:12px" onclick="openPaperScan()">${icon('scan')} لیست چند تراکنش از عکس کاغذ</button>
+      <button type="button" class="btn block" style="margin-bottom:12px" onclick="openPaperScan()">${icon('scan')} ${tr('لیست چند تراکنش از عکس کاغذ')}</button>
     </div>
-    <div class="field"><label id="txAmountLbl">${txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ'} (${esc(amountCur)})</label>
-      <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 250000" value="${tx ? tx.amount : pre.amount || ''}" oninput="onTxAmountInput()">
+    <div class="field"><label id="txAmountLbl">${txMode === 'invoice' ? tr('مبلغ کل فاکتور') : tr('مبلغ')} (${esc(curName(amountCur))})</label>
+      <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 250000')}" value="${tx ? tx.amount : pre.amount || ''}" oninput="onTxAmountInput()">
     </div>
     <div id="txUnitWrap" style="${txMode === 'invoice' ? 'display:none' : ''}">
       <div class="row">
-        <div class="col field"><label>قیمت واحد</label>
-          <input class="input" id="txUnitPrice" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 80000" value="${tx && tx.unitPrice ? tx.unitPrice : ''}" oninput="syncTxUnitTotal()">
+        <div class="col field"><label>${tr('قیمت واحد')}</label>
+          <input class="input" id="txUnitPrice" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 80000')}" value="${tx && tx.unitPrice ? tx.unitPrice : ''}" oninput="syncTxUnitTotal()">
         </div>
-        <div class="col field"><label>مقدار</label>
-          <input class="input" id="txQty" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً ۲.۵" value="${tx && tx.qty ? tx.qty : ''}" oninput="syncTxUnitTotal()">
+        <div class="col field"><label>${tr('مقدار')}</label>
+          <input class="input" id="txQty" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً ۲.۵')}" value="${tx && tx.qty ? tx.qty : ''}" oninput="syncTxUnitTotal()">
         </div>
       </div>
-      <div class="field"><label>واحد (اختیاری)</label>
-        <input class="input" id="txUnit" placeholder="عدد / کیلو / گرم" value="${tx && tx.unit ? esc(tx.unit) : ''}">
+      <div class="field"><label>${tr('واحد (اختیاری)')}</label>
+        <input class="input" id="txUnit" placeholder="${tr('عدد / کیلو / گرم')}" value="${tx && tx.unit ? esc(tx.unit) : ''}">
       </div>
     </div>
-    <div class="field"><label>از کدام حساب؟</label>
+    <div class="field"><label>${tr('از کدام حساب؟')}</label>
       <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
     </div>
     <div class="field" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
-      <label>دسته‌بندی خرج</label>
+      <label>${tr('دسته‌بندی خرج')}</label>
       <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
     </div>
     <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
-      <label>اگر این خرج را نمی‌کردی، چه می‌شد؟</label>
-      <textarea class="input" id="txReflect" placeholder="مثلاً: می‌توانستم همان پول را پس‌انداز کنم...">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
+      <label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
+      <textarea class="input" id="txReflect" placeholder="${tr('مثلاً: می‌توانستم همان پول را پس‌انداز کنم...')}">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
     </div>
     <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
       <div id="txLines"></div>
       <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
       <div class="row" style="margin-bottom:12px">
-        <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">${icon('plus')} قلم</button>
-        <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">مانده را «سایر» کن</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">${icon('plus')} ${tr('قلم')}</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">${tr('مانده را «سایر» کن')}</button>
       </div>
     </div>
-    <div class="field"><label>توضیح (اختیاری)</label>
-      <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? 'مثلاً: فروشگاه رفاه' : 'مثلاً: خرید هفتگی'}" value="${tx ? esc(tx.note || '') : esc(pre.note || '')}">
+    <div class="field"><label>${tr('توضیح (اختیاری)')}</label>
+      <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? tr('مثلاً: فروشگاه رفاه') : tr('مثلاً: خرید هفتگی')}" value="${tx ? esc(tx.note || '') : esc(pre.note || '')}">
     </div>
-    <div class="field"><label>تاریخ</label>
+    <div class="field"><label>${tr('تاریخ')}</label>
       <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
     </div>
-    <button class="btn primary block" onclick="saveTx()">${isEdit ? 'ذخیره تغییرات' : 'ثبت'}</button>
-    ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? 'حذف این فاکتور' : 'حذف این تراکنش'}</button>` : ''}
+    <button class="btn primary block" onclick="saveTx()">${isEdit ? tr('ذخیره تغییرات') : tr('ثبت')}</button>
+    ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? tr('حذف این فاکتور') : tr('حذف این تراکنش')}</button>` : ''}
   `);
   if (txMode === 'invoice') {
     if (!draftLines.length) addTxLine(presetCat || 'need');
@@ -225,7 +228,7 @@ export function syncTxAmountLabel() {
   const lbl = document.getElementById('txAmountLbl');
   if (!lbl) return;
   const cur = a ? a.currency : baseCur();
-  lbl.textContent = (txMode === 'invoice' ? 'مبلغ کل فاکتور' : 'مبلغ') + ' (' + cur + ')';
+  lbl.textContent = (txMode === 'invoice' ? tr('مبلغ کل فاکتور') : tr('مبلغ')) + ' (' + curName(cur) + ')';
   ['txAmount', 'txUnitPrice'].forEach((id) => {
     const inp = document.getElementById(id);
     if (inp) {
@@ -341,25 +344,25 @@ function updateInvoiceRemain() {
   const sum = lineSum();
   const rem = total - sum;
   if (!total) {
-    box.innerHTML = 'اول مبلغ کل فاکتور را بنویس.';
+    box.innerHTML = tr('اول مبلغ کل فاکتور را بنویس.');
     return;
   }
   if (nearlyZero(rem)) {
-    box.innerHTML = '<b style="color:var(--green)">جمع اقلام با مبلغ کل یکی است ✓</b>';
+    box.innerHTML = ('<b style="color:var(--green)">' + tr('جمع اقلام با مبلغ کل یکی است') + ' ✓</b>');
     return;
   }
   if (rem > 0) {
-    box.innerHTML = 'مانده برای تخصیص: <b>' + fmt(rem) + '</b> — یا یک قلم دیگر بزن، یا «مانده را سایر کن».';
+    box.innerHTML = (tr('مانده برای تخصیص:') + ' <b>') + fmt(rem) + ('</b> — ' + tr('یا یک قلم دیگر بزن، یا «مانده را سایر کن».'));
     return;
   }
-  box.innerHTML = '<span style="color:var(--red)">جمع اقلام ' + fmt(sum) + ' از مبلغ کل ' + fmt(total) + ' بیشتر است.</span>';
+  box.innerHTML = '<span style="color:var(--red)">' + tr('جمع اقلام {a} از مبلغ کل {b} بیشتر است.', { a: fmt(sum), b: fmt(total) }) + '</span>';
 }
 
 export function renderTxLines() {
   const box = document.getElementById('txLines');
   if (!box) return;
   if (!draftLines.length) {
-    box.innerHTML = '<div class="small muted" style="margin-bottom:8px">هنوز قلمی نیست.</div>';
+    box.innerHTML = ('<div class="small muted" style="margin-bottom:8px">' + tr('هنوز قلمی نیست.') + '</div>');
     updateInvoiceRemain();
     return;
   }
@@ -371,29 +374,29 @@ export function renderTxLines() {
       l.amount = amt;
       const cat = l.cat || 'need';
       return `<div class="inv-line" data-id="${l.id}">
-        <div class="field" style="margin-bottom:8px"><label>نام قلم</label>
-          <input class="input" id="lnName_${l.id}" placeholder="مثلاً شیر" value="${esc(l.name || '')}" oninput="syncTxLine('${l.id}')">
+        <div class="field" style="margin-bottom:8px"><label>${tr('نام قلم')}</label>
+          <input class="input" id="lnName_${l.id}" placeholder="${tr('مثلاً شیر')}" value="${esc(l.name || '')}" oninput="syncTxLine('${l.id}')">
         </div>
         <div class="row">
-          <div class="col field"><label>قیمت واحد</label>
+          <div class="col field"><label>${tr('قیمت واحد')}</label>
             <input class="input" id="lnPrice_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.unitPrice || ''}" oninput="syncTxLine('${l.id}')">
           </div>
-          <div class="col field"><label>مقدار</label>
+          <div class="col field"><label>${tr('مقدار')}</label>
             <input class="input" id="lnQty_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.qty || ''}" oninput="syncTxLine('${l.id}')">
           </div>
         </div>
         <div class="row">
-          <div class="col field"><label>واحد</label>
-            <input class="input" id="lnUnit_${l.id}" placeholder="عدد / کیلو" value="${esc(l.unit || '')}" oninput="syncTxLine('${l.id}')">
+          <div class="col field"><label>${tr('واحد')}</label>
+            <input class="input" id="lnUnit_${l.id}" placeholder="${tr('عدد / کیلو')}" value="${esc(l.unit || '')}" oninput="syncTxLine('${l.id}')">
           </div>
-          <div class="col field"><label>مبلغ این قلم</label>
+          <div class="col field"><label>${tr('مبلغ این قلم')}</label>
             <div class="input" id="lnAmt_${l.id}" style="display:flex;align-items:center;font-weight:800">${fmt(amt)}</div>
           </div>
         </div>
-        <div class="field" style="margin-bottom:8px"><label>پاکت این قلم</label>
+        <div class="field" style="margin-bottom:8px"><label>${tr('پاکت این قلم')}</label>
           <div class="chips">${catChipsHtml(cat, 'setLineCat', l.id)}</div>
         </div>
-        <button type="button" class="btn sm danger block" onclick="removeTxLine('${l.id}')">حذف این قلم</button>
+        <button type="button" class="btn sm danger block" onclick="removeTxLine('${l.id}')">${tr('حذف این قلم')}</button>
       </div>`;
     })
     .join('');
@@ -457,7 +460,7 @@ export function setLineCat(btn, lineId) {
 
 export function startInvoicePhoto(kind) {
   if (!hasGeminiKey()) {
-    toast('اول در تنظیمات کلید عکس را بگذار');
+    toast(tr('اول در تنظیمات کلید عکس را بگذار'));
     return;
   }
   const id = kind === 'gal' ? 'invPhotoGal' : 'invPhotoCam';
@@ -481,27 +484,27 @@ function matchAccountId(name) {
 
 export function openPaperScan() {
   if (state.accounts.length === 0) {
-    toast('اول یک حساب بساز');
+    toast(tr('اول یک حساب بساز'));
     return;
   }
   if (!hasGeminiKey()) {
-    toast('اول در تنظیمات کلید عکس را بگذار');
+    toast(tr('اول در تنظیمات کلید عکس را بگذار'));
     return;
   }
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>ثبت از عکس کاغذ</h2>
-    <p class="small muted" style="margin-top:-6px">عکس کاغذ یا فیش بانک با دست‌نویس را بده. مستقیم ذخیره می‌شود؛ بعداً از لیست می‌توانی ویرایش کنی. اگر تومان نوشتی همان تومان است؛ مبلغ ریالِ فیش تقسیم بر ۱۰ می‌شود. هر جا «فاکتور» بنویسی یک فاکتور ثبت می‌شود.</p>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('ثبت از عکس کاغذ')}</h2>
+    <p class="small muted" style="margin-top:-6px">${tr('عکس کاغذ یا فیش بانک با دست‌نویس را بده. مستقیم ذخیره می‌شود؛ بعداً از لیست می‌توانی ویرایش کنی. اگر تومان نوشتی همان تومان است؛ مبلغ ریالِ فیش تقسیم بر ۱۰ می‌شود. هر جا «فاکتور» بنویسی یک فاکتور ثبت می‌شود.')}</p>
     <input id="paperCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onPaperPhoto(this)">
     <input id="paperGal" type="file" accept="image/*" style="display:none" onchange="onPaperPhoto(this)">
-    <button type="button" class="btn primary block" onclick="startPaperPhoto('cam')">${icon('camera')} عکس بگیر</button>
-    <button type="button" class="btn block" style="margin-top:8px" onclick="startPaperPhoto('gal')">${icon('folder')} از گالری انتخاب کن</button>
+    <button type="button" class="btn primary block" onclick="startPaperPhoto('cam')">${icon('camera')} ${tr('عکس بگیر')}</button>
+    <button type="button" class="btn block" style="margin-top:8px" onclick="startPaperPhoto('gal')">${icon('folder')} ${tr('از گالری انتخاب کن')}</button>
   `);
 }
 
 export function startPaperPhoto(kind) {
   if (!hasGeminiKey()) {
-    toast('اول در تنظیمات کلید عکس را بگذار');
+    toast(tr('اول در تنظیمات کلید عکس را بگذار'));
     return;
   }
   const id = kind === 'gal' ? 'paperGal' : 'paperCam';
@@ -513,7 +516,7 @@ export async function onPaperPhoto(inp) {
   const file = inp && inp.files && inp.files[0];
   if (inp) inp.value = '';
   if (!file) return;
-  toast('در حال خواندن عکس…');
+  toast(tr('در حال خواندن عکس…'));
   try {
     const names = state.accounts.map((a) => a.name);
     const rows = await readPaperTxImage(file, names);
@@ -532,14 +535,14 @@ export async function onPaperPhoto(inp) {
       lines: r.kind === 'invoice' ? r.lines || [] : [],
     }));
     if (!paperDraft.length) {
-      toast('در عکس تراکنشی پیدا نشد');
+      toast(tr('در عکس تراکنشی پیدا نشد'));
       return;
     }
     savePaperTxs();
   } catch (e) {
     closeModal();
-    if (e && e.message === 'NO_KEY') toast('اول در تنظیمات کلید عکس را بگذار');
-    else toast((e && e.message) || 'خواندن عکس نشد');
+    if (e && e.message === 'NO_KEY') toast(tr('اول در تنظیمات کلید عکس را بگذار'));
+    else toast((e && e.message) || tr('خواندن عکس نشد'));
   }
 }
 
@@ -549,7 +552,7 @@ function paperAcctOpts(selected) {
 
 export function openPaperReview() {
   if (!paperDraft.length) {
-    toast('چیزی برای ثبت نیست');
+    toast(tr('چیزی برای ثبت نیست'));
     return;
   }
   const rows = paperDraft
@@ -557,34 +560,34 @@ export function openPaperReview() {
       const cat = r.cat || 'need';
       return `<div class="inv-line" data-id="${r.id}">
         <div class="seg" style="margin-bottom:10px">
-          <button type="button" class="${r.type === 'out' ? 'on out' : ''}" data-t="out" onclick="setPaperType(this,'${r.id}')">خرج −</button>
-          <button type="button" class="${r.type === 'in' ? 'on' : ''}" data-t="in" onclick="setPaperType(this,'${r.id}')">درآمد +</button>
+          <button type="button" class="${r.type === 'out' ? 'on out' : ''}" data-t="out" onclick="setPaperType(this,'${r.id}')">${tr('خرج')} −</button>
+          <button type="button" class="${r.type === 'in' ? 'on' : ''}" data-t="in" onclick="setPaperType(this,'${r.id}')">${tr('درآمد +')}</button>
         </div>
-        <div class="field"><label>مبلغ</label>
+        <div class="field"><label>${tr('مبلغ')}</label>
           <input class="input" id="pAmt_${r.id}" type="number" step="any" inputmode="decimal" min="0" value="${r.amount || ''}">
         </div>
-        <div class="field" id="pCatWrap_${r.id}" style="${r.type === 'in' ? 'display:none' : ''}"><label>پاکت</label>
+        <div class="field" id="pCatWrap_${r.id}" style="${r.type === 'in' ? 'display:none' : ''}"><label>${tr('پاکت')}</label>
           <div class="chips">${catChipsHtml(cat, 'setPaperCat', r.id)}</div>
         </div>
-        <div class="field"><label>حساب</label>
+        <div class="field"><label>${tr('حساب')}</label>
           <select class="input" id="pAcct_${r.id}">${paperAcctOpts(r.accountId)}</select>
         </div>
-        <div class="field"><label>توضیح</label>
-          <input class="input" id="pNote_${r.id}" value="${esc(r.note || '')}" placeholder="مثلاً نان">
+        <div class="field"><label>${tr('توضیح')}</label>
+          <input class="input" id="pNote_${r.id}" value="${esc(r.note || '')}" placeholder="${tr('مثلاً نان')}">
         </div>
-        <div class="field"><label>تاریخ</label>
+        <div class="field"><label>${tr('تاریخ')}</label>
           <input class="input" id="pDate_${r.id}" type="date" value="${r.dateISO || todayISO()}">
         </div>
-        <button type="button" class="btn sm danger block" onclick="removePaperRow('${r.id}')">حذف این مورد</button>
+        <button type="button" class="btn sm danger block" onclick="removePaperRow('${r.id}')">${tr('حذف این مورد')}</button>
       </div>`;
     })
     .join('');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>چک کن، بعد ثبت کن</h2>
-    <p class="small muted" style="margin-top:-6px">${paperDraft.length} مورد خوانده شد. اگر چیزی غلط است همین‌جا درستش کن. بعد از ثبت هم در لیست قابل ویرایش است.</p>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('چک کن، بعد ثبت کن')}</h2>
+    <p class="small muted" style="margin-top:-6px">${paperDraft.length} ${tr('مورد خوانده شد. اگر چیزی غلط است همین‌جا درستش کن. بعد از ثبت هم در لیست قابل ویرایش است.')}</p>
     ${rows}
-    <button class="btn primary block" onclick="savePaperTxs()">ثبت همه</button>
+    <button class="btn primary block" onclick="savePaperTxs()">${tr('ثبت همه')}</button>
   `);
 }
 
@@ -638,7 +641,7 @@ export function removePaperRow(id) {
   paperDraft = paperDraft.filter((r) => r.id !== id);
   if (!paperDraft.length) {
     closeModal();
-    toast('همه موارد حذف شد');
+    toast(tr('همه موارد حذف شد'));
     return;
   }
   openPaperReview();
@@ -648,13 +651,13 @@ export function savePaperTxs() {
   readPaperDraftFromDom();
   paperDraft = paperDraft.filter((r) => r.amount > 0);
   if (!paperDraft.length) {
-    toast('چیزی برای ثبت نیست');
+    toast(tr('چیزی برای ثبت نیست'));
     return;
   }
   for (const r of paperDraft) {
     if (!accountById(r.accountId)) r.accountId = lastAccountId();
     if (!accountById(r.accountId)) {
-      toast('اول یک حساب بساز');
+      toast(tr('اول یک حساب بساز'));
       return;
     }
   }
@@ -667,10 +670,10 @@ export function savePaperTxs() {
     const lines = invoice
       ? r.lines.map((l) => ({
           id: l.id || uid(),
-          name: String(l.name || '').trim() || 'قلم',
+          name: String(l.name || '').trim() || tr('قلم'),
           unitPrice: Number(l.unitPrice) || Number(l.amount) || 0,
           qty: Number(l.qty) || 1,
-          unit: String(l.unit || 'عدد').trim() || 'عدد',
+          unit: String(l.unit || tr('عدد')).trim() || tr('عدد'),
           amount: (Number(l.unitPrice) || Number(l.amount) || 0) * (Number(l.qty) || 1),
           cat: l.cat || 'need',
         }))
@@ -700,21 +703,21 @@ export function savePaperTxs() {
   save();
   closeModal();
   render();
-  toast(n + ' مورد ذخیره شد');
+  toast(n + (' ' + tr('مورد ذخیره شد')));
 }
 
 export async function onInvoicePhoto(inp) {
   const file = inp && inp.files && inp.files[0];
   if (inp) inp.value = '';
   if (!file) return;
-  toast('در حال خواندن عکس…');
+  toast(tr('در حال خواندن عکس…'));
   try {
     const data = await readInvoiceImage(file);
     applyInvoiceScan(data);
-    toast('خوانده شد — قبل از ثبت چک کن');
+    toast(tr('خوانده شد — قبل از ثبت چک کن'));
   } catch (e) {
-    if (e && e.message === 'NO_KEY') toast('اول در تنظیمات کلید عکس را بگذار');
-    else toast((e && e.message) || 'خواندن عکس نشد');
+    if (e && e.message === 'NO_KEY') toast(tr('اول در تنظیمات کلید عکس را بگذار'));
+    else toast((e && e.message) || tr('خواندن عکس نشد'));
   }
 }
 
@@ -725,7 +728,7 @@ export function applyInvoiceScan(data) {
     name: l.name,
     unitPrice: l.unitPrice,
     qty: l.qty,
-    unit: l.unit || 'عدد',
+    unit: l.unit || tr('عدد'),
     amount: l.amount,
     cat: l.cat || 'need',
   }));
@@ -747,15 +750,15 @@ export function addRemainderLine() {
   const total = parseFloat((document.getElementById('txAmount') || {}).value) || 0;
   const rem = total - lineSum();
   if (rem <= 0) {
-    toast('مانده‌ای نمانده');
+    toast(tr('مانده‌ای نمانده'));
     return;
   }
   draftLines.push({
     id: uid(),
-    name: 'سایر',
+    name: tr('سایر'),
     unitPrice: rem,
     qty: 1,
-    unit: 'قلم',
+    unit: tr('قلم'),
     amount: rem,
     cat: 'need',
   });
@@ -765,12 +768,12 @@ export function addRemainderLine() {
 export function saveTx() {
   const onBtn = document.querySelector('#txTypeSeg button.on');
   if (!onBtn) {
-    toast('نوع تراکنش را انتخاب کن');
+    toast(tr('نوع تراکنش را انتخاب کن'));
     return;
   }
   const type = onBtn.dataset.t;
   if (type !== 'in' && type !== 'out') {
-    toast('این مورد را از فرم انتقال ویرایش کن');
+    toast(tr('این مورد را از فرم انتقال ویرایش کن'));
     return;
   }
   const accountId = document.getElementById('txAccount').value;
@@ -794,26 +797,26 @@ export function saveTx() {
     readDraftLinesFromDom();
     amount = parseFloat(document.getElementById('txAmount').value);
     if (!amount || amount <= 0) {
-      toast('مبلغ کل فاکتور را بنویس');
+      toast(tr('مبلغ کل فاکتور را بنویس'));
       return;
     }
     if (!draftLines.length) {
-      toast('حداقل یک قلم اضافه کن');
+      toast(tr('حداقل یک قلم اضافه کن'));
       return;
     }
     for (const l of draftLines) {
       if (!(parseFloat(l.unitPrice) > 0) || !(parseFloat(l.qty) > 0)) {
-        toast('برای هر قلم، قیمت واحد و مقدار را بنویس');
+        toast(tr('برای هر قلم، قیمت واحد و مقدار را بنویس'));
         return;
       }
       if (!String(l.name || '').trim()) {
-        toast('نام هر قلم را بنویس');
+        toast(tr('نام هر قلم را بنویس'));
         return;
       }
     }
     const sum = lineSum();
     if (!nearlyZero(amount - sum)) {
-      toast('جمع اقلام باید با مبلغ کل یکی باشد');
+      toast(tr('جمع اقلام باید با مبلغ کل یکی باشد'));
       return;
     }
     kind = 'invoice';
@@ -843,7 +846,7 @@ export function saveTx() {
       unit = '';
     }
     if (!amount || amount <= 0) {
-      toast('مبلغ را درست وارد کن');
+      toast(tr('مبلغ را درست وارد کن'));
       return;
     }
     const activeCat = document.querySelector('#txCats .chip.on');
@@ -872,14 +875,14 @@ export function saveTx() {
   if (editingTxId) {
     const t = state.transactions.find((x) => x.id === editingTxId);
     if (!t || isTransfer(t)) {
-      toast('این انتقال را از فرم مخصوصش ویرایش کن');
+      toast(tr('این انتقال را از فرم مخصوصش ویرایش کن'));
       return;
     }
     Object.assign(t, payload);
-    toast('ویرایش شد');
+    toast(tr('ویرایش شد'));
   } else {
     state.transactions.push(Object.assign({ id: uid() }, payload));
-    toast(invoice ? 'فاکتور ثبت شد ✓' : 'ثبت شد ✓');
+    toast(invoice ? (tr('فاکتور ثبت شد') + ' ✓') : (tr('ثبت شد') + ' ✓'));
   }
   haptic(10);
   save();
@@ -912,31 +915,31 @@ export function openQuickTx(opts) {
   const cur = acct ? acct.currency : baseCur();
 
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <div class="seg" id="qaType" style="margin:0 44px var(--sp-2) 0">
-      <button type="button" class="${qa.type === 'out' ? 'on out' : ''}" data-t="out" onclick="qaSetType('out')">خرج</button>
-      <button type="button" class="${qa.type === 'in' ? 'on in' : ''}" data-t="in" onclick="qaSetType('in')">درآمد</button>
+      <button type="button" class="${qa.type === 'out' ? 'on out' : ''}" data-t="out" onclick="qaSetType('out')">${tr('خرج')}</button>
+      <button type="button" class="${qa.type === 'in' ? 'on in' : ''}" data-t="in" onclick="qaSetType('in')">${tr('درآمد')}</button>
     </div>
     <div class="qa-amount">
-      <div class="kbd-display empty" id="qaDisp">۰</div>
+      <div class="kbd-display empty" id="qaDisp">${toFa(0)}</div>
       <div class="qa-words" id="qaWords"></div>
-      <div class="cur" id="qaCur">${esc(cur)}</div>
+      <div class="cur" id="qaCur">${esc(curName(cur))}</div>
     </div>
     <div id="qaCatsWrap" style="${qa.type === 'in' ? 'display:none' : ''}">
       <div class="qa-cats" id="qaCats"></div>
     </div>
     <div class="kbd" id="qaKbd">
       ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button type="button" onclick="qaKey('${d}')">${toFa(d)}</button>`).join('')}
-      <button type="button" class="fn" onclick="qaKey('000')">۰۰۰</button>
-      <button type="button" onclick="qaKey('0')">۰</button>
-      <button type="button" class="fn del" onclick="qaKey('del')" aria-label="پاک کردن">${icon('back')}</button>
+      <button type="button" class="fn" onclick="qaKey('000')">${toFa('000')}</button>
+      <button type="button" onclick="qaKey('0')">${toFa(0)}</button>
+      <button type="button" class="fn del" onclick="qaKey('del')" aria-label="${tr('پاک کردن')}">${icon('back')}</button>
     </div>
     <div class="qa-meta">
       <button type="button" class="btn sm" id="qaAcctBtn" onclick="qaPickAccount()">${icon('card')}<b id="qaAcctName">${acct ? esc(acctLabel(acct)) : '—'}</b></button>
-      <button type="button" class="btn sm" onclick="qaMore()">${icon('edit')}<b>یادداشت، تاریخ، فاکتور…</b></button>
+      <button type="button" class="btn sm" onclick="qaMore()">${icon('edit')}<b>${tr('یادداشت، تاریخ، فاکتور…')}</b></button>
     </div>
     <div class="qa-submit">
-      <button type="button" class="btn primary" onclick="qaSave()">${icon('check')} ثبت</button>
+      <button type="button" class="btn primary" onclick="qaSave()">${icon('check')} ${tr('ثبت')}</button>
     </div>
   `);
   qaRenderCats();
@@ -961,7 +964,7 @@ function qaPaint() {
   const words = document.getElementById('qaWords');
   if (!disp) return;
   const n = Number(qa.amount) || 0;
-  disp.textContent = n ? fmt(n) : '۰';
+  disp.textContent = n ? fmt(n) : toFa(0);
   disp.classList.toggle('empty', !n);
   if (words) words.textContent = amountWords(n).replace(/\s\S+$/, '');
 }
@@ -999,7 +1002,7 @@ export function qaPickAccount() {
   const wrap = document.getElementById('qaAcctBtn');
   const row = (a) => `<button type="button" class="srow" style="min-height:44px" onclick="qaChooseAccount('${a.id}')">
         <span class="ib sm">${icon(a.type === 'ارز دیجیتال' ? 'coin' : a.type === 'نقدی' ? 'cash' : a.type === 'کیف پول آنلاین' ? 'phone' : 'card')}</span>
-        <span class="smid"><span class="st1">${esc(a.name)}</span><span class="st2">${esc(a.type)} · ${esc(a.currency)}</span></span>
+        <span class="smid"><span class="st1">${esc(a.name)}</span><span class="st2">${esc(tr(a.type))} · ${esc(curName(a.currency))}</span></span>
         ${a.id === qa.accountId ? icon('check') : ''}</button>`;
   const gs = accountGroups(list);
   const grouped = gs.length > 1 || (gs[0] && gs[0].key !== '__none');
@@ -1022,7 +1025,7 @@ export function qaChooseAccount(id) {
   const nm = document.getElementById('qaAcctName');
   const cu = document.getElementById('qaCur');
   if (nm && a) nm.textContent = acctLabel(a);
-  if (cu && a) cu.textContent = a.currency;
+  if (cu && a) cu.textContent = curName(a.currency);
   const l = document.getElementById('qaAcctList');
   if (l) l.remove();
 }
@@ -1038,7 +1041,7 @@ export function qaMore() {
 export function qaSave() {
   const amount = Number(qa.amount) || 0;
   if (amount <= 0) {
-    toast('مبلغ را وارد کن');
+    toast(tr('مبلغ را وارد کن'));
     haptic(30);
     return;
   }
@@ -1065,7 +1068,7 @@ export function qaSave() {
   save();
   closeModal();
   render();
-  toast('ثبت شد ✓');
+  toast((tr('ثبت شد') + ' ✓'));
 }
 
 function pairTransactions(idOrPair) {
@@ -1080,7 +1083,7 @@ export function delTx(id) {
   const isPair = group.length > 1;
   const inv = group.length === 1 && isInvoice(group[0]);
   askConfirm(
-    isPair ? 'این انتقال (هر دو طرف) حذف شود؟' : inv ? 'این فاکتور و همه اقلامش حذف شود؟' : 'این تراکنش حذف شود؟',
+    isPair ? tr('این انتقال (هر دو طرف) حذف شود؟') : inv ? tr('این فاکتور و همه اقلامش حذف شود؟') : tr('این تراکنش حذف شود؟'),
     () => {
     const ids = new Set(group.map((x) => x.id));
     // اگر تراکنش قسط بود، ردیفش هم به حالت پرداخت‌نشده برگردد
@@ -1094,7 +1097,7 @@ export function delTx(id) {
     state.transactions = state.transactions.filter((t) => !ids.has(t.id));
     save();
     render();
-    toast('حذف شد');
+    toast(tr('حذف شد'));
   });
 }
 
@@ -1104,51 +1107,51 @@ export function openAccountForm(a, presetBank) {
   if (!a && presetBank) a = { bank: presetBank, name: '', type: ACCT_TYPES[0], currency: baseCur(), initial: '' , __preset: true };
   if (a && a.__preset) { editingAcctId = null; }
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${isEdit && !a.__preset ? 'ویرایش حساب' : 'حساب جدید'}</h2>
-    <div class="field"><label>بانک / صرافی / مؤسسه</label>
-      <input class="input" id="aBank" list="bankList" placeholder="مثلاً بانک ملت، نوبیتکس، نقد" value="${a ? esc(a.bank || '') : ''}" autocomplete="off">
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${isEdit && !a.__preset ? tr('ویرایش حساب') : tr('حساب جدید')}</h2>
+    <div class="field"><label>${tr('بانک / صرافی / مؤسسه')}</label>
+      <input class="input" id="aBank" list="bankList" placeholder="${tr('مثلاً بانک ملت، نوبیتکس، نقد')}" value="${a ? esc(a.bank || '') : ''}" autocomplete="off">
       <datalist id="bankList">${[...new Set([...state.accounts.map((x) => x.bank).filter(Boolean), ...KNOWN_BANKS])]
         .map((b) => `<option value="${esc(b)}"></option>`)
         .join('')}</datalist>
-      <div class="small muted" style="margin-top:6px">حساب‌های یک مؤسسه در صفحهٔ حساب‌ها یک‌کاسه نشان داده می‌شوند.</div>
+      <div class="small muted" style="margin-top:6px">${tr('حساب‌های یک مؤسسه در صفحهٔ حساب‌ها یک‌کاسه نشان داده می‌شوند.')}</div>
     </div>
-    <div class="field"><label>نام حساب / کارت</label>
-      <input class="input" id="aName" placeholder="مثلاً کارت حقوق، حساب پس‌انداز" value="${a ? esc(a.name) : ''}">
+    <div class="field"><label>${tr('نام حساب / کارت')}</label>
+      <input class="input" id="aName" placeholder="${tr('مثلاً کارت حقوق، حساب پس‌انداز')}" value="${a ? esc(a.name) : ''}">
     </div>
-    <div class="field"><label>نوع</label>
+    <div class="field"><label>${tr('نوع')}</label>
       <select class="input" id="aType">
-        ${ACCT_TYPES.map((t) => `<option ${a && a.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+        ${ACCT_TYPES.map((t) => `<option value="${t}" ${a && a.type === t ? 'selected' : ''}>${tr(t)}</option>`).join('')}
       </select>
     </div>
-    <div class="field"><label>واحد پول</label>
+    <div class="field"><label>${tr('واحد پول')}</label>
       <select class="input" id="aCur" onchange="toggleCustomCurrency('a')">
         ${currencyOptions(a ? a.currency : baseCur())}
       </select>
     </div>
-    <div class="field" id="aCurCustomWrap" style="display:none"><label>نام واحد پول جدید</label>
-      <input class="input" id="aCurCustom" placeholder="مثلاً روبل، ین، بیت‌کوین">
-      <div class="small muted" style="margin-top:6px">این واحد به لیست اضافه می‌شود و دفعه بعد در گزینه‌ها هست.</div>
+    <div class="field" id="aCurCustomWrap" style="display:none"><label>${tr('نام واحد پول جدید')}</label>
+      <input class="input" id="aCurCustom" placeholder="${tr('مثلاً روبل، ین، بیت‌کوین')}">
+      <div class="small muted" style="margin-top:6px">${tr('این واحد به لیست اضافه می‌شود و دفعه بعد در گزینه‌ها هست.')}</div>
     </div>
-    <div class="field"><label>۴ رقم آخر کارت (اختیاری)</label>
+    <div class="field"><label>${tr('۴ رقم آخر کارت (اختیاری)')}</label>
       <input class="input" id="aLast4" inputmode="numeric" maxlength="4" placeholder="1234" value="${a ? esc(a.last4 || '') : ''}">
     </div>
-    <div class="field"><label>موجودی اولیه</label>
-      <input class="input" id="aInit" type="number" step="any" inputmode="decimal" placeholder="۰" value="${a ? a.initial : ''}">
+    <div class="field"><label>${tr('موجودی اولیه')}</label>
+      <input class="input" id="aInit" type="number" step="any" inputmode="decimal" placeholder="${toFa(0)}" value="${a ? a.initial : ''}">
     </div>
-    <button class="btn primary block" onclick="saveAccount()">${isEdit && !a.__preset ? 'ذخیره' : 'افزودن حساب'}</button>
+    <button class="btn primary block" onclick="saveAccount()">${isEdit && !a.__preset ? tr('ذخیره') : tr('افزودن حساب')}</button>
   `);
 }
 
 export function saveAccount() {
   const name = document.getElementById('aName').value.trim();
   if (!name) {
-    toast('نام حساب را بنویس');
+    toast(tr('نام حساب را بنویس'));
     return;
   }
   const currency = readCurrencyChoice('a');
   if (!currency) {
-    toast('نام واحد پول را بنویس');
+    toast(tr('نام واحد پول را بنویس'));
     return;
   }
   const data = {
@@ -1179,7 +1182,7 @@ export function openAccountLedger(id) {
   const after = runningBalanceByTxId();
   const rows =
     txs.length === 0
-      ? `<div class="empty" style="padding:22px 8px"><span class="ib lg muted">${icon('list')}</span>گردشی برای این حساب ثبت نشده.</div>`
+      ? `<div class="empty" style="padding:22px 8px"><span class="ib lg muted">${icon('list')}</span>${tr('گردشی برای این حساب ثبت نشده.')}</div>`
       : txs
           .map((t) => {
             const transfer = isTransfer(t);
@@ -1188,22 +1191,22 @@ export function openAccountLedger(id) {
             const title = t.note
               ? esc(t.note)
               : transfer
-                ? 'انتقال بین حساب‌ها'
+                ? tr('انتقال بین حساب‌ها')
                 : inv
-                  ? 'فاکتور'
+                  ? tr('فاکتور')
                   : t.type === 'in'
-                    ? 'درآمد'
+                    ? tr('درآمد')
                     : cat
                       ? cat.label
-                      : 'خرج';
+                      : tr('خرج');
             const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
             const amtClass = transfer ? 'transfer' : t.type;
             const bal = after[t.id];
-            const balTxt = bal == null ? '' : `<div class="bal">مانده ${fmt(bal)}</div>`;
+            const balTxt = bal == null ? '' : `<div class="bal">${tr('مانده')} ${fmt(bal)}</div>`;
             return `<div class="item" onclick="openTxForm(findTx('${t.id}'))">
               <div class="mid">
-                <div class="t1">${title}${inv ? ' <span class="badge">فاکتور</span>' : ''}</div>
-                <div class="t2">${fmtDate(t.dateISO)}${transfer ? ' · انتقال' : inv ? ' · ' + (t.lines || []).length + ' قلم' : cat ? ' · ' + cat.label : ''}</div>
+                <div class="t1">${title}${inv ? (' <span class="badge">' + tr('فاکتور') + '</span>') : ''}</div>
+                <div class="t2">${fmtDate(t.dateISO)}${transfer ? (' · ' + tr('انتقال')) : inv ? ' · ' + (t.lines || []).length + (' ' + tr('قلم')) : cat ? ' · ' + cat.label : ''}</div>
               </div>
               <div class="amt-col">
                 <div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>
@@ -1213,16 +1216,16 @@ export function openAccountLedger(id) {
           })
           .join('');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${esc(a.name)}</h2>
     <div class="stat" style="background:var(--bg2);margin-bottom:12px">
-      <div class="lbl">موجودی</div>
-      <div class="val ${bal >= 0 ? 'green' : 'red'}">${fmt(bal)} ${esc(a.currency)}</div>
+      <div class="lbl">${tr('موجودی')}</div>
+      <div class="val ${bal >= 0 ? 'green' : 'red'}">${fmt(bal)} ${esc(curName(a.currency))}</div>
       <div class="sub">${esc(a.type)}${a.last4 ? ' · •••• ' + a.last4 : ''}</div>
     </div>
     <div class="row" style="margin-bottom:12px">
-      <button class="btn sm primary" style="flex:1" onclick="closeModal();openTxForm()">+ تراکنش</button>
-      <button class="btn sm" style="flex:1" onclick="openAccountForm(findAccount('${a.id}'))">${icon('edit')} ویرایش حساب</button>
+      <button class="btn sm primary" style="flex:1" onclick="closeModal();openTxForm()">+ ${tr('تراکنش')}</button>
+      <button class="btn sm" style="flex:1" onclick="openAccountForm(findAccount('${a.id}'))">${icon('edit')} ${tr('ویرایش حساب')}</button>
     </div>
     <div style="max-height:48vh;overflow:auto">${rows}</div>
   `);
@@ -1239,13 +1242,13 @@ export function openPocketLedger(catId, mk) {
   const items = pocketItems(mk, catId);
   const rows =
     items.length === 0
-      ? `<div class="empty" style="padding:22px 8px"><span class="em">${c.emoji}</span>${c.loan ? 'گردشی' : 'خرجی'} در این پاکت برای ${monthLabel(mk)} ثبت نشده.</div>`
+      ? `<div class="empty" style="padding:22px 8px"><span class="em">${c.emoji}</span>${tr(c.loan ? 'گردشی در این پاکت برای {m} ثبت نشده.' : 'خرجی در این پاکت برای {m} ثبت نشده.', { m: monthLabel(mk) })}</div>`
       : items
           .map((it) => {
             const a = accountById(it.accountId);
             return `<div class="item" onclick="openTxForm(findTx('${it.txId}'))">
               <div class="mid">
-                <div class="t1">${esc(it.title)}${it.invoice ? ' <span class="badge">فاکتور</span>' : ''}</div>
+                <div class="t1">${esc(it.title)}${it.invoice ? (' <span class="badge">' + tr('فاکتور') + '</span>') : ''}</div>
                 <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>
               </div>
               <div class="amt ${it.inflow ? 'in' : 'out'}">${it.inflow ? '+' : '−'}${fmt(it.amount)}</div>
@@ -1255,37 +1258,37 @@ export function openPocketLedger(catId, mk) {
   if (c.loan) {
     const f = loanFlow(mk);
     openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${c.emoji} ${c.label}</h2>
-    <p class="small muted">پولی که قرض می‌دهی یا می‌گیری خرج یا درآمد واقعی نیست؛ این‌جا جدا نگه داشته می‌شود و وارد پاکت‌های دیگر و بودجهٔ ماه نمی‌شود.</p>
+    <p class="small muted">${tr('پولی که قرض می‌دهی یا می‌گیری خرج یا درآمد واقعی نیست؛ این‌جا جدا نگه داشته می‌شود و وارد پاکت‌های دیگر و بودجهٔ ماه نمی‌شود.')}</p>
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">داده‌ام (قرض دادن / پس دادن)</div><div class="val red">${fmtShort(f.out)}</div></div>
-      <div class="stat"><div class="lbl">گرفته‌ام (قرض گرفتن / برگشت طلب)</div><div class="val green">${fmtShort(f.in)}</div></div>
+      <div class="stat"><div class="lbl">${tr('داده‌ام (قرض دادن / پس دادن)')}</div><div class="val red">${fmtShort(f.out)}</div></div>
+      <div class="stat"><div class="lbl">${tr('گرفته‌ام (قرض گرفتن / برگشت طلب)')}</div><div class="val green">${fmtShort(f.in)}</div></div>
     </div>
     <div class="row" style="margin-bottom:12px">
-      <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ثبت طلب / بدهی</button>
-      <button class="btn sm" style="flex:1" onclick="closeModal();switchTab('debts')">فهرست طلب و بدهی</button>
+      <button class="btn sm primary" style="flex:1" onclick="closeModal();switchTab('debts');openDebtForm()">+ ${tr('ثبت طلب / بدهی')}</button>
+      <button class="btn sm" style="flex:1" onclick="closeModal();switchTab('debts')">${tr('فهرست طلب و بدهی')}</button>
     </div>
     <div style="max-height:44vh;overflow:auto">${rows}</div>
   `);
     return;
   }
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${c.emoji} ${c.label}</h2>
     <div class="stat" style="background:var(--bg2);margin-bottom:12px">
-      <div class="lbl">${monthLabel(mk)} · سهم ${c.target}٪</div>
-      <div class="val ${over ? 'red' : 'green'}">${fmt(spent)} ${baseCur()}</div>
-      <div class="sub">${ceil ? 'سقف ' + fmt(ceil) + (over ? ' · از سقف رد شد' : ' · مانده ' + fmt(left)) : 'بودجه این ماه ثبت نشده'}</div>
+      <div class="lbl">${monthLabel(mk)} · ${tr('سهم')} ${toFa(c.target)}${pctSign()}</div>
+      <div class="val ${over ? 'red' : 'green'}">${fmt(spent)} ${curName(baseCur())}</div>
+      <div class="sub">${ceil ? (tr('سقف') + ' ') + fmt(ceil) + (over ? (' · ' + tr('از سقف رد شد')) : (' · ' + tr('مانده') + ' ') + fmt(left)) : tr('بودجه این ماه ثبت نشده')}</div>
     </div>
-    <button class="btn sm primary block" style="margin-bottom:12px" onclick="openTxForm(null,{cat:'${c.id}'})">+ خرج در این پاکت</button>
+    <button class="btn sm primary block" style="margin-bottom:12px" onclick="openTxForm(null,{cat:'${c.id}'})">+ ${tr('خرج در این پاکت')}</button>
     <div style="max-height:48vh;overflow:auto">${rows}</div>
   `);
 }
 
 export function delAccount(id) {
   const hasTx = state.transactions.some((t) => t.accountId === id);
-  askConfirm(hasTx ? 'این حساب و تراکنش‌های مربوط به آن حذف می‌شود. ادامه می‌دهی؟' : 'این حساب حذف شود؟', () => {
+  askConfirm(hasTx ? tr('این حساب و تراکنش‌های مربوط به آن حذف می‌شود. ادامه می‌دهی؟') : tr('این حساب حذف شود؟'), () => {
     for (const d of state.debts || []) {
       if (d.accountId === id) {
         d.accountId = '';
@@ -1305,7 +1308,7 @@ export function delAccount(id) {
     });
     save();
     render();
-    toast('حذف شد');
+    toast(tr('حذف شد'));
   });
 }
 
@@ -1313,55 +1316,55 @@ export function openInvestForm(inv) {
   editingInvId = inv ? inv.id : null;
   const isEdit = !!inv;
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2 style="display:flex;align-items:center">${isEdit ? 'ویرایش دارایی' : 'دارایی جدید'}${infoTip('این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در تراکنش‌ها (پاکت سرمایه‌گذاری) ثبت کن.', 'lg')}</h2>
-    <div class="field"><label>نام دارایی</label>
-      <input class="input" id="iName" placeholder="مثلاً طلا، زمین، ماشین" value="${inv ? esc(inv.name) : ''}">
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2 style="display:flex;align-items:center">${isEdit ? tr('ویرایش دارایی') : tr('دارایی جدید')}${infoTip(tr('این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در تراکنش‌ها (پاکت سرمایه‌گذاری) ثبت کن.'), 'lg')}</h2>
+    <div class="field"><label>${tr('نام دارایی')}</label>
+      <input class="input" id="iName" placeholder="${tr('مثلاً طلا، زمین، ماشین')}" value="${inv ? esc(inv.name) : ''}">
     </div>
     <div class="row">
-      <div class="col field"><label>مقدار</label>
-        <input class="input" id="iQty" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً ۵" value="${inv ? inv.qty : ''}">
+      <div class="col field"><label>${tr('مقدار')}</label>
+        <input class="input" id="iQty" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً ۵')}" value="${inv ? inv.qty : ''}">
       </div>
-      <div class="col field"><label>واحد</label>
-        <input class="input" id="iUnit" placeholder="گرم / متر / عدد" value="${inv ? esc(inv.unit || '') : ''}">
+      <div class="col field"><label>${tr('واحد')}</label>
+        <input class="input" id="iUnit" placeholder="${tr('گرم / متر / عدد')}" value="${inv ? esc(inv.unit || '') : ''}">
       </div>
     </div>
-    <div class="field"><label>واحد پول</label>
+    <div class="field"><label>${tr('واحد پول')}</label>
       <select class="input" id="iCur" onchange="toggleCustomCurrency('i')">
         ${currencyOptions(inv ? inv.currency : baseCur())}
       </select>
     </div>
-    <div class="field" id="iCurCustomWrap" style="display:none"><label>نام واحد پول جدید</label>
-      <input class="input" id="iCurCustom" placeholder="مثلاً روبل، ین، بیت‌کوین">
-      <div class="small muted" style="margin-top:6px">این واحد به لیست اضافه می‌شود و دفعه بعد در گزینه‌ها هست.</div>
+    <div class="field" id="iCurCustomWrap" style="display:none"><label>${tr('نام واحد پول جدید')}</label>
+      <input class="input" id="iCurCustom" placeholder="${tr('مثلاً روبل، ین، بیت‌کوین')}">
+      <div class="small muted" style="margin-top:6px">${tr('این واحد به لیست اضافه می‌شود و دفعه بعد در گزینه‌ها هست.')}</div>
     </div>
     <div class="row">
-      <div class="col field"><label>قیمت خرید (هر واحد)</label>
-        <input class="input" id="iBuy" type="number" step="any" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.buy : ''}">
+      <div class="col field"><label>${tr('قیمت خرید (هر واحد)')}</label>
+        <input class="input" id="iBuy" type="number" step="any" inputmode="decimal" min="0" placeholder="${toFa(0)}" value="${inv ? inv.buy : ''}">
       </div>
-      <div class="col field"><label>قیمت امروز (هر واحد)</label>
-        <input class="input" id="iPriceNow" type="number" step="any" inputmode="decimal" min="0" placeholder="۰" value="${inv ? inv.cur : ''}">
+      <div class="col field"><label>${tr('قیمت امروز (هر واحد)')}</label>
+        <input class="input" id="iPriceNow" type="number" step="any" inputmode="decimal" min="0" placeholder="${toFa(0)}" value="${inv ? inv.cur : ''}">
       </div>
     </div>
     <div style="height:12px"></div>
-    <button class="btn primary block" onclick="saveInvest()">${isEdit ? 'ذخیره' : 'افزودن دارایی'}</button>
+    <button class="btn primary block" onclick="saveInvest()">${isEdit ? tr('ذخیره') : tr('افزودن دارایی')}</button>
   `);
 }
 
 export function saveInvest() {
   const name = document.getElementById('iName').value.trim();
   if (!name) {
-    toast('نام دارایی را بنویس');
+    toast(tr('نام دارایی را بنویس'));
     return;
   }
   const qty = parseFloat(document.getElementById('iQty').value);
   if (!qty || qty <= 0) {
-    toast('مقدار را درست وارد کن');
+    toast(tr('مقدار را درست وارد کن'));
     return;
   }
   const currency = readCurrencyChoice('i');
   if (!currency) {
-    toast('نام واحد پول را بنویس');
+    toast(tr('نام واحد پول را بنویس'));
     return;
   }
   const data = {
@@ -1384,24 +1387,24 @@ export function saveInvest() {
 }
 
 export function delInvest(id) {
-  askConfirm('این دارایی حذف شود؟', () => {
+  askConfirm(tr('این دارایی حذف شود؟'), () => {
     state.investments = state.investments.filter((i) => i.id !== id);
     save();
     render();
-    toast('حذف شد');
+    toast(tr('حذف شد'));
   });
 }
 
 export function editInvestPrice(id) {
   const inv = state.investments.find((i) => i.id === id);
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>به‌روزرسانی قیمت</h2>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('به‌روزرسانی قیمت')}</h2>
     <p class="muted small" style="margin-top:-6px">${esc(inv.name)} — ${inv.qty} ${esc(inv.unit || '')}</p>
-    <div class="field"><label>قیمت امروز (هر ${esc(inv.unit || 'واحد')})</label>
+    <div class="field"><label>${tr('قیمت امروز (هر {u})', { u: esc(inv.unit || tr('واحد')) })}</label>
       <input class="input" id="pNew" type="number" step="any" inputmode="decimal" min="0" value="${inv.cur}">
     </div>
-    <button class="btn primary block" onclick="savePrice('${id}')">ذخیره قیمت</button>
+    <button class="btn primary block" onclick="savePrice('${id}')">${tr('ذخیره قیمت')}</button>
   `);
 }
 
@@ -1412,7 +1415,7 @@ export function savePrice(id) {
   save();
   closeModal();
   render();
-  toast('قیمت به‌روز شد ✓');
+  toast((tr('قیمت به‌روز شد') + ' ✓'));
 }
 
 export function openBudgetForm(mk) {
@@ -1425,35 +1428,35 @@ export function openBudgetForm(mk) {
   const cur = jalaliNow();
   const years = [];
   for (let y = cur[0] - 2; y <= cur[0] + 2; y++) years.push(y);
-  const monthOpts = MONTHS.map(
+  const monthOpts = jalaliMonths().map(
     (name, i) => `<option value="${i + 1}" ${i + 1 === sm ? 'selected' : ''}>${name}</option>`
   ).join('');
   const yearOpts = years
     .map((y) => `<option value="${y}" ${y === sy ? 'selected' : ''}>${y}</option>`)
     .join('');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${b ? 'ویرایش بودجه' : 'ثبت بودجه'}</h2>
-    <p class="muted small" style="margin-top:-6px">ماه موردنظر را انتخاب کن (مقدار پیش‌فرض، ماه فعلی است).</p>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${b ? tr('ویرایش بودجه') : tr('ثبت بودجه')}</h2>
+    <p class="muted small" style="margin-top:-6px">${tr('ماه موردنظر را انتخاب کن (مقدار پیش‌فرض، ماه فعلی است).')}</p>
     <div class="row">
-      <div class="col field"><label>ماه</label>
+      <div class="col field"><label>${tr('ماه')}</label>
         <select class="input" id="bMonth">${monthOpts}</select>
       </div>
-      <div class="col field"><label>سال</label>
+      <div class="col field"><label>${tr('سال')}</label>
         <select class="input" id="bYear">${yearOpts}</select>
       </div>
     </div>
-    <div class="field"><label>مبلغ بودجه (${baseCur()})</label>
-      <input class="input" id="bAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 15000000" value="${b ? b.amount : ''}">
+    <div class="field"><label>${tr('مبلغ بودجه')} (${curName(baseCur())})</label>
+      <input class="input" id="bAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 15000000')}" value="${b ? b.amount : ''}">
     </div>
-    <button class="btn primary block" onclick="saveBudget()">${b ? 'ذخیره تغییرات' : 'ذخیره بودجه'}</button>
+    <button class="btn primary block" onclick="saveBudget()">${b ? tr('ذخیره تغییرات') : tr('ذخیره بودجه')}</button>
   `);
 }
 
 export function saveBudget() {
   const amount = parseFloat(document.getElementById('bAmount').value);
   if (!amount || amount <= 0) {
-    toast('مبلغ بودجه را وارد کن');
+    toast(tr('مبلغ بودجه را وارد کن'));
     return;
   }
   const m = parseInt(document.getElementById('bMonth').value, 10);
@@ -1463,50 +1466,50 @@ export function saveBudget() {
   save();
   closeModal();
   render();
-  toast('بودجه ذخیره شد ✓');
+  toast((tr('بودجه ذخیره شد') + ' ✓'));
 }
 
 export function openRateEdit(cur) {
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>نرخ روز ${esc(cur)}</h2>
-    <p class="muted small" style="margin-top:-6px">هر ۱ واحد ${esc(cur)} چند ${baseCur()} است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)</p>
-    <div class="field"><label>${baseCur()} به ازای هر واحد</label>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('نرخ روز')} ${esc(curName(cur))}</h2>
+    <p class="muted small" style="margin-top:-6px">${tr('هر ۱ واحد {a} چند {b} است؟ (فقط برای محاسبه دارایی کل؛ در انتقال‌ها استفاده نمی‌شود)', { a: esc(curName(cur)), b: curName(baseCur()) })}</p>
+    <div class="field"><label>${curName(baseCur())} ${tr('به ازای هر واحد')}</label>
       <input class="input" id="rVal" type="number" step="any" inputmode="decimal" min="0" value="${state.rates[cur] || ''}">
     </div>
-    <button class="btn primary block" onclick="saveRate('${cur}')">ذخیره نرخ</button>
+    <button class="btn primary block" onclick="saveRate('${cur}')">${tr('ذخیره نرخ')}</button>
   `);
 }
 
 export function saveRate(cur) {
   const v = parseFloat(document.getElementById('rVal').value);
   if (!v || v <= 0) {
-    toast('نرخ را وارد کن');
+    toast(tr('نرخ را وارد کن'));
     return;
   }
   state.rates[cur] = v;
   save();
   closeModal();
   render();
-  toast('نرخ ذخیره شد ✓');
+  toast((tr('نرخ ذخیره شد') + ' ✓'));
 }
 
 export function saveRateFrom(cur) {
   const el = document.getElementById('rate_' + cur);
   const v = parseFloat(el ? el.value : '');
   if (!v || v <= 0) {
-    toast('نرخ معتبر وارد کن');
+    toast(tr('نرخ معتبر وارد کن'));
     return;
   }
   state.rates[cur] = v;
   save();
   render();
-  toast('نرخ ذخیره شد ✓');
+  toast((tr('نرخ ذخیره شد') + ' ✓'));
 }
 
 export function openTransferForm(tx) {
   if (state.accounts.length < 2) {
-    toast('برای انتقال، حداقل دو حساب بساز');
+    toast(tr('برای انتقال، حداقل دو حساب بساز'));
     return;
   }
   const pair = tx && tx.pair ? tx.pair : null;
@@ -1525,18 +1528,18 @@ export function openTransferForm(tx) {
     if (ta && out.toRate) transferStoredRates[ta.currency] = out.toRate;
   }
   const opts = accountOptGroups('');
-  openModal(`<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2 style="display:flex;align-items:center">${pair ? 'ویرایش انتقال' : 'انتقال بین حساب‌ها'}${infoTip('انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.', 'lg')}</h2>
-    <div class="field"><label>از حساب</label><select class="input" id="trFrom" onchange="transferAccountsChanged()">${opts}</select></div>
-    <div class="field"><label>به حساب</label><select class="input" id="trTo" onchange="transferAccountsChanged()">${opts}</select></div>
-    <div class="field"><label>مبلغ از حساب مبدأ</label><input class="input" id="trAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مبلغ به واحد حساب مبدأ" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
+  openModal(`<button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2 style="display:flex;align-items:center">${pair ? tr('ویرایش انتقال') : tr('انتقال بین حساب‌ها')}${infoTip(tr('انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.'), 'lg')}</h2>
+    <div class="field"><label>${tr('از حساب')}</label><select class="input" id="trFrom" onchange="transferAccountsChanged()">${opts}</select></div>
+    <div class="field"><label>${tr('به حساب')}</label><select class="input" id="trTo" onchange="transferAccountsChanged()">${opts}</select></div>
+    <div class="field"><label>${tr('مبلغ از حساب مبدأ')}</label><input class="input" id="trAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مبلغ به واحد حساب مبدأ')}" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
     <div id="trBalance" class="small muted" style="margin:-8px 0 12px"></div>
     <div id="trRates"></div>
     <div id="trPreview" class="hint" style="margin-bottom:12px;display:none"></div>
-    <div class="field"><label>توضیح (اختیاری)</label><input class="input" id="trNote" placeholder="مثلاً انتقال به کارت خرید" value="${esc((out && out.note) || (inn && inn.note) || '')}"></div>
-    <div class="field"><label>تاریخ</label><input class="input" id="trDate" type="date" value="${(out && out.dateISO) || (inn && inn.dateISO) || todayISO()}"></div>
-    <button class="btn primary block" onclick="saveTransfer()">${pair ? 'ذخیره انتقال' : 'ثبت انتقال'}</button>
-    ${pair ? '<button class="btn danger block" style="margin-top:8px" onclick="delTx(\'' + (out || inn).id + '\')">حذف این انتقال</button>' : ''}
+    <div class="field"><label>${tr('توضیح (اختیاری)')}</label><input class="input" id="trNote" placeholder="${tr('مثلاً انتقال به کارت خرید')}" value="${esc((out && out.note) || (inn && inn.note) || '')}"></div>
+    <div class="field"><label>${tr('تاریخ')}</label><input class="input" id="trDate" type="date" value="${(out && out.dateISO) || (inn && inn.dateISO) || todayISO()}"></div>
+    <button class="btn primary block" onclick="saveTransfer()">${pair ? tr('ذخیره انتقال') : tr('ثبت انتقال')}</button>
+    ${pair ? '<button class="btn danger block" style="margin-top:8px" onclick="delTx(\'' + (out || inn).id + ('\')">' + tr('حذف این انتقال') + '</button>') : ''}
   `);
   document.getElementById('trFrom').value = fromId;
   document.getElementById('trTo').value = toId;
@@ -1569,7 +1572,7 @@ function renderTransferBalance() {
     return;
   }
   const avail = Math.max(0, transferSourceAvailable(acct.id));
-  el.innerHTML = `موجودی قابل برداشت از ${esc(acct.name)}: <b style="color:var(--text)">${fmt(avail)} ${esc(acct.currency)}</b>`;
+  el.innerHTML = `${tr('موجودی قابل برداشت از')} ${esc(acct.name)}: <b style="color:var(--text)">${fmt(avail)} ${esc(curName(acct.currency))}</b>`;
 }
 
 function renderTransferRates() {
@@ -1595,8 +1598,8 @@ function renderTransferRates() {
         : transferStoredRates[cur] !== undefined
           ? transferStoredRates[cur]
           : state.rates[cur] || '';
-    return `<div class="field"><label>نرخ ${esc(cur)} برای این انتقال (${baseCur()} به ازای هر واحد)</label>
-      <input class="input" id="trRate${which}" data-cur="${esc(cur)}" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 90000" value="${val}" oninput="updateTransferPreview()">
+    return `<div class="field"><label>${tr('نرخ {a} برای این انتقال ({b} به ازای هر واحد)', { a: esc(curName(cur)), b: curName(baseCur()) })}</label>
+      <input class="input" id="trRate${which}" data-cur="${esc(cur)}" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 90000')}" value="${val}" oninput="updateTransferPreview()">
     </div>`;
   };
 
@@ -1644,21 +1647,21 @@ export function updateTransferPreview() {
   box.style.display = '';
   const avail = transferSourceAvailable(from.id);
   if (amount > avail + 1e-9) {
-    box.innerHTML = `<span style="color:var(--red)">مبلغ از موجودی حساب مبدأ بیشتر است. حداکثر برداشت: <b>${fmt(Math.max(0, avail))} ${esc(from.currency)}</b></span>`;
+    box.innerHTML = `<span style="color:var(--red)">${tr('مبلغ از موجودی حساب مبدأ بیشتر است. حداکثر برداشت:')} <b>${fmt(Math.max(0, avail))} ${esc(from.currency)}</b></span>`;
     return;
   }
   if (from.currency === to.currency) {
-    box.innerHTML = `واریز به مقصد: <b>${fmt(amount)} ${esc(to.currency)}</b> (بدون تبدیل)`;
+    box.innerHTML = `${tr('واریز به مقصد:')} <b>${fmt(amount)} ${esc(curName(to.currency))}</b> ${tr('(بدون تبدیل)')}`;
     return;
   }
   const { fromRate, toRate } = readTransferRates(from, to);
   if (!fromRate || !toRate) {
-    box.textContent = 'نرخ تبدیل این انتقال را در فیلد بالا وارد کن.';
+    box.textContent = tr('نرخ تبدیل این انتقال را در فیلد بالا وارد کن.');
     return;
   }
   const toman = amount * fromRate;
   const dest = toman / toRate;
-  box.innerHTML = `ارزش انتقال: <b>${fmt(toman)} ${baseCur()}</b><br>واریز به مقصد: <b>${fmt(dest)} ${esc(to.currency)}</b><br><span class="small muted">نرخ این انتقال — ${esc(from.currency)}: ${fmt(fromRate)} ${baseCur()} · ${esc(to.currency)}: ${fmt(toRate)} ${baseCur()}</span>`;
+  box.innerHTML = `${tr('ارزش انتقال:')} <b>${fmt(toman)} ${curName(baseCur())}</b><br>${tr('واریز به مقصد:')} <b>${fmt(dest)} ${esc(curName(to.currency))}</b><br><span class="small muted">${tr('نرخ این انتقال —')} ${esc(from.currency)}: ${fmt(fromRate)} ${baseCur()} · ${esc(curName(to.currency))}: ${fmt(toRate)} ${baseCur()}</span>`;
 }
 
 export function saveTransfer() {
@@ -1666,16 +1669,16 @@ export function saveTransfer() {
   const to = document.getElementById('trTo').value;
   const amount = parseFloat(document.getElementById('trAmount').value);
   if (from === to) {
-    toast('حساب مبدأ و مقصد باید متفاوت باشند');
+    toast(tr('حساب مبدأ و مقصد باید متفاوت باشند'));
     return;
   }
   if (!amount || amount <= 0) {
-    toast('مبلغ معتبر وارد کن');
+    toast(tr('مبلغ معتبر وارد کن'));
     return;
   }
   const available = transferSourceAvailable(from);
   if (amount > available + 1e-9) {
-    toast('مبلغ از موجودی حساب مبدأ بیشتر است؛ حداکثر ' + fmt(Math.max(0, available)));
+    toast((tr('مبلغ از موجودی حساب مبدأ بیشتر است؛ حداکثر') + ' ') + fmt(Math.max(0, available)));
     return;
   }
   const fromAcct = accountById(from);
@@ -1688,7 +1691,7 @@ export function saveTransfer() {
     fromRate = rates.fromRate;
     toRate = rates.toRate;
     if (!fromRate || fromRate <= 0 || !toRate || toRate <= 0) {
-      toast('نرخ تبدیل این انتقال را وارد کن');
+      toast(tr('نرخ تبدیل این انتقال را وارد کن'));
       return;
     }
   }
@@ -1713,7 +1716,7 @@ export function saveTransfer() {
     Object.assign(inn, {
       amount: destinationAmount,
       accountId: to,
-      note: note || 'انتقال بین حساب‌ها',
+      note: note || tr('انتقال بین حساب‌ها'),
       dateISO,
       month,
       updatedAt: stamp,
@@ -1722,7 +1725,7 @@ export function saveTransfer() {
       fromRate,
       toRate,
     });
-    toast('انتقال ویرایش شد ✓');
+    toast((tr('انتقال ویرایش شد') + ' ✓'));
   } else {
     const pair = uid();
     state.transactions.push({
@@ -1744,7 +1747,7 @@ export function saveTransfer() {
       pair,
       amount: destinationAmount,
       accountId: to,
-      note: note || 'انتقال بین حساب‌ها',
+      note: note || tr('انتقال بین حساب‌ها'),
       dateISO,
       month,
       type: 'transferIn',
@@ -1753,7 +1756,7 @@ export function saveTransfer() {
       fromRate,
       toRate,
     });
-    toast('انتقال با موفقیت ثبت شد ✓');
+    toast((tr('انتقال با موفقیت ثبت شد') + ' ✓'));
   }
   editingTransferPair = null;
   save();
@@ -1768,7 +1771,7 @@ export function pieSVG(slices, size) {
   const r = size / 2 - 6;
   const total = slices.reduce((s, x) => s + x.v, 0);
   if (total <= 0) {
-    return `<svg width="${size}" height="${size}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#1b2435"/><text x="${cx}" y="${cy}" fill="#8b98ab" font-size="13" text-anchor="middle" dominant-baseline="middle">بدون داده</text></svg>`;
+    return `<svg width="${size}" height="${size}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#1b2435"/><text x="${cx}" y="${cy}" fill="#8b98ab" font-size="13" text-anchor="middle" dominant-baseline="middle">${tr('بدون داده')}</text></svg>`;
   }
   const positive = slices.filter((s) => s.v > 0);
   if (positive.length === 1) {
