@@ -829,6 +829,7 @@ export function openSettings() {
     <div class="sgroup">
       ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('receipt', '#f97316', tr('خواندن فاکتور از عکس'), tr('کلید هوش مصنوعی گوگل'), 'openSettingsScan()', gemini ? tr('فعال') : tr('خاموش'))}
+      ${settingsRow('download', '#0d9488', tr('پشتیبان‌گیری'), tr('خروجی و بازیابی فایل JSON'), 'openSettingsBackup()')}
       ${settingsRow('info', '#64748b', tr('دربارهٔ برنامه'), (tr('نسخه') + ' ') + APP_VERSION, 'openSettingsAbout()')}
     </div>
   `);
@@ -997,7 +998,68 @@ export function openSettingsAbout() {
     <div class="sgroup" style="margin-top:14px">
       <div class="hint">${tr('روش پاکت‌ها: ضروریات ۶۰٪')} · ${tr('سرمایه‌گذاری ۲۰٪')} · ${tr('تفریح ۱۵٪')} · ${tr('نیکوکاری ۵٪ — به‌علاوهٔ «هدررفت» برای صداقت با خودت و «قرض / امانت» که خارج از بودجه است.')}</div>
     </div>
+    <div class="sgroup" style="margin-top:12px">
+      ${settingsRow('shield', '#64748b', tr('سیاست حریم خصوصی'), '', "window.open('" + legalUrl('privacy') + "','_blank')")}
+      ${settingsRow('doc', '#64748b', tr('شرایط استفاده'), '', "window.open('" + legalUrl('terms') + "','_blank')")}
+    </div>
   `);
+}
+
+function legalUrl(kind) {
+  const base = location.pathname.includes('/test/') ? '../' : './';
+  return base + kind + (lang() === 'fa' ? '-fa' : '') + '.html';
+}
+
+// ─── پشتیبان‌گیری: خروجی / بازیابی JSON ───
+export function openSettingsBackup() {
+  openModal(`
+    ${settingsHeader(tr('پشتیبان‌گیری'), 'openSettings()')}
+    <p class="small muted">${tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.')}</p>
+    <div class="sgroup">
+      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), tr('فایل JSON'), 'exportBackup()')}
+      ${settingsRow('upload', '#f59e0b', tr('بازیابی از فایل'), tr('جایگزین همهٔ داده‌های فعلی می‌شود'), "document.getElementById('bkFile').click()")}
+    </div>
+    <input type="file" id="bkFile" accept="application/json,.json" style="display:none" onchange="importBackup(this.files[0])">
+  `);
+}
+
+export function exportBackup() {
+  const data = JSON.stringify(state, null, 1);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'capital-backup-' + stamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 500);
+  toast(tr('فایل پشتیبان ساخته شد'));
+}
+
+export async function importBackup(file) {
+  if (!file) return;
+  let obj;
+  try {
+    obj = JSON.parse(await file.text());
+  } catch (e) {
+    toast(tr('فایل معتبر نیست'));
+    return;
+  }
+  if (!obj || typeof obj !== 'object' || !Array.isArray(obj.transactions) || !Array.isArray(obj.accounts)) {
+    toast(tr('فایل معتبر نیست'));
+    return;
+  }
+  const n = obj.transactions.length;
+  const ok = window.confirm(tr('همهٔ داده‌های فعلی با {n} تراکنش داخل فایل جایگزین شود؟', { n }));
+  if (!ok) return;
+  replaceState(obj, { markDirty: true });
+  toast(tr('بازیابی انجام شد'));
+  closeModal();
+  if (window.render) window.render();
 }
 
 function googleUserFromStore() {
