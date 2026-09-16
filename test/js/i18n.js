@@ -51,7 +51,7 @@ export function useFaDigits() {
 // ترجمه: t('key') یا t('key', {n: 3}) با جایگزینی {n}
 export function t(key, vars) {
   let s = dict[key];
-  if (s === undefined) s = fallback[key];
+  if (s === undefined && !/[\u0600-\u06FF]/.test(key)) s = fallback[key];
   if (s === undefined) s = key;
   if (vars) for (const k of Object.keys(vars)) s = s.split('{' + k + '}').join(vars[k]);
   return s;
@@ -67,9 +67,9 @@ export async function initI18n() {
 
 async function loadLang(id) {
   const info = LANGS.find((l) => l.id === id) || LANGS[0];
-  const [en, mine] = await Promise.all([import('../i18n/en.js'), info.id === 'en' ? null : import('../i18n/' + info.id + '.js')]);
-  fallback = en.default;
-  dict = mine ? mine.default : en.default;
+  const [en, enUi, mine] = await Promise.all([import('../i18n/en.js'), import('../i18n/en-ui.js'), info.id === 'en' ? null : import('../i18n/' + info.id + '.js')]);
+  fallback = Object.assign({}, en.default, enUi.default);
+  dict = mine ? mine.default : fallback;
   cur = info;
   setFaDigits(info.digits === 'fa');
   applyDocument();

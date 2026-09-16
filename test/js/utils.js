@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.9.0-test';
+export const APP_VERSION = '2.9.1-test';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -65,9 +65,17 @@ export function setBaseInfo(name, info) {
 export function baseName() {
   return baseInfo.name;
 }
+// نمایش نام واحد (در انگلیسی کد ارز)
+let curDisplay = (c) => c;
+export function setCurDisplay(fn) {
+  curDisplay = fn;
+}
+export function curLabel(c) {
+  return curDisplay(c);
+}
 export function fmtT(n) {
   if (hideMoney) return '••••';
-  return fmt(n) + ' ' + baseInfo.name;
+  return fmt(n) + ' ' + curDisplay(baseInfo.name);
 }
 
 export function uid() {
@@ -243,7 +251,7 @@ export function amountWords(n, cur) {
   n = Math.abs(Number(n) || 0);
   if (!n) return '';
   const trim = (t) => (t.includes('.') ? t.replace(/0+$/, '').replace(/\.$/, '') : t);
-  const u = cur || baseInfo.name;
+  const u = curDisplay(cur || baseInfo.name);
   const big = cur ? cur === baseInfo.name ? baseInfo.big : !!(bigUnits && bigUnits.has(cur)) : baseInfo.big;
   if (big) {
     if (n >= 1e9) return toFa(trim((n / 1e9).toFixed(2)).replace('.', decSep())) + ' ' + unitName('b') + ' ' + u;

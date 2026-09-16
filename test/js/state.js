@@ -1,5 +1,5 @@
-import { store, setBaseInfo, setBigUnits } from './utils.js';
-import { t } from './i18n.js';
+import { store, setBaseInfo, setBigUnits, setCurDisplay } from './utils.js';
+import { t, lang } from './i18n.js';
 import { curMonthKey } from './jalali.js';
 import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
@@ -60,7 +60,7 @@ export function accountOptGroups(selectedId, list) {
   const gs = accountGroups(list);
   if (gs.length <= 1 && gs[0] && gs[0].key === '__none') {
     return gs[0].accts
-      .map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escq(a.name)} · ${escq(a.currency)}</option>`)
+      .map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escq(a.name)} · ${escq(curName(a.currency))}</option>`)
       .join('');
   }
   return gs
@@ -68,7 +68,7 @@ export function accountOptGroups(selectedId, list) {
       (g) =>
         `<optgroup label="${escq(g.label)}">` +
         g.accts
-          .map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escq(a.name)} · ${escq(a.currency)}</option>`)
+          .map((a) => `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${escq(a.name)} · ${escq(curName(a.currency))}</option>`)
           .join('') +
         `</optgroup>`
     )
@@ -120,6 +120,14 @@ export const CURRENCIES = [...Object.keys(CURRENCY_INFO), 'سایر'];
 export function currencyInfo(cur) {
   return CURRENCY_INFO[cur] || { code: cur, symbol: cur, dec: 2 };
 }
+// نام نمایشی واحد پول: در فارسی همان نام؛ در زبان‌های دیگر کد (USD, TMN…)
+export function curName(cur) {
+  if (!cur) return '';
+  if (lang() === 'fa') return cur;
+  const i = CURRENCY_INFO[cur];
+  return i ? i.code : cur;
+}
+setCurDisplay(curName);
 export const DEFAULT_BASE = 'تومان';
 export function baseCur() {
   return (state && state.baseCurrency) || DEFAULT_BASE;

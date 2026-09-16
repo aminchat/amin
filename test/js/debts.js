@@ -3,8 +3,9 @@ import { esc, fmt, fmtShort, store, toast, uid, todayISO, infoTip } from './util
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
-import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT, baseCur } from './state.js';
+import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT, baseCur, curName } from './state.js';
 import { overdueInstallments } from './installments.js';
+import { t as tr } from './i18n.js';
 
 const NOTIFY_DAY_KEY = 'capital_debt_notify_day';
 let editingDebtId = null;
@@ -55,12 +56,12 @@ export function overdueCount() {
 }
 
 function dueLabel(dueISO) {
-  if (!dueISO) return 'بدون سررسید';
+  if (!dueISO) return tr('بدون سررسید');
   const n = daysUntilDue(dueISO);
   if (n === null) return fmtDate(dueISO);
-  if (n < 0) return 'عقب‌افتاده · ' + fmtDate(dueISO);
-  if (n === 0) return 'امروز سررسید است';
-  if (n === 1) return 'فردا سررسید است';
+  if (n < 0) return (tr('عقب‌افتاده') + ' · ') + fmtDate(dueISO);
+  if (n === 0) return tr('امروز سررسید است');
+  if (n === 1) return tr('فردا سررسید است');
   return fmtDate(dueISO);
 }
 
@@ -72,7 +73,7 @@ function lastDebtAccountId() {
 
 function accountOptionsHtml(selectedId) {
   const opts = accountOptGroups(selectedId);
-  return `<option value="" ${!selectedId ? 'selected' : ''}>— بدون اتصال به حساب (فقط یادداشت) —</option>${opts}`;
+  return `<option value="" ${!selectedId ? 'selected' : ''}>— ${tr('بدون اتصال به حساب (فقط یادداشت) —')}</option>${opts}`;
 }
 
 export function openDebtForm(d) {
@@ -82,30 +83,30 @@ export function openDebtForm(d) {
   const acc = accountById(accId);
   const linked = !!(d && d.txId);
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${d ? 'ویرایش مورد' : 'طلب یا بدهی جدید'}</h2>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${d ? tr('ویرایش مورد') : tr('طلب یا بدهی جدید')}</h2>
     <div class="seg" id="debtKindSeg" style="margin-bottom:14px">
-      <button class="${kind === 'in' ? 'on' : ''}" data-k="in" onclick="setDebtKind(this)">طلب من از دیگران</button>
-      <button class="${kind === 'out' ? 'on out' : ''}" data-k="out" onclick="setDebtKind(this)">بدهی من به دیگران</button>
+      <button class="${kind === 'in' ? 'on' : ''}" data-k="in" onclick="setDebtKind(this)">${tr('طلب من از دیگران')}</button>
+      <button class="${kind === 'out' ? 'on out' : ''}" data-k="out" onclick="setDebtKind(this)">${tr('بدهی من به دیگران')}</button>
     </div>
-    <div class="field"><label>اسم طرف</label>
-      <input class="input" id="dPerson" placeholder="مثلاً علی" value="${d ? esc(d.person || '') : ''}">
+    <div class="field"><label>${tr('اسم طرف')}</label>
+      <input class="input" id="dPerson" placeholder="${tr('مثلاً علی')}" value="${d ? esc(d.person || '') : ''}">
     </div>
-    <div class="field"><label>از/به کدام حساب؟</label>
+    <div class="field"><label>${tr('از/به کدام حساب؟')}</label>
       <select class="input" id="dAccount" onchange="syncDebtAmountLabel()">${accountOptionsHtml(accId)}</select>
-      <div class="hint" style="margin-top:6px">با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. حساب تسویه را موقع تسویه جدا انتخاب می‌کنی (می‌تواند فرق کند).</div>
+      <div class="hint" style="margin-top:6px">${tr('با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. حساب تسویه را موقع تسویه جدا انتخاب می‌کنی (می‌تواند فرق کند).')}</div>
     </div>
-    <div class="field"><label id="dAmountLbl">مبلغ (${acc ? esc(acc.currency) : baseCur()})</label>
-      <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 500000" value="${d ? d.amount : ''}">
+    <div class="field"><label id="dAmountLbl">${tr('مبلغ')} (${curName(acc ? acc.currency : baseCur())})</label>
+      <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 500000')}" value="${d ? d.amount : ''}">
     </div>
-    <div class="field"><label>تاریخ سررسید</label>
+    <div class="field"><label>${tr('تاریخ سررسید')}</label>
       <input class="input" id="dDue" type="date" value="${d && d.dueISO ? d.dueISO : ''}">
     </div>
-    <div class="field"><label>توضیح (اختیاری)</label>
-      <input class="input" id="dNote" placeholder="مثلاً قرض برای اجاره" value="${d ? esc(d.note || '') : ''}">
+    <div class="field"><label>${tr('توضیح (اختیاری)')}</label>
+      <input class="input" id="dNote" placeholder="${tr('مثلاً قرض برای اجاره')}" value="${d ? esc(d.note || '') : ''}">
     </div>
-    <button class="btn primary block" onclick="saveDebt()">${d ? 'ذخیره' : 'ثبت'}</button>
-    ${d ? `<button class="btn danger block" style="margin-top:8px" onclick="delDebt('${d.id}')">حذف</button>` : ''}
+    <button class="btn primary block" onclick="saveDebt()">${d ? tr('ذخیره') : tr('ثبت')}</button>
+    ${d ? `<button class="btn danger block" style="margin-top:8px" onclick="delDebt('${d.id}')">${tr('حذف')}</button>` : ''}
   `);
 }
 
@@ -118,12 +119,12 @@ export function setDebtKind(btn) {
 export function saveDebt() {
   const person = (document.getElementById('dPerson').value || '').trim();
   if (!person) {
-    toast('اسم طرف را بنویس');
+    toast(tr('اسم طرف را بنویس'));
     return;
   }
   const amount = parseFloat(document.getElementById('dAmount').value);
   if (!amount || amount <= 0) {
-    toast('مبلغ را درست وارد کن');
+    toast(tr('مبلغ را درست وارد کن'));
     return;
   }
   const onBtn = document.querySelector('#debtKindSeg button.on');
@@ -138,7 +139,7 @@ export function saveDebt() {
     if (!d) return;
     Object.assign(d, { person, amount, kind, dueISO, note, accountId, updatedAt: stamp });
     syncDebtTxs(d);
-    toast('ویرایش شد');
+    toast(tr('ویرایش شد'));
   } else {
     if (!state.debts) state.debts = [];
     const d = {
@@ -156,7 +157,7 @@ export function saveDebt() {
     };
     state.debts.push(d);
     syncDebtTxs(d);
-    toast(accountId ? 'ثبت شد ✓ و از حساب اعمال شد' : 'ثبت شد ✓');
+    toast(accountId ? (tr('ثبت شد') + ' ✓ ' + tr('و از حساب اعمال شد')) : (tr('ثبت شد') + ' ✓'));
   }
   save();
   closeModal();
@@ -168,7 +169,7 @@ export function syncDebtAmountLabel() {
   const lbl = document.getElementById('dAmountLbl');
   if (!sel || !lbl) return;
   const a = accountById(sel.value);
-  lbl.textContent = 'مبلغ (' + (a ? a.currency : baseCur()) + ')';
+  lbl.textContent = tr('مبلغ') + ' (' + curName(a ? a.currency : baseCur()) + ')';
   const inp = document.getElementById('dAmount');
   if (inp) {
     inp.dataset.cur = a ? a.currency : baseCur();
@@ -187,11 +188,11 @@ function upsertLinkedTx(existingId, d, phase) {
   const who = d.person || '';
   const note = isOpen
     ? lent
-      ? 'قرض دادم به ' + who
-      : 'قرض گرفتم از ' + who
+      ? (tr('قرض دادم به') + ' ') + who
+      : (tr('قرض گرفتم از') + ' ') + who
     : lent
-      ? 'برگشت طلب از ' + who
-      : 'پس دادم به ' + who;
+      ? (tr('برگشت طلب از') + ' ') + who
+      : (tr('پس دادم به') + ' ') + who;
   const stamp = Date.now();
   let t = existingId ? state.transactions.find((x) => x.id === existingId) : null;
   const payload = {
@@ -230,7 +231,7 @@ function paymentTx(d, pay) {
   }
   const lent = d.kind === 'in';
   const who = d.person || '';
-  const note = (lent ? 'برگشت طلب از ' : 'پس دادم به ') + who + (pay.note ? ' — ' + pay.note : '');
+  const note = (lent ? (tr('برگشت طلب از') + ' ') : (tr('پس دادم به') + ' ')) + who + (pay.note ? ' — ' + pay.note : '');
   let t = pay.txId ? state.transactions.find((x) => x.id === pay.txId) : null;
   const payload = {
     amount: pay.amount,
@@ -270,7 +271,7 @@ function syncDebtTxs(d) {
 export function delDebt(id) {
   const d = allDebts().find((x) => x.id === id);
   const linked = !!(d && (d.txId || (d.payments || []).some((x) => x.txId)));
-  askConfirm(linked ? 'این مورد و تراکنش‌های وصل‌شده به آن حذف شود؟' : 'این مورد حذف شود؟', () => {
+  askConfirm(linked ? tr('این مورد و تراکنش‌های وصل‌شده به آن حذف شود؟') : tr('این مورد حذف شود؟'), () => {
     if (d) {
       removeTx(d.txId);
       for (const pay of d.payments || []) removeTx(pay.txId);
@@ -278,7 +279,7 @@ export function delDebt(id) {
     state.debts = allDebts().filter((d) => d.id !== id);
     save();
     render();
-    toast('حذف شد');
+    toast(tr('حذف شد'));
   });
 }
 
@@ -296,26 +297,26 @@ export function settleDebt(id) {
       const a = accountById(pay.accountId);
       return `<div class="item" style="min-height:48px">
         <div class="ic" style="background:var(--green-soft);color:var(--green)">${icon('check')}</div>
-        <div class="mid"><div class="t1">${fmt(pay.amount)} ${esc(cur)}</div><div class="t2">${fmtDate(pay.dateISO)}${a ? ' · ' + esc(a.name) : ' · بدون حساب'}</div></div>
-        <button class="btn sm icon danger" onclick="delDebtPayment('${d.id}','${pay.id}')" aria-label="حذف">${icon('trash')}</button>
+        <div class="mid"><div class="t1">${fmt(pay.amount)} ${esc(curName(cur))}</div><div class="t2">${fmtDate(pay.dateISO)}${a ? ' · ' + esc(a.name) : (' · ' + tr('بدون حساب'))}</div></div>
+        <button class="btn sm icon danger" onclick="delDebtPayment('${d.id}','${pay.id}')" aria-label="${tr('حذف')}">${icon('trash')}</button>
       </div>`;
     })
     .join('');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${lent ? 'دریافت از ' : 'پرداخت به '}${esc(d.person)}</h2>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${lent ? (tr('دریافت از') + ' ') : (tr('پرداخت به') + ' ')}${esc(d.person)}</h2>
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">کل</div><div class="val">${fmt(d.amount)}</div></div>
-      <div class="stat"><div class="lbl">مانده</div><div class="val ${remain > 0 ? 'red' : 'green'}">${fmt(remain)}</div></div>
+      <div class="stat"><div class="lbl">${tr('کل')}</div><div class="val">${fmt(d.amount)}</div></div>
+      <div class="stat"><div class="lbl">${tr('مانده')}</div><div class="val ${remain > 0 ? 'red' : 'green'}">${fmt(remain)}</div></div>
     </div>
     ${remain > 0 ? `
-    <div class="field"><label>مبلغ (${esc(cur)})</label>
+    <div class="field"><label>${tr('مبلغ')} (${esc(curName(cur))})</label>
       <input class="input" id="spAmount" type="number" step="any" inputmode="decimal" value="${remain}"></div>
-    <div class="field"><label>${lent ? 'به کدام حساب برگشت؟' : 'از کدام حساب پرداخت شد؟'} ${infoTip('می‌تواند با حساب اولیه فرق کند؛ مثلاً از ملت قرض داده‌ای و به ملی برگشته.')}</label>
-      <select class="input" id="spAcc"><option value="">— بدون اتصال به حساب —</option>${accountOptGroups(d.accountId || '')}</select></div>
-    <div class="field"><label>تاریخ</label><input class="input" id="spDate" type="date" value="${todayISO()}"></div>
-    <button class="btn primary block" onclick="addDebtPayment('${d.id}')">${icon('check')} ثبت ${lent ? 'دریافت' : 'پرداخت'}</button>` : '<div class="hint" style="margin-bottom:12px;color:var(--green)">کامل تسویه شده.</div>'}
-    ${hist ? `<div class="divider"></div><h3 class="muted" style="margin-bottom:8px">پرداخت‌ها</h3>${hist}` : ''}
+    <div class="field"><label>${lent ? tr('به کدام حساب برگشت؟') : tr('از کدام حساب پرداخت شد؟')} ${infoTip(tr('می‌تواند با حساب اولیه فرق کند؛ مثلاً از ملت قرض داده‌ای و به ملی برگشته.'))}</label>
+      <select class="input" id="spAcc"><option value="">— ${tr('بدون اتصال به حساب —')}</option>${accountOptGroups(d.accountId || '')}</select></div>
+    <div class="field"><label>${tr('تاریخ')}</label><input class="input" id="spDate" type="date" value="${todayISO()}"></div>
+    <button class="btn primary block" onclick="addDebtPayment('${d.id}')">${icon('check')} ${tr('ثبت')} ${lent ? tr('دریافت') : tr('پرداخت')}</button>` : ('<div class="hint" style="margin-bottom:12px;color:var(--green)">' + tr('کامل تسویه شده.') + '</div>')}
+    ${hist ? `<div class="divider"></div><h3 class="muted" style="margin-bottom:8px">${tr('پرداخت‌ها')}</h3>${hist}` : ''}
   `);
 }
 
@@ -323,8 +324,8 @@ export function addDebtPayment(id) {
   const d = allDebts().find((x) => x.id === id);
   if (!d) return;
   const amount = parseFloat(document.getElementById('spAmount').value);
-  if (!amount || amount <= 0) return toast('مبلغ را درست وارد کن');
-  if (amount > debtRemaining(d) + 0.000001) return toast('بیشتر از مانده است');
+  if (!amount || amount <= 0) return toast(tr('مبلغ را درست وارد کن'));
+  if (amount > debtRemaining(d) + 0.000001) return toast(tr('بیشتر از مانده است'));
   d.payments.push({
     id: uid(),
     amount,
@@ -337,7 +338,7 @@ export function addDebtPayment(id) {
   save();
   closeModal();
   render();
-  toast(d.settled ? 'تسویه کامل شد ✓' : 'ثبت شد · مانده ' + fmt(debtRemaining(d)));
+  toast(d.settled ? (tr('تسویه کامل شد') + ' ✓') : (tr('ثبت شد') + ' · ' + tr('مانده') + ' ') + fmt(debtRemaining(d)));
 }
 
 export function delDebtPayment(id, payId) {
@@ -403,19 +404,19 @@ function debtRow(d) {
       <div class="ic" style="background:${mine ? 'var(--green-soft)' : 'var(--red-soft)'};color:${mine ? 'var(--green)' : 'var(--red)'}">${icon(mine ? 'arrowIn' : 'arrowOut')}</div>
       <div class="mid" onclick="openDebtForm(findDebt('${d.id}'))">
         <div class="t1">${esc(d.person)}</div>
-        <div class="t2">${mine ? 'طلب من' : 'بدهی من'} · ${dueLabel(d.dueISO)}${d.note ? ' · ' + esc(d.note) : ''}${
+        <div class="t2">${mine ? tr('طلب من') : tr('بدهی من')} · ${dueLabel(d.dueISO)}${d.note ? ' · ' + esc(d.note) : ''}${
           d.accountId && accountById(d.accountId) ? ' · <span class="badge" style="color:#14b8a6">' + esc(accountById(d.accountId).name) + '</span>' : ''
         }</div>
       </div>
       <div style="text-align:left">
         <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${foreign ? fmt(debtRemaining(d)) : fmtShort(debtRemaining(d))}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
-        ${foreign ? `<div class="small muted">${tm == null ? 'نرخ ' + esc(cur) + ' ثبت نشده' : '≈ ' + fmtShort(tm) + ' ' + baseCur()}</div>` : ''}
-        ${!d.settled && debtPaid(d) > 0 ? `<div class="small muted">${fmtShort(debtPaid(d))} از ${fmtShort(d.amount)} تسویه شده</div>` : ''}
-        <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? 'جزئیات' : 'تسویه'}</button>
+        ${foreign ? `<div class="small muted">${tm == null ? (tr('نرخ') + ' ') + esc(curName(cur)) + (' ' + tr('ثبت نشده')) : '≈ ' + fmtShort(tm) + ' ' + baseCur()}</div>` : ''}
+        ${!d.settled && debtPaid(d) > 0 ? `<div class="small muted">${tr('{a} از {b} تسویه شده', { a: fmtShort(debtPaid(d)), b: fmtShort(d.amount) })}</div>` : ''}
+        <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? tr('جزئیات') : tr('تسویه')}</button>
       </div>
     </div>
-    ${hot ? '<div class="small" style="color:var(--red);margin:-4px 0 10px 52px">سررسید گذشته</div>' : ''}
-    ${soon ? '<div class="small" style="color:var(--orange);margin:-4px 0 10px 52px">نزدیک سررسید</div>' : ''}`;
+    ${hot ? ('<div class="small" style="color:var(--red);margin:-4px 0 10px 52px">' + tr('سررسید گذشته') + '</div>') : ''}
+    ${soon ? ('<div class="small" style="color:var(--orange);margin:-4px 0 10px 52px">' + tr('نزدیک سررسید') + '</div>') : ''}`;
 }
 
 export function renderDebts() {
@@ -440,22 +441,22 @@ export function renderDebts() {
   const curs = Object.keys(byCur);
   const breakdown =
     curs.length > 1 || (curs.length === 1 && curs[0] !== baseCur())
-      ? `<div class="hint" style="margin:0 0 12px">به تفکیک واحد: ${curs
-          .map((c) => `<b>${esc(c)}</b> طلب ${c === baseCur() ? fmtShort(byCur[c].in) : fmt(byCur[c].in)} / بدهی ${c === baseCur() ? fmtShort(byCur[c].out) : fmt(byCur[c].out)}`)
+      ? `<div class="hint" style="margin:0 0 12px">${tr('به تفکیک واحد:')} ${curs
+          .map((c) => `<b>${esc(curName(c))}</b> ${tr('طلب')} ${c === baseCur() ? fmtShort(byCur[c].in) : fmt(byCur[c].in)} / ${tr('بدهی')} ${c === baseCur() ? fmtShort(byCur[c].out) : fmt(byCur[c].out)}`)
           .join(' · ')}</div>`
       : '';
   const missingHint = missing.length
-    ? `<div class="hint" style="color:var(--orange);margin:0 0 12px">نرخ ${missing.map(esc).join('، ')} ثبت نشده؛ این موارد در جمع کل حساب نشده‌اند. نرخ را از تنظیمات ← نرخ ارز وارد کن.</div>`
+    ? `<div class="hint" style="color:var(--orange);margin:0 0 12px">${tr('نرخ')} ${missing.map(esc).join('، ')} ${tr('ثبت نشده؛ این موارد در جمع کل حساب نشده‌اند. نرخ را از تنظیمات')} ← ${tr('نرخ ارز وارد کن.')}</div>`
     : '';
   const notifyOn = typeof Notification !== 'undefined' && Notification.permission === 'granted';
 
   const net = rec - pay;
   let html = `
     <div class="hero">
-      <div style="min-width:0"><div class="lbl">${icon('handshake')} خالص طلب و بدهی</div>
+      <div style="min-width:0"><div class="lbl">${icon('handshake')} ${tr('خالص طلب و بدهی')}</div>
       <div class="hero-num ${net < 0 ? 'val red' : ''}">${fmtShort(net)}</div>
-      <div class="sub"><span style="color:var(--green)">طلب ${fmtShort(rec)}</span> · <span style="color:var(--red)">بدهی ${fmtShort(pay)}</span>${
-        breakdown ? ` · <button type="button" class="link" style="padding:0 4px" onclick="document.getElementById('debtBreak').style.display=''">جزئیات</button>` : ''
+      <div class="sub"><span style="color:var(--green)">${tr('طلب')} ${fmtShort(rec)}</span> · <span style="color:var(--red)">${tr('بدهی')} ${fmtShort(pay)}</span>${
+        breakdown ? ` · <button type="button" class="link" style="padding:0 4px" onclick="document.getElementById('debtBreak').style.display=''">${tr('جزئیات')}</button>` : ''
       }</div></div>
       <span class="ib lg ${net < 0 ? 'red' : 'green'}">${icon(net < 0 ? 'arrowOut' : 'arrowIn')}</span>
     </div>
@@ -463,11 +464,11 @@ export function renderDebts() {
     ${missingHint}`;
 
   if (!list.length) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('handshake')}</span>هنوز طلب یا بدهی ثبت نکرده‌ای.<br>مثلاً پولی که به دوستت دادی یا از کسی قرض گرفتی.</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('handshake')}</span>${tr('هنوز طلب یا بدهی ثبت نکرده‌ای.')}<br>${tr('مثلاً پولی که به دوستت دادی یا از کسی قرض گرفتی.')}</div>`;
   } else {
     if (open.length) html += open.map(debtRow).join('');
     if (done.length) {
-      html += `<div class="divider"></div><h3 class="muted" style="margin-bottom:10px">تسویه‌شده</h3>`;
+      html += `<div class="divider"></div><h3 class="muted" style="margin-bottom:10px">${tr('تسویه‌شده')}</h3>`;
       html += done.map(debtRow).join('');
     }
   }
@@ -479,10 +480,10 @@ export function debtHomeBanner() {
   if (!due.length) return '';
   const late = due.filter((d) => daysUntilDue(d.dueISO) <= 0).length;
   const text = late
-    ? toFaSafe(late) + ' مورد سررسید شده یا امروز است'
-    : toFaSafe(due.length) + ' مورد تا سه روز دیگر سررسید دارد';
+    ? toFaSafe(late) + (' ' + tr('مورد سررسید شده یا امروز است'))
+    : toFaSafe(due.length) + (' ' + tr('مورد تا سه روز دیگر سررسید دارد'));
   return `<div class="banner warn">${icon('bell')}<span>${text}.</span>
-    <button class="btn sm primary" style="margin-right:auto" onclick="switchTab('debts')">ببین</button></div>`;
+    <button class="btn sm primary" style="margin-right:auto" onclick="switchTab('debts')">${tr('ببین')}</button></div>`;
 }
 
 function toFaSafe(n) {
@@ -491,15 +492,15 @@ function toFaSafe(n) {
 
 export async function enableDebtReminders() {
   if (typeof Notification === 'undefined') {
-    toast('این مرورگر یادآوری ندارد');
+    toast(tr('این مرورگر یادآوری ندارد'));
     return;
   }
   const p = await Notification.requestPermission();
   if (p !== 'granted') {
-    toast('اجازه یادآوری داده نشد');
+    toast(tr('اجازه یادآوری داده نشد'));
     return;
   }
-  toast('یادآوری روشن شد');
+  toast(tr('یادآوری روشن شد'));
   notifyDueDebts(true);
   render();
 }
@@ -512,10 +513,10 @@ export function notifyDueDebts(force) {
   if (!force && store.get(NOTIFY_DAY_KEY) === day) return;
   store.set(NOTIFY_DAY_KEY, day);
   try {
-    new Notification('طلب و بدهی', {
+    new Notification(tr('طلب و بدهی'), {
       body: due.length === 1
         ? due[0].person + ' — ' + dueLabel(due[0].dueISO)
-        : due.length + ' مورد امروز یا عقب‌افتاده است',
+        : due.length + (' ' + tr('مورد امروز یا عقب‌افتاده است')),
       tag: 'capital-debts',
     });
   } catch (e) {}

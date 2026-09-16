@@ -1,10 +1,10 @@
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip } from './utils.js';
-import { t, LANGS, langPref, lang, calPref, calendar } from './i18n.js';
+import { t, t as tr, LANGS, langPref, lang, calPref, calendar } from './i18n.js';
 import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
-import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES } from './state.js';
+import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES, curName } from './state.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -32,11 +32,11 @@ const BIO_KEY = 'capital_bio_id';
 const LEGACY_DATA_KEY = 'capital_app_v1';
 
 export const THEMES = [
-  { id: 'night', name: 'شب', c1: '#0b0f17', c2: '#3d8bfd' },
-  { id: 'light', name: 'روشن', c1: '#f4f6fb', c2: '#2563eb' },
-  { id: 'ocean', name: 'اقیانوس', c1: '#07151c', c2: '#22d3ee' },
-  { id: 'forest', name: 'جنگل', c1: '#0c1410', c2: '#34d399' },
-  { id: 'sunset', name: 'غروب', c1: '#140e12', c2: '#fb7185' },
+  { id: 'night', name: tr('شب'), c1: '#0b0f17', c2: '#3d8bfd' },
+  { id: 'light', name: tr('روشن'), c1: '#f4f6fb', c2: '#2563eb' },
+  { id: 'ocean', name: tr('اقیانوس'), c1: '#07151c', c2: '#22d3ee' },
+  { id: 'forest', name: tr('جنگل'), c1: '#0c1410', c2: '#34d399' },
+  { id: 'sunset', name: tr('غروب'), c1: '#140e12', c2: '#fb7185' },
 ];
 
 export function currentTheme() {
@@ -101,11 +101,11 @@ function readBioRecord() {
 export async function setPin(pin) {
   if (sec.isEncrypted()) return false;
   if (!/^\d{4,8}$/.test(pin)) {
-    toast('رمز باید ۴ تا ۸ رقم باشد');
+    toast(tr('رمز باید ۴ تا ۸ رقم باشد'));
     return false;
   }
   store.set(PIN_KEY, await hashPin(pin));
-  toast('رمز ذخیره شد');
+  toast(tr('رمز ذخیره شد'));
   return true;
 }
 
@@ -113,7 +113,7 @@ export function clearPin() {
   if (sec.isEncrypted()) return;
   store.set(PIN_KEY, '');
   store.set(BIO_KEY, '');
-  toast('قفل برداشته شد');
+  toast(tr('قفل برداشته شد'));
 }
 
 export async function checkPin(pin) {
@@ -124,12 +124,12 @@ export async function checkPin(pin) {
 
 export async function enableBiometric() {
   if (!bioAvailable() || !window.PublicKeyCredential) {
-    toast('اثر انگشت روی این دستگاه/آدرس در دسترس نیست');
+    toast(tr('اثر انگشت روی این دستگاه/آدرس در دسترس نیست'));
     return false;
   }
   const encrypted = sec.isEncrypted();
   if (encrypted && !sec.isUnlocked()) {
-    toast('اول با رمز عبور وارد شو، بعد اثر انگشت را فعال کن');
+    toast(tr('اول با رمز عبور وارد شو، بعد اثر انگشت را فعال کن'));
     return false;
   }
   try {
@@ -137,7 +137,7 @@ export async function enableBiometric() {
       PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable &&
       !(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())
     ) {
-      toast('روی این دستگاه اثر انگشت/قفل صفحه برای مرورگر فعال نیست');
+      toast(tr('روی این دستگاه اثر انگشت/قفل صفحه برای مرورگر فعال نیست'));
       return false;
     }
   } catch (e) {}
@@ -146,11 +146,11 @@ export async function enableBiometric() {
     // (residentKey/discoverable باعث می‌شد کروم بخواهد passkey در Google Password Manager بسازد)
     const publicKey = {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: 'مدیریت سرمایه', id: location.hostname },
+      rp: { name: tr('مدیریت سرمایه'), id: location.hostname },
       user: {
         id: crypto.getRandomValues(new Uint8Array(16)),
         name: 'capital-app',
-        displayName: 'مدیریت سرمایه',
+        displayName: tr('مدیریت سرمایه'),
       },
       pubKeyCredParams: [
         { type: 'public-key', alg: -7 },
@@ -175,27 +175,27 @@ export async function enableBiometric() {
       const dsKek = await importKekFromRaw(ds);
       const dsWrap = await wrapDataKeyWithKek(sec.getDataKey(), dsKek);
       store.set(BIO_KEY, JSON.stringify({ v: 3, id: b64(cred.rawId), dsWrap, ds: b64(ds) }));
-      toast('ورود با اثر انگشت فعال شد ✓');
+      toast((tr('ورود با اثر انگشت فعال شد') + ' ✓'));
       return true;
     }
     store.set(BIO_KEY, b64(cred.rawId));
-    toast('ورود با اثر انگشت فعال شد');
+    toast(tr('ورود با اثر انگشت فعال شد'));
     return true;
   } catch (e) {
     if (window.__capLog) window.__capLog('enableBiometric', e);
     const name = (e && e.name) || '';
-    if (name === 'NotAllowedError') toast('اجازهٔ اثر انگشت داده نشد یا زمان تمام شد');
-    else if (name === 'NotSupportedError') toast('این دستگاه این نوع اثر انگشت را پشتیبانی نمی‌کند');
-    else if (name === 'SecurityError') toast('این آدرس اجازهٔ اثر انگشت ندارد (باید https باشد)');
-    else if (name === 'InvalidStateError') toast('قبلاً روی این دستگاه ثبت شده؛ اول خاموشش کن و دوباره فعال کن');
-    else toast('فعال‌سازی اثر انگشت انجام نشد (' + (name || (e && e.message) || '?') + ')');
+    if (name === 'NotAllowedError') toast(tr('اجازهٔ اثر انگشت داده نشد یا زمان تمام شد'));
+    else if (name === 'NotSupportedError') toast(tr('این دستگاه این نوع اثر انگشت را پشتیبانی نمی‌کند'));
+    else if (name === 'SecurityError') toast(tr('این آدرس اجازهٔ اثر انگشت ندارد (باید https باشد)'));
+    else if (name === 'InvalidStateError') toast(tr('قبلاً روی این دستگاه ثبت شده؛ اول خاموشش کن و دوباره فعال کن'));
+    else toast((tr('فعال‌سازی اثر انگشت انجام نشد') + ' (') + (name || (e && e.message) || '?') + ')');
     return false;
   }
 }
 
 export function disableBiometric() {
   store.set(BIO_KEY, '');
-  toast('اثر انگشت خاموش شد');
+  toast(tr('اثر انگشت خاموش شد'));
 }
 
 // وقتی کلید داده عوض می‌شود (یکی‌کردن دو دستگاه) رکورد اثر انگشت بی‌اعتبار است
@@ -312,11 +312,11 @@ export async function bioUnlock(auto) {
       return;
     }
     if (res && res.sensorOk) {
-      toast('اثر انگشت تأیید شد ولی بازکردن داده ناموفق بود');
+      toast(tr('اثر انگشت تأیید شد ولی بازکردن داده ناموفق بود'));
     } else if (res && res.err === 'NotAllowedError') {
-      toast('اثر انگشت تأیید نشد');
+      toast(tr('اثر انگشت تأیید نشد'));
     } else {
-      toast('اثر انگشت تأیید نشد' + (res && res.err ? ' (' + res.err + ')' : ''));
+      toast(tr('اثر انگشت تأیید نشد') + (res && res.err ? ' (' + res.err + ')' : ''));
     }
     return;
   }
@@ -326,7 +326,7 @@ export async function bioUnlock(auto) {
   }
   if (res.stale) {
     setLockMode('pass');
-    toast('اثر انگشت با کلید قدیمی ثبت شده بود؛ با رمز عبور وارد شو و دوباره فعالش کن');
+    toast(tr('اثر انگشت با کلید قدیمی ثبت شده بود؛ با رمز عبور وارد شو و دوباره فعالش کن'));
     return;
   }
   if (res.gateOnly && sec.isEncrypted()) {
@@ -336,11 +336,11 @@ export async function bioUnlock(auto) {
       return;
     }
     openModal(`
-      <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+      <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
       <div style="text-align:center;padding:6px 2px">
         <div style="font-size:34px;margin-bottom:8px">👆</div>
-        <p style="margin:0 0 14px">اثر انگشت تأیید شد، ولی این مرورگر نمی‌تواند داده‌ها را مستقیم با آن باز کند.<br>پین یا رمز عبور را وارد کن.</p>
-        <button class="btn primary block" onclick="closeModal();document.getElementById('lockPin').focus()">باشه</button>
+        <p style="margin:0 0 14px">${tr('اثر انگشت تأیید شد، ولی این مرورگر نمی‌تواند داده‌ها را مستقیم با آن باز کند.')}<br>${tr('پین یا رمز عبور را وارد کن.')}</p>
+        <button class="btn primary block" onclick="closeModal();document.getElementById('lockPin').focus()">${tr('باشه')}</button>
       </div>`);
     return;
   }
@@ -361,16 +361,16 @@ export function setLockMode(mode, sub) {
   const lbl = document.getElementById('lockSub');
   const inp = document.getElementById('lockPin');
   const bio = document.getElementById('lockBio');
-  if (title) title.textContent = 'ورود';
+  if (title) title.textContent = tr('ورود');
   if (lbl)
     lbl.textContent =
       sub ||
       (mode === 'pass'
-        ? 'رمز عبور'
-        : 'رمز ورود');
+        ? tr('رمز عبور')
+        : tr('رمز ورود'));
   if (inp) {
     inp.value = '';
-    inp.placeholder = mode === 'pass' ? 'رمز عبور' : 'پین';
+    inp.placeholder = mode === 'pass' ? tr('رمز عبور') : tr('پین');
     inp.maxLength = mode === 'pass' ? 64 : 8;
     inp.setAttribute('inputmode', mode === 'pass' ? 'text' : 'numeric');
     inp.setAttribute('pattern', mode === 'pass' ? '.*' : '[0-9]*');
@@ -411,11 +411,11 @@ export function lockApp() {
         const dbg = document.getElementById('lockDebug');
         if (dbg) {
           dbg.style.color = 'var(--muted)';
-          dbg.textContent = 'در حال همگام‌سازی با گوگل…';
+          dbg.textContent = tr('در حال همگام‌سازی با گوگل…');
         }
         sync.pullRemoteWrapsNow((changed) => {
           if (dbg && dbg.textContent === 'در حال همگام‌سازی با گوگل…') dbg.textContent = '';
-          if (changed) toast('رمز عبور جدید از دستگاه دیگر دریافت شد ✓');
+          if (changed) toast((tr('رمز عبور جدید از دستگاه دیگر دریافت شد') + ' ✓'));
         });
       })
       .catch(() => {});
@@ -452,7 +452,7 @@ function autoBioPrompt() {
 }
 
 export function showLockForRemote() {
-  setLockMode('pass', 'رمز عبور (همان رمز دستگاه‌های دیگر)');
+  setLockMode('pass', tr('رمز عبور (همان رمز دستگاه‌های دیگر)'));
   lockApp();
 }
 
@@ -469,7 +469,7 @@ export async function submitLockPin() {
   const inp = document.getElementById('lockPin');
   const val = String((inp && inp.value) || '').trim();
   if (!val) {
-    toast(lockMode === 'pass' ? 'اول رمز عبور را بنویس' : 'اول رمز را بنویس');
+    toast(lockMode === 'pass' ? tr('اول رمز عبور را بنویس') : tr('اول رمز را بنویس'));
     return;
   }
   if (sec.isEncrypted()) {
@@ -477,7 +477,7 @@ export async function submitLockPin() {
     const setBusy = (b, txt) => {
       if (btn) {
         btn.disabled = b;
-        btn.textContent = txt || 'ورود';
+        btn.textContent = txt || tr('ورود');
       }
     };
     try {
@@ -491,14 +491,14 @@ export async function submitLockPin() {
     try {
       const sync = await import('./sync.js');
       if (sync.isGoogleLinked()) {
-        setBusy(true, 'بررسی رمز جدید از گوگل…');
+        setBusy(true, tr('بررسی رمز جدید از گوگل…'));
         const changed = await new Promise((res) => sync.pullRemoteWrapsNow(res));
         if (changed) {
           retried = true;
           const st = await sec.unlock(val, 'pass');
           setBusy(false);
           finalizeUnlock(st);
-          toast('رمز جدید از دستگاه دیگر دریافت شد ✓');
+          toast((tr('رمز جدید از دستگاه دیگر دریافت شد') + ' ✓'));
           return;
         }
       }
@@ -507,7 +507,7 @@ export async function submitLockPin() {
     }
     setBusy(false);
     pinFailCount++;
-    toast(retried ? 'رمز عبور اشتباه است' : 'رمز عبور اشتباه است' + (pinFailCount >= 2 ? ' — اگر تازه روی دستگاه دیگر عوضش کرده‌ای، چند ثانیه صبر کن و دوباره بزن' : ''));
+    toast(retried ? tr('رمز عبور اشتباه است') : tr('رمز عبور اشتباه است') + (pinFailCount >= 2 ? (' — ' + tr('اگر تازه روی دستگاه دیگر عوضش کرده‌ای، چند ثانیه صبر کن و دوباره بزن')) : ''));
     if (inp) {
       inp.value = '';
       inp.focus();
@@ -515,7 +515,7 @@ export async function submitLockPin() {
     return;
   }
   if (await checkPin(val)) unlockApp();
-  else toast('رمز اشتباه است');
+  else toast(tr('رمز اشتباه است'));
 }
 
 // ─── فراموشی رمز عبور: بازیابی با عبارت بازیابی ───────────────────────────
@@ -524,14 +524,14 @@ let recPhraseValue = '';
 export function startPhraseRecovery() {
   recPhraseValue = '';
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>بازیابی با عبارت بازیابی</h2>
-    <p class="small muted">آن ${PHRASE_WORDS} کلمه را که روی کاغذ نوشتی به ترتیب وارد کن.</p>
-    <div class="field"><label>عبارت بازیابی</label>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('بازیابی با عبارت بازیابی')}</h2>
+    <p class="small muted">${tr('آن {n} کلمه را که روی کاغذ نوشتی به ترتیب وارد کن.', { n: PHRASE_WORDS })}</p>
+    <div class="field"><label>${tr('عبارت بازیابی')}</label>
       <input class="input" id="recPhrase" dir="ltr" autocomplete="off" placeholder="word word word …" style="text-align:left">
     </div>
     <div id="recErr" class="hint" style="display:none;color:#fb7185"></div>
-    <button class="btn primary block" style="margin-top:12px" onclick="recoveryStep2()">ادامه</button>
+    <button class="btn primary block" style="margin-top:12px" onclick="recoveryStep2()">${tr('ادامه')}</button>
   `);
 }
 
@@ -544,8 +544,8 @@ export async function recoveryStep2() {
     if (err) {
       err.style.display = '';
       err.textContent = unknown.length
-        ? 'این کلمه‌ها در فهرست نیستند: ' + unknown.join('، ')
-        : 'باید دقیقاً ' + PHRASE_WORDS + ' کلمهٔ درست وارد کنی.';
+        ? (tr('این کلمه‌ها در فهرست نیستند:') + ' ') + unknown.join('، ')
+        : tr('باید دقیقاً {n} کلمهٔ درست وارد کنی.', { n: PHRASE_WORDS });
     }
     return;
   }
@@ -556,22 +556,22 @@ export async function recoveryStep2() {
     if (window.__capLog) window.__capLog('recoveryStep2', e);
     if (err) {
       err.style.display = '';
-      err.textContent = 'این عبارت به داده‌های این دستگاه نمی‌خورد؛ ترتیب و املای کلمه‌ها را دوباره چک کن.';
+      err.textContent = tr('این عبارت به داده‌های این دستگاه نمی‌خورد؛ ترتیب و املای کلمه‌ها را دوباره چک کن.');
     }
     return;
   }
   // عبارت برای مرحلهٔ بعد نگه داشته می‌شود چون اینپوت از صفحه می‌رود
   recPhraseValue = normalizePhrase(val).join(' ');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>رمز عبور جدید</h2>
-    <p class="small muted">عبارت درست است ✓ حالا یک رمز عبور جدید انتخاب کن (حداقل ۸ نویسه).</p>
-    <div class="field"><label>رمز عبور جدید</label>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('رمز عبور جدید')}</h2>
+    <p class="small muted">${tr('عبارت درست است')} ✓ ${tr('حالا یک رمز عبور جدید انتخاب کن (حداقل ۸ نویسه).')}</p>
+    <div class="field"><label>${tr('رمز عبور جدید')}</label>
       <input class="input" id="recPass" type="password" autocomplete="new-password" dir="ltr"></div>
-    <div class="field"><label>تکرار رمز عبور</label>
+    <div class="field"><label>${tr('تکرار رمز عبور')}</label>
       <input class="input" id="recPass2" type="password" autocomplete="new-password" dir="ltr"></div>
     <div id="recPassErr" class="hint" style="display:none;color:#fb7185"></div>
-    <button class="btn primary block" id="recFinishBtn" style="margin-top:12px" onclick="recoveryFinish()">ورود</button>
+    <button class="btn primary block" id="recFinishBtn" style="margin-top:12px" onclick="recoveryFinish()">${tr('ورود')}</button>
   `);
   setTimeout(() => {
     const p1 = document.getElementById('recPass');
@@ -597,31 +597,31 @@ export async function recoveryFinish() {
     return;
   }
   if (a.length < 8) {
-    recPassError('رمز عبور حداقل ۸ نویسه باشد');
+    recPassError(tr('رمز عبور حداقل ۸ نویسه باشد'));
     return;
   }
   if (a !== b) {
-    recPassError('رمزها یکی نیستند');
+    recPassError(tr('رمزها یکی نیستند'));
     return;
   }
   const btn = document.getElementById('recFinishBtn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'در حال ورود…';
+    btn.textContent = tr('در حال ورود…');
   }
   try {
     const st = await sec.recoverWithPhrase(phrase, a);
     recPhraseValue = '';
     closeModal();
     finalizeUnlock(st);
-    toast('رمز عبور جدید ذخیره شد ✓');
+    toast((tr('رمز عبور جدید ذخیره شد') + ' ✓'));
   } catch (e) {
     if (window.__capLog) window.__capLog('recoveryFinish', e);
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'ورود';
+      btn.textContent = tr('ورود');
     }
-    recPassError('بازیابی انجام نشد: ' + ((e && e.message) || e));
+    recPassError((tr('بازیابی انجام نشد:') + ' ') + ((e && e.message) || e));
   }
 }
 
@@ -634,21 +634,21 @@ let wizCheckB = 0;
 export function openEncryptSetup() {
   const legacyPin = !sec.isEncrypted() && !!store.get(PIN_KEY);
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>🔐 فعال‌کردن رمزنگاری</h2>
-    <p class="small muted">از این پس داده‌ها چه روی گوشی چه در گوگل‌درایو فقط با کلید تو خوانده می‌شوند.
-    یک <b>رمز عبور</b> انتخاب کن؛ کلید اصلی داده‌های توست.</p>
-    <div class="field"><label>رمز عبور (حداقل ۸ نویسه)</label>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>🔐 ${tr('فعال‌کردن رمزنگاری')}</h2>
+    <p class="small muted">${tr('از این پس داده‌ها چه روی گوشی چه در گوگل‌درایو فقط با کلید تو خوانده می‌شوند.')}
+    ${tr('یک {a} انتخاب کن؛ کلید اصلی داده‌های توست.', { a: '<b>' + tr('رمز عبور') + '</b>' })}</p>
+    <div class="field"><label>${tr('رمز عبور (حداقل ۸ نویسه)')}</label>
       <input class="input" id="encPass" type="password" autocomplete="new-password" dir="ltr"></div>
-    <div class="field"><label>تکرار رمز عبور</label>
+    <div class="field"><label>${tr('تکرار رمز عبور')}</label>
       <input class="input" id="encPass2" type="password" autocomplete="new-password" dir="ltr"></div>
     ${
       legacyPin
-        ? '<div class="field"><label>پین فعلی‌ات (برای انتقال به سیستم جدید)</label><input class="input" id="encOldPin" inputmode="numeric" dir="ltr"></div>'
+        ? ('<div class="field"><label>' + tr('پین فعلی‌ات (برای انتقال به سیستم جدید)') + '</label><input class="input" id="encOldPin" inputmode="numeric" dir="ltr"></div>')
         : ''
     }
-    <div class="hint">⚠️ اگر این رمز فراموش شود و عبارت بازیابی هم نباشد، داده‌ها قابل بازگشت نیستند.</div>
-    <button class="btn primary block" style="margin-top:12px" onclick="encryptStep2()">ادامه</button>
+    <div class="hint">⚠️ ${tr('اگر این رمز فراموش شود و عبارت بازیابی هم نباشد، داده‌ها قابل بازگشت نیستند.')}</div>
+    <button class="btn primary block" style="margin-top:12px" onclick="encryptStep2()">${tr('ادامه')}</button>
   `);
 }
 
@@ -656,11 +656,11 @@ export async function encryptStep2() {
   const a = (document.getElementById('encPass') || {}).value || '';
   const b = (document.getElementById('encPass2') || {}).value || '';
   if (a.length < 8) {
-    toast('رمز عبور حداقل ۸ نویسه باشد');
+    toast(tr('رمز عبور حداقل ۸ نویسه باشد'));
     return;
   }
   if (a !== b) {
-    toast('رمزها یکی نیستند');
+    toast(tr('رمزها یکی نیستند'));
     return;
   }
   wizPass = a;
@@ -674,19 +674,19 @@ export async function encryptStep2() {
   wizCheckA = idxs[0];
   wizCheckB = idxs[1];
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>📜 عبارت بازیابی</h2>
-    <p class="small muted">این ${PHRASE_WORDS} کلمه را <b>روی کاغذ یادداشت کن</b> و جای امن بگذار.
-    اگر رمز عبور را فراموش کنی، فقط با این عبارت می‌توانی داده‌ها را پس بگیری.</p>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>📜 ${tr('عبارت بازیابی')}</h2>
+    <p class="small muted">${tr('این {n} کلمه را {b} و جای امن بگذار.', { n: PHRASE_WORDS, b: '<b>' + tr('روی کاغذ یادداشت کن') + '</b>' })}
+    ${tr('اگر رمز عبور را فراموش کنی، فقط با این عبارت می‌توانی داده‌ها را پس بگیری.')}</p>
     <div class="phrase-grid" dir="ltr">
       ${words.map((w, i) => `<span class="phrase-w"><b>${i + 1}</b> ${esc(w)}</span>`).join('')}
     </div>
-    <div class="field" style="margin-top:14px"><label>برای اطمینان: کلمهٔ شمارهٔ ${wizCheckA + 1}؟</label>
+    <div class="field" style="margin-top:14px"><label>${tr('برای اطمینان: کلمهٔ شمارهٔ {n}؟', { n: wizCheckA + 1 })}</label>
       <input class="input" id="wizChkA" dir="ltr" autocomplete="off" style="text-align:left"></div>
-    <div class="field"><label>کلمهٔ شمارهٔ ${wizCheckB + 1}؟</label>
+    <div class="field"><label>${tr('کلمهٔ شمارهٔ {n}؟', { n: wizCheckB + 1 })}</label>
       <input class="input" id="wizChkB" dir="ltr" autocomplete="off" style="text-align:left"></div>
-    <div class="hint">اسکرین‌شات نگیر؛ فقط کاغذ.</div>
-    <button class="btn primary block" style="margin-top:12px" onclick="encryptStep3()">فعال کن</button>
+    <div class="hint">${tr('اسکرین‌شات نگیر؛ فقط کاغذ.')}</div>
+    <button class="btn primary block" style="margin-top:12px" onclick="encryptStep3()">${tr('فعال کن')}</button>
   `);
 }
 
@@ -695,7 +695,7 @@ export function encryptStep3() {
   const ca = String((document.getElementById('wizChkA') || {}).value || '').trim().toLowerCase();
   const cb = String((document.getElementById('wizChkB') || {}).value || '').trim().toLowerCase();
   if (ca !== words[wizCheckA] || cb !== words[wizCheckB]) {
-    toast('کلمه‌ها را درست یادداشت نکردی؛ دوباره نگاه کن');
+    toast(tr('کلمه‌ها را درست یادداشت نکردی؛ دوباره نگاه کن'));
     return;
   }
   return encryptFinish(true);
@@ -712,11 +712,11 @@ export async function encryptFinish() {
     closeModal();
     setLockMode('pass');
     render();
-    toast('رمزنگاری فعال شد 🔐');
+    toast((tr('رمزنگاری فعال شد') + ' 🔐'));
     document.dispatchEvent(new CustomEvent('cap:encrypt-on'));
   } catch (e) {
-    if (window.__capLog) window.__capLog('فعال‌سازی رمزنگاری', e);
-    toast('مشکلی پیش آمد؛ دوباره تلاش کن');
+    if (window.__capLog) window.__capLog(tr('فعال‌سازی رمزنگاری'), e);
+    toast(tr('مشکلی پیش آمد؛ دوباره تلاش کن'));
   }
 }
 
@@ -727,15 +727,15 @@ export async function savePinRestore() {}
 // ─── تغییر رمز عبور / عبارت بازیابی جدید ───────────────────────────────────
 export function changePassPrompt() {
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>تغییر رمز عبور</h2>
-    <div class="field"><label>رمز عبور فعلی</label>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('تغییر رمز عبور')}</h2>
+    <div class="field"><label>${tr('رمز عبور فعلی')}</label>
       <input class="input" id="cpOld" type="password" autocomplete="off" dir="ltr"></div>
-    <div class="field"><label>رمز عبور جدید (حداقل ۸ نویسه)</label>
+    <div class="field"><label>${tr('رمز عبور جدید (حداقل ۸ نویسه)')}</label>
       <input class="input" id="cpNew" type="password" autocomplete="new-password" dir="ltr"></div>
-    <div class="field"><label>تکرار رمز عبور جدید</label>
+    <div class="field"><label>${tr('تکرار رمز عبور جدید')}</label>
       <input class="input" id="cpNew2" type="password" autocomplete="new-password" dir="ltr"></div>
-    <button class="btn primary block" style="margin-top:12px" onclick="changePassDo()">ذخیره</button>
+    <button class="btn primary block" style="margin-top:12px" onclick="changePassDo()">${tr('ذخیره')}</button>
   `);
 }
 
@@ -744,20 +744,20 @@ export async function changePassDo() {
   const a = String((document.getElementById('cpNew') || {}).value || '');
   const b = String((document.getElementById('cpNew2') || {}).value || '');
   if (a.length < 8) {
-    toast('رمز عبور حداقل ۸ نویسه باشد');
+    toast(tr('رمز عبور حداقل ۸ نویسه باشد'));
     return;
   }
   if (a !== b) {
-    toast('رمزها یکی نیستند');
+    toast(tr('رمزها یکی نیستند'));
     return;
   }
   try {
     await sec.changePassphrase(old, a);
     closeModal();
     openSettings();
-    toast('رمز عبور عوض شد ✓');
+    toast((tr('رمز عبور عوض شد') + ' ✓'));
   } catch (e) {
-    toast('رمز عبور فعلی اشتباه است');
+    toast(tr('رمز عبور فعلی اشتباه است'));
   }
 }
 
@@ -767,13 +767,13 @@ export async function rotatePhrasePrompt() {
   if (!ok) return;
   const words = phrase.split(' ');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>📜 عبارت بازیابی جدید</h2>
-    <p class="small muted">عبارت قبلی باطل شد. این یکی را روی کاغذ بنویس و جای قبلی جایگزین کن.</p>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>📜 ${tr('عبارت بازیابی جدید')}</h2>
+    <p class="small muted">${tr('عبارت قبلی باطل شد. این یکی را روی کاغذ بنویس و جای قبلی جایگزین کن.')}</p>
     <div class="phrase-grid" dir="ltr">
       ${words.map((w, i) => `<span class="phrase-w"><b>${i + 1}</b> ${esc(w)}</span>`).join('')}
     </div>
-    <button class="btn primary block" style="margin-top:14px" onclick="closeModal()">نوشتم ✓</button>
+    <button class="btn primary block" style="margin-top:14px" onclick="closeModal()">${tr('نوشتم')} ✓</button>
   `);
 }
 
@@ -791,10 +791,10 @@ function settingsRow(ic, color, title, sub, onclick, extra) {
 
 function settingsHeader(title, back) {
   return back
-    ? `<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
+    ? `<button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
        <button type="button" class="sback" onclick="${back}">${icon('chevR')} ${t('act.back')}</button>
        <h2 style="margin-top:6px">${title}</h2>`
-    : `<button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button><h2>${title}</h2>`;
+    : `<button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button><h2>${title}</h2>`;
 }
 
 export function openSettings() {
@@ -804,32 +804,32 @@ export function openSettings() {
   const theme = THEMES.find((t) => t.id === currentTheme()) || THEMES[0];
   const gemini = !!store.get('capital_gemini_key');
   openModal(`
-    ${settingsHeader('تنظیمات')}
+    ${settingsHeader(tr('تنظیمات'))}
     <div class="sgroup">
-      ${settingsRow('palette', '#8b5cf6', 'ظاهر', 'تم و رنگ برنامه', 'openSettingsAppearance()', theme.name)}
+      ${settingsRow('palette', '#8b5cf6', tr('ظاهر'), tr('تم و رنگ برنامه'), 'openSettingsAppearance()', theme.name)}
       ${settingsRow('globe', '#0891b2', t('set.language'), t('set.languageSub'), 'openSettingsLanguage()', (LANGS.find((l) => l.id === lang()) || {}).name + (langPref() === 'auto' ? ' · ' + t('set.auto').split(' ')[0] : ''))}
     </div>
     <div class="sgroup">
       ${settingsRow(
         'shield',
         enc ? '#22c55e' : '#f59e0b',
-        'امنیت و حریم خصوصی',
-        enc ? 'رمزنگاری فعال · ' + (bioOn ? 'اثر انگشت روشن' : 'اثر انگشت خاموش') : 'رمزنگاری غیرفعال',
+        tr('امنیت و حریم خصوصی'),
+        enc ? (tr('رمزنگاری فعال') + ' · ') + (bioOn ? tr('اثر انگشت روشن') : tr('اثر انگشت خاموش')) : tr('رمزنگاری غیرفعال'),
         'openSettingsSecurity()'
       )}
       ${settingsRow(
         'cloud',
         '#3d8bfd',
-        'گوگل درایو',
-        u ? esc(u.email || u.name || 'متصل') : 'همگام‌سازی بین دستگاه‌ها',
+        tr('گوگل درایو'),
+        u ? esc(u.email || u.name || tr('متصل')) : tr('همگام‌سازی بین دستگاه‌ها'),
         'openSettingsGoogle()',
-        u ? '' : 'خاموش'
+        u ? '' : tr('خاموش')
       )}
     </div>
     <div class="sgroup">
-      ${settingsRow('coin', '#0ea5e9', 'ارز', ratesSummary(), 'openSettingsRates()')}
-      ${settingsRow('receipt', '#f97316', 'خواندن فاکتور از عکس', 'کلید هوش مصنوعی گوگل', 'openSettingsScan()', gemini ? 'فعال' : 'خاموش')}
-      ${settingsRow('info', '#64748b', 'دربارهٔ برنامه', 'نسخه ' + APP_VERSION, 'openSettingsAbout()')}
+      ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
+      ${settingsRow('receipt', '#f97316', tr('خواندن فاکتور از عکس'), tr('کلید هوش مصنوعی گوگل'), 'openSettingsScan()', gemini ? tr('فعال') : tr('خاموش'))}
+      ${settingsRow('info', '#64748b', tr('دربارهٔ برنامه'), (tr('نسخه') + ' ') + APP_VERSION, 'openSettingsAbout()')}
     </div>
   `);
 }
@@ -837,8 +837,8 @@ export function openSettings() {
 export function openSettingsAppearance() {
   const theme = currentTheme();
   openModal(`
-    ${settingsHeader('🎨 ظاهر', 'openSettings()')}
-    <h3 style="margin:8px 0 10px">تم</h3>
+    ${settingsHeader(('🎨 ' + tr('ظاهر')), 'openSettings()')}
+    <h3 style="margin:8px 0 10px">${tr('تم')}</h3>
     <div class="theme-grid">
       ${THEMES.map(
         (t) => `<button type="button" class="theme-swatch ${theme === t.id ? 'on' : ''}" onclick="applyTheme('${t.id}');openSettingsAppearance()">
@@ -859,8 +859,8 @@ export function openSettingsSecurity() {
   if (enc) {
     body += `
     <div class="sgroup">
-      ${settingsRow('key', '#3d8bfd', 'تغییر رمز عبور', 'روی همهٔ دستگاه‌ها اعمال می‌شود', 'changePassPrompt()')}
-      ${settingsRow('scroll', '#a78bfa', 'عبارت بازیابی جدید', 'اگر کاغذ قبلی گم شده', 'rotatePhrasePrompt()')}
+      ${settingsRow('key', '#3d8bfd', tr('تغییر رمز عبور'), tr('روی همهٔ دستگاه‌ها اعمال می‌شود'), 'changePassPrompt()')}
+      ${settingsRow('scroll', '#a78bfa', tr('عبارت بازیابی جدید'), tr('اگر کاغذ قبلی گم شده'), 'rotatePhrasePrompt()')}
     </div>
     <div class="sgroup">
       ${
@@ -868,42 +868,42 @@ export function openSettingsSecurity() {
           ? settingsRow(
               'finger',
               bioOn ? '#22c55e' : '#64748b',
-              'ورود با اثر انگشت',
-              bioOn ? 'روشن · فقط روی همین دستگاه' : 'خاموش · ورود سریع بدون رمز',
+              tr('ورود با اثر انگشت'),
+              bioOn ? (tr('روشن') + ' · ' + tr('فقط روی همین دستگاه')) : (tr('خاموش') + ' · ' + tr('ورود سریع بدون رمز')),
               bioOn ? 'disableBiometric();openSettingsSecurity()' : 'enableBiometric().then(()=>openSettingsSecurity())',
-              bioOn ? 'روشن' : 'خاموش'
+              bioOn ? tr('روشن') : tr('خاموش')
             )
-          : '<div class="hint">اثر انگشت روی این آدرس در دسترس نیست (https لازم است).</div>'
+          : '<div class="hint">' + tr('اثر انگشت روی این آدرس در دسترس نیست (https لازم است).') + '</div>'
       }
-      ${settingsRow('lock', '#ef4444', 'قفل کردن همین حالا', 'برای بازکردن رمز یا اثر انگشت لازم است', 'closeModal();lockApp()')}
+      ${settingsRow('lock', '#ef4444', tr('قفل کردن همین حالا'), tr('برای بازکردن رمز یا اثر انگشت لازم است'), 'closeModal();lockApp()')}
     </div>`;
   } else {
     body += `
     <div class="sgroup">
-      ${settingsRow('shield', '#f59e0b', 'فعال‌کردن رمزنگاری', 'داده‌ها الان ساده ذخیره می‌شوند', 'openEncryptSetup()')}
+      ${settingsRow('shield', '#f59e0b', tr('فعال‌کردن رمزنگاری'), tr('داده‌ها الان ساده ذخیره می‌شوند'), 'openEncryptSetup()')}
     </div>
     <div class="sgroup">
       ${
         pinOn
-          ? settingsRow('key', '#3d8bfd', 'تغییر رمز ورود', '', 'changePinPrompt()') +
-            settingsRow('trash', '#ef4444', 'حذف قفل', '', 'clearPin();openSettingsSecurity()')
-          : settingsRow('key', '#3d8bfd', 'فعال‌کردن رمز ورود', 'قفل ساده برای ورود', 'changePinPrompt()')
+          ? settingsRow('key', '#3d8bfd', tr('تغییر رمز ورود'), '', 'changePinPrompt()') +
+            settingsRow('trash', '#ef4444', tr('حذف قفل'), '', 'clearPin();openSettingsSecurity()')
+          : settingsRow('key', '#3d8bfd', tr('فعال‌کردن رمز ورود'), tr('قفل ساده برای ورود'), 'changePinPrompt()')
       }
       ${
         pinOn && bioOk
           ? settingsRow(
               'finger',
               bioOn ? '#22c55e' : '#64748b',
-              'ورود با اثر انگشت',
+              tr('ورود با اثر انگشت'),
               '',
               bioOn ? 'disableBiometric();openSettingsSecurity()' : 'enableBiometric().then(()=>openSettingsSecurity())',
-              bioOn ? 'روشن' : 'خاموش'
+              bioOn ? tr('روشن') : tr('خاموش')
             )
           : ''
       }
     </div>`;
   }
-  openModal(`${settingsHeader('🔐 امنیت و حریم خصوصی', 'openSettings()')}${body}`);
+  openModal(`${settingsHeader(('🔐 ' + tr('امنیت و حریم خصوصی')), 'openSettings()')}${body}`);
 }
 
 export function openSettingsGoogle() {
@@ -911,27 +911,27 @@ export function openSettingsGoogle() {
   let body;
   if (!u) {
     body = `
-    <div class="hint" style="margin:0 0 12px">با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.${
-      sec.isEncrypted() ? ' داده‌ها رمزشده می‌روند؛ گوگل نمی‌تواند بخواندشان.' : ''
+    <div class="hint" style="margin:0 0 12px">${tr('با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.')}${
+      sec.isEncrypted() ? (' ' + tr('داده‌ها رمزشده می‌روند؛ گوگل نمی‌تواند بخواندشان.')) : ''
     }</div>
-    <button class="btn primary block" onclick="closeModal();googleSignIn()">ورود با گوگل</button>`;
+    <button class="btn primary block" onclick="closeModal();googleSignIn()">${tr('ورود با گوگل')}</button>`;
   } else {
     body = `
     <div class="sgroup">
       <div class="srow" style="cursor:default">
         <span class="sic" style="background:#3d8bfd">${icon('cloud')}</span>
-        <span class="smid"><span class="st1">${esc(u.name || 'حساب گوگل')}</span>${u.email ? `<span class="st2">${esc(u.email)}</span>` : ''}</span>
+        <span class="smid"><span class="st1">${esc(u.name || tr('حساب گوگل'))}</span>${u.email ? `<span class="st2">${esc(u.email)}</span>` : ''}</span>
       </div>
     </div>
     <div class="sgroup">
-      ${settingsRow('cloudUp', '#22c55e', 'الان در گوگل ذخیره کن', 'ارسال نسخهٔ این دستگاه', 'closeModal();pushToDrive(true)')}
-      ${settingsRow('cloudDown', '#3d8bfd', 'دریافت از گوگل', 'گرفتن آخرین نسخه', "closeModal();loadFromDrive(function(){render();toast('دریافت از گوگل انجام شد ✓');},true)")}
+      ${settingsRow('cloudUp', '#22c55e', tr('الان در گوگل ذخیره کن'), tr('ارسال نسخهٔ این دستگاه'), 'closeModal();pushToDrive(true)')}
+      ${settingsRow('cloudDown', '#3d8bfd', tr('دریافت از گوگل'), tr('گرفتن آخرین نسخه'), ("closeModal();loadFromDrive(function(){render();toast('" + tr("دریافت از گوگل انجام شد") + " ✓');},true)"))}
     </div>
     <div class="sgroup">
-      ${settingsRow('logout', '#ef4444', 'خروج از حساب گوگل', 'همگام‌سازی متوقف می‌شود', 'closeModal();googleSignOut()')}
+      ${settingsRow('logout', '#ef4444', tr('خروج از حساب گوگل'), tr('همگام‌سازی متوقف می‌شود'), 'closeModal();googleSignOut()')}
     </div>`;
   }
-  openModal(`${settingsHeader('☁️ گوگل درایو', 'openSettings()')}${body}`);
+  openModal(`${settingsHeader(('☁️ ' + tr('گوگل درایو')), 'openSettings()')}${body}`);
 }
 
 // ─── نرخ ارز ───
@@ -944,9 +944,9 @@ function usedCurrencies() {
 }
 function ratesSummary() {
   const used = usedCurrencies();
-  if (!used.length) return 'برای حساب‌ها و دارایی‌های ارزی';
+  if (!used.length) return tr('برای حساب‌ها و دارایی‌های ارزی');
   const missing = used.filter((c) => !rateOf(c));
-  return missing.length ? 'نرخ ' + missing.join('، ') + ' ثبت نشده' : used.map((c) => c + ' ' + toFaNum(rateOf(c))).join(' · ');
+  return missing.length ? (tr('نرخ') + ' ') + missing.join('، ') + (' ' + tr('ثبت نشده')) : used.map((c) => c + ' ' + toFaNum(rateOf(c))).join(' · ');
 }
 function toFaNum(n) {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',').replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
@@ -956,46 +956,46 @@ export function openSettingsRates() {
   const others = allCurrencies().filter((c) => c !== baseCur() && !used.includes(c));
   const row = (c) => `<div class="srow" style="cursor:default">
       <span class="sic" style="background:${rateOf(c) ? '#0ea5e9' : '#f59e0b'}">${icon('coin')}</span>
-      <span class="smid"><span class="st1">${esc(c)}</span><span class="st2">${rateOf(c) ? 'هر واحد ' + toFaNum(rateOf(c)) + ' ' + baseCur() : 'ثبت نشده'}</span></span>
+      <span class="smid"><span class="st1">${esc(curName(c))}</span><span class="st2">${rateOf(c) ? (tr('هر واحد') + ' ') + toFaNum(rateOf(c)) + ' ' + curName(baseCur()) : tr('ثبت نشده')}</span></span>
       <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${baseCur()}" onchange="saveRateFrom('${esc(c)}')">
     </div>`;
   openModal(`
-    ${settingsHeader('ارز', 'openSettings()')}
-    <div class="sgroup" style="margin-bottom:12px">${settingsRow('coin', '#0ea5e9', 'واحد پایهٔ برنامه', 'همهٔ جمع‌ها و گزارش‌ها به این واحد', 'openBaseCurrency()', baseCur())}</div>
-    <p class="small muted">${baseCur()} به ازای هر واحد. فقط برای محاسبهٔ ارزش کلِ حساب‌ها، دارایی‌ها و طلب/بدهی‌های ارزی استفاده می‌شود؛ نرخ هر انتقال را موقع همان انتقال جدا وارد می‌کنی.</p>
-    ${used.length ? `<div class="sgroup">${used.map(row).join('')}</div>` : '<div class="hint">هنوز حساب یا دارایی ارزی نداری.</div>'}
-    ${others.length ? `<h3 class="muted" style="margin:14px 0 6px">سایر واحدها</h3><div class="sgroup">${others.map(row).join('')}</div>` : ''}
+    ${settingsHeader(tr('ارز'), 'openSettings()')}
+    <div class="sgroup" style="margin-bottom:12px">${settingsRow('coin', '#0ea5e9', tr('واحد پایهٔ برنامه'), tr('همهٔ جمع‌ها و گزارش‌ها به این واحد'), 'openBaseCurrency()', curName(baseCur()))}</div>
+    <p class="small muted">${curName(baseCur())} ${tr('به ازای هر واحد. فقط برای محاسبهٔ ارزش کلِ حساب‌ها، دارایی‌ها و طلب/بدهی‌های ارزی استفاده می‌شود؛ نرخ هر انتقال را موقع همان انتقال جدا وارد می‌کنی.')}</p>
+    ${used.length ? `<div class="sgroup">${used.map(row).join('')}</div>` : ('<div class="hint">' + tr('هنوز حساب یا دارایی ارزی نداری.') + '</div>')}
+    ${others.length ? `<h3 class="muted" style="margin:14px 0 6px">${tr('سایر واحدها')}</h3><div class="sgroup">${others.map(row).join('')}</div>` : ''}
   `);
 }
 
 export function openSettingsScan() {
   const has = !!store.get('capital_gemini_key');
   openModal(`
-    ${settingsHeader('🧾 خواندن فاکتور از عکس', 'openSettings()')}
-    <p class="small muted">کلید Google AI Studio را این‌جا بگذار. به کسی نشان نده. عکس برای خواندن به گوگل فرستاده می‌شود.</p>
-    <p><a class="btn block" href="${geminiHelpHref()}" target="_blank" rel="noopener">چطور کلید بگیرم؟</a></p>
+    ${settingsHeader(('🧾 ' + tr('خواندن فاکتور از عکس')), 'openSettings()')}
+    <p class="small muted">${tr('کلید')} Google AI Studio ${tr('را این‌جا بگذار. به کسی نشان نده. عکس برای خواندن به گوگل فرستاده می‌شود.')}</p>
+    <p><a class="btn block" href="${geminiHelpHref()}" target="_blank" rel="noopener">${tr('چطور کلید بگیرم؟')}</a></p>
     ${
       has
-        ? `<div class="hint" style="margin:10px 0">✅ کلید ذخیره شده است.</div>
-           <button class="btn danger block" onclick="clearGeminiKey()">حذف کلید</button>`
-        : `<div class="field" style="margin-top:12px"><label>کلید API</label>
+        ? `<div class="hint" style="margin:10px 0">✅ ${tr('کلید ذخیره شده است.')}</div>
+           <button class="btn danger block" onclick="clearGeminiKey()">${tr('حذف کلید')}</button>`
+        : `<div class="field" style="margin-top:12px"><label>${tr('کلید')} API</label>
            <input class="input" id="geminiKey" type="password" autocomplete="off" placeholder="AIza...">
            </div>
-           <button class="btn primary block" onclick="saveGeminiKey()">ذخیره کلید</button>`
+           <button class="btn primary block" onclick="saveGeminiKey()">${tr('ذخیره کلید')}</button>`
     }
   `);
 }
 
 export function openSettingsAbout() {
   openModal(`
-    ${settingsHeader('ℹ️ دربارهٔ برنامه', 'openSettings()')}
+    ${settingsHeader(('ℹ️ ' + tr('دربارهٔ برنامه')), 'openSettings()')}
     <div style="text-align:center;padding:10px 0 4px">
       <div class="logo" style="margin:0 auto 10px">${icon('wallet')}</div>
-      <div style="font-weight:800;font-size:16px">مدیریت سرمایه</div>
-      <div class="small muted" style="margin-top:4px">نسخه ${APP_VERSION}</div>
+      <div style="font-weight:800;font-size:16px">${tr('مدیریت سرمایه')}</div>
+      <div class="small muted" style="margin-top:4px">${tr('نسخه')} ${APP_VERSION}</div>
     </div>
     <div class="sgroup" style="margin-top:14px">
-      <div class="hint">روش پاکت‌ها: ضروریات ۶۰٪ · سرمایه‌گذاری ۲۰٪ · تفریح ۱۵٪ · نیکوکاری ۵٪ — به‌علاوهٔ «هدررفت» برای صداقت با خودت و «قرض / امانت» که خارج از بودجه است.</div>
+      <div class="hint">${tr('روش پاکت‌ها: ضروریات ۶۰٪')} · ${tr('سرمایه‌گذاری ۲۰٪')} · ${tr('تفریح ۱۵٪')} · ${tr('نیکوکاری ۵٪ — به‌علاوهٔ «هدررفت» برای صداقت با خودت و «قرض / امانت» که خارج از بودجه است.')}</div>
     </div>
   `);
 }
@@ -1012,15 +1012,15 @@ function googleUserFromStore() {
 }
 
 export function changePinPrompt() {
-  const digits = sec.isEncrypted() ? '۶ تا ۸ رقم' : '۴ تا ۸ رقم';
+  const digits = sec.isEncrypted() ? tr('۶ تا ۸ رقم') : tr('۴ تا ۸ رقم');
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="بستن">${icon('x')}</button>
-    <h2>${sec.isEncrypted() ? 'پین' : 'رمز'} جدید</h2>
-    <div class="field"><label>پین جدید (${digits})</label>
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${sec.isEncrypted() ? tr('پین') : tr('رمز')} ${tr('جدید')}</h2>
+    <div class="field"><label>${tr('پین جدید')} (${digits})</label>
       <input class="input" id="pinNew" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
-    <div class="field"><label>تکرار پین</label>
+    <div class="field"><label>${tr('تکرار پین')}</label>
       <input class="input" id="pinNew2" inputmode="numeric" maxlength="8" dir="ltr" style="text-align:center"></div>
-    <button class="btn primary block" style="margin-top:12px" onclick="changePinDo()">ذخیره</button>
+    <button class="btn primary block" style="margin-top:12px" onclick="changePinDo()">${tr('ذخیره')}</button>
   `);
 }
 
@@ -1028,7 +1028,7 @@ export async function changePinDo() {
   const a = String((document.getElementById('pinNew') || {}).value || '').trim();
   const b = String((document.getElementById('pinNew2') || {}).value || '').trim();
   if (a !== b) {
-    toast('پین‌ها یکی نیستند');
+    toast(tr('پین‌ها یکی نیستند'));
     return;
   }
   if (await setPin(a)) {
@@ -1075,16 +1075,16 @@ export function initPrefs() {
 export function openBaseCurrency() {
   const cur = baseCur();
   const opts = allCurrencies()
-    .map((c) => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)} (${esc(currencyInfo(c).code)})</option>`)
+    .map((c) => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(curName(c))}${curName(c) !== c ? ' · ' + esc(c) : ' (' + esc(currencyInfo(c).code) + ')'}</option>`)
     .join('');
   openModal(`
-    ${settingsHeader('واحد پایه', 'openSettingsRates()')}
-    <p class="small muted">واحدی که جمع‌ها، بودجه و گزارش‌ها با آن نمایش داده می‌شود. حساب‌ها و تراکنش‌ها به واحد خودشان می‌مانند؛ فقط نرخ‌ها و بودجه‌ها به واحد جدید تبدیل می‌شوند.</p>
-    <div class="field"><label>واحد جدید</label>
+    ${settingsHeader(tr('واحد پایه'), 'openSettingsRates()')}
+    <p class="small muted">${tr('واحدی که جمع‌ها، بودجه و گزارش‌ها با آن نمایش داده می‌شود. حساب‌ها و تراکنش‌ها به واحد خودشان می‌مانند؛ فقط نرخ‌ها و بودجه‌ها به واحد جدید تبدیل می‌شوند.')}</p>
+    <div class="field"><label>${tr('واحد جدید')}</label>
       <select class="input" id="bcSel" onchange="bcSync()">${opts}</select></div>
     <div class="field" id="bcRateWrap"><label id="bcRateLbl"></label>
-      <input class="input" id="bcRate" type="number" step="any" inputmode="decimal" placeholder="نرخ"></div>
-    <button class="btn primary block" onclick="applyBaseCurrency()">تغییر واحد پایه</button>
+      <input class="input" id="bcRate" type="number" step="any" inputmode="decimal" placeholder="${tr('نرخ')}"></div>
+    <button class="btn primary block" onclick="applyBaseCurrency()">${tr('تغییر واحد پایه')}</button>
   `);
   bcSync();
 }
@@ -1101,7 +1101,7 @@ export function bcSync() {
     return;
   }
   wrap.style.display = '';
-  lbl.textContent = 'هر ۱ ' + next + ' چند ' + cur + ' است؟';
+  lbl.textContent = tr('هر ۱ {a} چند {b} است؟', { a: curName(next), b: curName(cur) });
   inp.dataset.cur = cur;
   if (state.rates[next]) inp.value = state.rates[next];
 }
@@ -1109,13 +1109,13 @@ export function applyBaseCurrency() {
   const next = document.getElementById('bcSel').value;
   const rate = parseFloat(document.getElementById('bcRate').value);
   if (next === baseCur()) return closeModal();
-  if (!(rate > 0)) return toast('نرخ تبدیل را وارد کن');
-  if (!changeBaseCurrency(next, rate)) return toast('تغییر انجام نشد');
+  if (!(rate > 0)) return toast(tr('نرخ تبدیل را وارد کن'));
+  if (!changeBaseCurrency(next, rate)) return toast(tr('تغییر انجام نشد'));
   save();
   closeModal();
   render();
   if (window.setTodayLabel) window.setTodayLabel();
-  toast('واحد پایه شد: ' + next);
+  toast((tr('واحد پایه شد:') + ' ') + next);
 }
 
 // ─── زبان و تقویم ───

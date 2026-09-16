@@ -1,5 +1,5 @@
 import { store, toast, showTip, hideTip } from './utils.js';
-import { t, setLang, langPref, LANGS, calPref, setCalendar } from './i18n.js';
+import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i18n.js';
 import { icon } from './icons.js';
 import * as inst from './installments.js';
 import { closeModal, openModal } from './modal.js';
@@ -248,10 +248,10 @@ function askLeaveApp() {
   openModal(`
     <div style="text-align:center;padding:10px 4px">
       <span class="ib lg red" style="margin-bottom:12px">${icon('logout')}</span>
-      <p style="font-size:15px;margin:0 0 18px">می‌خوای از برنامه خارج شوی؟</p>
+      <p style="font-size:15px;margin:0 0 18px">${tr('می‌خوای از برنامه خارج شوی؟')}</p>
       <div class="row">
-        <button class="btn" style="flex:1" onclick="closeModal()">نه، بمون</button>
-        <button class="btn danger" style="flex:1" onclick="leaveApp()">بله، خارج شو</button>
+        <button class="btn" style="flex:1" onclick="closeModal()">${tr('نه، بمون')}</button>
+        <button class="btn danger" style="flex:1" onclick="leaveApp()">${tr('بله، خارج شو')}</button>
       </div>
     </div>`);
 }
@@ -472,11 +472,11 @@ try {
   notifyDueDebts();
 } catch (err) {
   console.error(err);
-  if (window.__capLog) window.__capLog('شروع برنامه', err);
+  if (window.__capLog) window.__capLog(tr('شروع برنامه'), err);
   const dbg = document.getElementById('lockDebug');
-  if (dbg) dbg.textContent = 'خطا در شروع: ' + ((err && err.message) || err);
+  if (dbg) dbg.textContent = (tr('خطا در شروع:') + ' ') + ((err && err.message) || err);
   const home = document.getElementById('homeContent');
-  if (home) home.innerHTML = '<div class="card">برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.</div>';
+  if (home) home.innerHTML = ('<div class="card">' + tr('برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.') + '</div>');
 }
 
 if (typeof google !== 'undefined') {

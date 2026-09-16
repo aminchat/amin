@@ -17,6 +17,7 @@ import {
   unwrapDataKey,
   normalizePhrase,
 } from './crypto.js';
+import { t as tr } from './i18n.js';
 
 const ENV_KEY = 'capital_secure_v2';
 
@@ -35,7 +36,7 @@ export function getEnvelope() {
     const raw = store.get(ENV_KEY);
     if (raw) envelope = JSON.parse(raw);
   } catch (e) {
-    logErr('securestore:خواندن پاکت', e);
+    logErr(('securestore:' + tr('خواندن پاکت')), e);
   }
   return envelope;
 }
@@ -71,7 +72,7 @@ function findWrap(kind) {
 // بازکردن قفل با یکی از رازها؛ در موفقیت، دادهٔ رمزشده را هم باز می‌کند
 export async function unlock(secret, kind) {
   const env = getEnvelope();
-  if (!env) throw new Error('پاکتی وجود ندارد');
+  if (!env) throw new Error(tr('پاکتی وجود ندارد'));
   const wrap = findWrap(kind);
   if (!wrap) throw new Error('wrap missing');
   const key = await unwrapDataKey(wrap, kind === 'phrase' ? normalizePhrase(secret).join(' ') : secret);
@@ -90,7 +91,7 @@ export function lockSession() {
 // بازکردن با کلید دادهٔ از پیش به‌دست‌آمده (مثلاً از اثر انگشت/PRF)
 export async function unlockWithKey(key) {
   const env = getEnvelope();
-  if (!env) throw new Error('پاکتی وجود ندارد');
+  if (!env) throw new Error(tr('پاکتی وجود ندارد'));
   const text = await decryptData(key, env.data);
   dk = key;
   return JSON.parse(text);

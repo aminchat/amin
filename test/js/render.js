@@ -32,7 +32,7 @@ import {
   catCeiling,
   loanFlow,
   accountCurrentToman,
-  institutionOf, baseCur, currencyInfo } from './state.js';
+  institutionOf, baseCur, currencyInfo, curName } from './state.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
@@ -55,7 +55,7 @@ function envelopeBars(mk) {
         <span class="pocket-name">${c.label}</span>
         <span class="pocket-share" style="color:${c.color}">${netTxt}</span>
       </div>
-      <div class="small muted" style="margin-top:6px">خارج از بودجه · داده: ${fmt(f.out)} · گرفته/برگشتی: ${fmt(f.in)}</div>
+      <div class="small muted" style="margin-top:6px">${tr('خارج از بودجه')} · ${tr('داده:')} ${fmt(f.out)} · ${tr('گرفته/برگشتی:')} ${fmt(f.in)}</div>
     </button>`;
     }
     const spent = catSpent(mk, c.id);
@@ -191,7 +191,7 @@ function txRow(t, opts = {}) {
     (t.debtId ? '<span class="badge">' + tr('tx.badge.debt') + '</span>' : '') +
     (t.planId ? '<span class="badge">' + tr('tx.badge.plan') + '</span>' : '') +
     (t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:var(--red)">' + tr('tx.badge.reflect') + '</span>' : '') +
-    (a && a.currency && a.currency !== baseCur() ? '<span class="badge">' + esc(a.currency) + '</span>' : '');
+    (a && a.currency && a.currency !== baseCur() ? '<span class="badge">' + esc(curName(a.currency)) + '</span>' : '');
   const item = `<div class="item" data-tx="${t.id}" onclick="openTxForm(findTx('${t.id}'))">
       <div class="ic" style="background:${color.startsWith('var') ? color.replace(')', '-soft)') : color + '22'};color:${color}">${icon(icName)}</div>
       <div class="mid">
@@ -521,11 +521,11 @@ export function renderInvest() {
       .map((i) => {
         const val = investValue(i);
         const pl = investProfit(i);
-        const curSuffix = i.currency !== baseCur() ? ` (${fmtShort(rateOf(i.currency))} ${baseCur()}/${i.currency})` : '';
+        const curSuffix = i.currency !== baseCur() ? ` (${fmtShort(rateOf(i.currency))} ${curName(baseCur())}/${curName(i.currency)})` : '';
         return `<div class="card" style="padding:14px">
         <div class="row" style="align-items:center;margin-bottom:6px;cursor:pointer" onclick="openInvestForm(findInvest('${i.id}'))">
           <div style="flex:1"><b>${esc(i.name)}</b> <span class="badge">${toFa(i.qty)} ${esc(i.unit || '')}</span></div>
-          <div class="small muted">${i.currency}</div><span class="schev">${icon('chevL')}</span>
+          <div class="small muted">${curName(i.currency)}</div><span class="schev">${icon('chevL')}</span>
         </div>
         <div class="grid2" style="margin:10px 0">
           <div class="stat"><div class="lbl">${tr('inv.value')}</div><div class="val accent">${i.currency !== baseCur() ? fmt(val) + ' ' + esc(currencyInfo(i.currency).symbol) : fmtShort(val)}</div><div class="sub">${i.currency !== baseCur() ? '≈ ' + fmtShort(val * rateOf(i.currency)) + ' ' + baseCur() : ''}</div></div>
@@ -558,7 +558,7 @@ function acctRow(a) {
     <div class="ib ${cls}" onclick="openAccountLedger('${a.id}')">${icon(accountIcon(a.type))}</div>
     <div class="mid" onclick="openAccountLedger('${a.id}')">
       <div class="t1">${esc(a.name)}${a.last4 ? ` <span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
-      <div class="t2">${esc(a.type)}${isForeign ? ` · <span class="badge">${esc(a.currency)}</span>${rate ? ` <span class="faint">${tr('acc.rate', { r: fmtShort(rate) })}</span>` : ''}` : ''}</div>
+      <div class="t2">${esc(tr(a.type))}${isForeign ? ` · <span class="badge">${esc(curName(a.currency))}</span>${rate ? ` <span class="faint">${tr('acc.rate', { r: fmtShort(rate) })}</span>` : ''}` : ''}</div>
     </div>
     <div class="amt-col">
       <div class="amt ${bal >= 0 ? 'in' : 'out'}">${isForeign ? fmt(bal) : fmtShort(bal)}</div>
@@ -722,14 +722,14 @@ export function renderAssetsOverview() {
 
 export function renderAll() {
   const steps = [
-    ['خانه', renderHome],
-    ['تراکنش', renderTx],
-    ['گزارش', renderReport],
-    ['سرمایه', renderInvest],
-    ['حساب‌ها', renderAccounts],
-    ['طلب و بدهی', renderDebts],
-    ['اقساط', renderInstallments],
-    ['دارایی', renderAssetsOverview],
+    [tr('خانه'), renderHome],
+    [tr('تراکنش'), renderTx],
+    [tr('گزارش'), renderReport],
+    [tr('سرمایه'), renderInvest],
+    [tr('حساب‌ها'), renderAccounts],
+    [tr('طلب و بدهی'), renderDebts],
+    [tr('اقساط'), renderInstallments],
+    [tr('دارایی'), renderAssetsOverview],
   ];
   for (const [name, fn] of steps) {
     try {
@@ -749,5 +749,5 @@ export function setTodayLabel() {
   const iso = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0') + '-' + String(d0.getDate()).padStart(2, '0');
   const txt = fmtDate(iso);
   const today = document.getElementById('todayLbl');
-  if (today) today.textContent = txt + ' · ' + tr('unit') + ': ' + baseCur();
+  if (today) today.textContent = txt + ' · ' + tr('unit') + ': ' + curName(baseCur());
 }
