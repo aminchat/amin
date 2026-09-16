@@ -3,7 +3,7 @@ import { esc, fmt, fmtShort, store, toast, uid, todayISO, infoTip } from './util
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
-import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT } from './state.js';
+import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT, baseCur } from './state.js';
 import { overdueInstallments } from './installments.js';
 
 const NOTIFY_DAY_KEY = 'capital_debt_notify_day';
@@ -95,7 +95,7 @@ export function openDebtForm(d) {
       <select class="input" id="dAccount" onchange="syncDebtAmountLabel()">${accountOptionsHtml(accId)}</select>
       <div class="hint" style="margin-top:6px">با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. حساب تسویه را موقع تسویه جدا انتخاب می‌کنی (می‌تواند فرق کند).</div>
     </div>
-    <div class="field"><label id="dAmountLbl">مبلغ (${acc ? esc(acc.currency) : 'تومان'})</label>
+    <div class="field"><label id="dAmountLbl">مبلغ (${acc ? esc(acc.currency) : baseCur()})</label>
       <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="مثلاً 500000" value="${d ? d.amount : ''}">
     </div>
     <div class="field"><label>تاریخ سررسید</label>
@@ -168,10 +168,10 @@ export function syncDebtAmountLabel() {
   const lbl = document.getElementById('dAmountLbl');
   if (!sel || !lbl) return;
   const a = accountById(sel.value);
-  lbl.textContent = 'مبلغ (' + (a ? a.currency : 'تومان') + ')';
+  lbl.textContent = 'مبلغ (' + (a ? a.currency : baseCur()) + ')';
   const inp = document.getElementById('dAmount');
   if (inp) {
-    inp.dataset.cur = a ? a.currency : 'تومان';
+    inp.dataset.cur = a ? a.currency : baseCur();
     inp.dispatchEvent(new Event('input'));
   }
 }
@@ -370,12 +370,12 @@ function sortDebts(list) {
 // واحد پول یک مورد = واحد حسابش (بدون حساب → تومان)
 function debtCurrency(d) {
   const a = d.accountId && accountById(d.accountId);
-  return (a && a.currency) || 'تومان';
+  return (a && a.currency) || baseCur();
 }
 // معادل تومانی؛ اگر نرخ ثبت نشده باشد null
 function debtToman(d) {
   const cur = debtCurrency(d);
-  if (cur === 'تومان') return d.amount || 0;
+  if (cur === baseCur()) return d.amount || 0;
   const r = rateOf(cur);
   return r ? (d.amount || 0) * r : null;
 }
@@ -393,7 +393,7 @@ function sumToman(list) {
 function debtRow(d) {
   const mine = d.kind === 'in';
   const cur = debtCurrency(d);
-  const foreign = cur !== 'تومان';
+  const foreign = cur !== baseCur();
   const tm = foreign ? debtToman(d) : null;
   const n = daysUntilDue(d.dueISO);
   const hot = !d.settled && n !== null && n <= 0;
@@ -409,7 +409,7 @@ function debtRow(d) {
       </div>
       <div style="text-align:left">
         <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${foreign ? fmt(debtRemaining(d)) : fmtShort(debtRemaining(d))}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
-        ${foreign ? `<div class="small muted">${tm == null ? 'نرخ ' + esc(cur) + ' ثبت نشده' : '≈ ' + fmtShort(tm) + ' تومان'}</div>` : ''}
+        ${foreign ? `<div class="small muted">${tm == null ? 'نرخ ' + esc(cur) + ' ثبت نشده' : '≈ ' + fmtShort(tm) + ' ' + baseCur()}</div>` : ''}
         ${!d.settled && debtPaid(d) > 0 ? `<div class="small muted">${fmtShort(debtPaid(d))} از ${fmtShort(d.amount)} تسویه شده</div>` : ''}
         <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? 'جزئیات' : 'تسویه'}</button>
       </div>
@@ -439,13 +439,13 @@ export function renderDebts() {
   }
   const curs = Object.keys(byCur);
   const breakdown =
-    curs.length > 1 || (curs.length === 1 && curs[0] !== 'تومان')
+    curs.length > 1 || (curs.length === 1 && curs[0] !== baseCur())
       ? `<div class="hint" style="margin:0 0 12px">به تفکیک واحد: ${curs
-          .map((c) => `<b>${esc(c)}</b> طلب ${c === 'تومان' ? fmtShort(byCur[c].in) : fmt(byCur[c].in)} / بدهی ${c === 'تومان' ? fmtShort(byCur[c].out) : fmt(byCur[c].out)}`)
+          .map((c) => `<b>${esc(c)}</b> طلب ${c === baseCur() ? fmtShort(byCur[c].in) : fmt(byCur[c].in)} / بدهی ${c === baseCur() ? fmtShort(byCur[c].out) : fmt(byCur[c].out)}`)
           .join(' · ')}</div>`
       : '';
   const missingHint = missing.length
-    ? `<div class="hint" style="color:var(--orange);margin:0 0 12px">نرخ ${missing.map(esc).join('، ')} ثبت نشده؛ این موارد در جمع تومانی حساب نشده‌اند. نرخ را از تنظیمات ← نرخ ارز وارد کن.</div>`
+    ? `<div class="hint" style="color:var(--orange);margin:0 0 12px">نرخ ${missing.map(esc).join('، ')} ثبت نشده؛ این موارد در جمع کل حساب نشده‌اند. نرخ را از تنظیمات ← نرخ ارز وارد کن.</div>`
     : '';
   const notifyOn = typeof Notification !== 'undefined' && Notification.permission === 'granted';
 

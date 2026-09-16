@@ -1,4 +1,4 @@
-import { store } from './utils.js';
+import { store, setBaseInfo, setBigUnits } from './utils.js';
 import { curMonthKey } from './jalali.js';
 import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
@@ -86,7 +86,47 @@ export function institutionIcon(accts) {
   if (types.every((t) => t === 'کیف پول آنلاین')) return '📱';
   return '🏦';
 }
-export const CURRENCIES = ['تومان', 'دلار', 'یورو', 'درهم', 'لیر', 'پوند', 'تتر', 'سایر'];
+// کاتالوگ ارزها: نام فارسی (کلید ذخیره‌شده)، کد ISO، نماد، رقم اعشار، «بزرگ‌واحد» (هزار/میلیون به‌جای K/M)
+export const CURRENCY_INFO = {
+  'تومان': { code: 'TMN', symbol: 'ت', dec: 0, big: true },
+  'ریال': { code: 'IRR', symbol: 'ریال', dec: 0, big: true },
+  'دلار': { code: 'USD', symbol: '$', dec: 2 },
+  'یورو': { code: 'EUR', symbol: '€', dec: 2 },
+  'پوند': { code: 'GBP', symbol: '£', dec: 2 },
+  'درهم': { code: 'AED', symbol: 'AED', dec: 2 },
+  'لیر': { code: 'TRY', symbol: '₺', dec: 2 },
+  'ین': { code: 'JPY', symbol: '¥', dec: 0 },
+  'یوان': { code: 'CNY', symbol: '¥', dec: 2 },
+  'روبل': { code: 'RUB', symbol: '₽', dec: 2 },
+  'روپیه': { code: 'INR', symbol: '₹', dec: 2 },
+  'دلار کانادا': { code: 'CAD', symbol: 'C$', dec: 2 },
+  'دلار استرالیا': { code: 'AUD', symbol: 'A$', dec: 2 },
+  'فرانک': { code: 'CHF', symbol: 'CHF', dec: 2 },
+  'دینار عراق': { code: 'IQD', symbol: 'IQD', dec: 0, big: true },
+  'افغانی': { code: 'AFN', symbol: '؋', dec: 2 },
+  'منات': { code: 'AZN', symbol: '₼', dec: 2 },
+  'درام': { code: 'AMD', symbol: '֏', dec: 0 },
+  'ریال عمان': { code: 'OMR', symbol: 'OMR', dec: 3 },
+  'ریال قطر': { code: 'QAR', symbol: 'QAR', dec: 2 },
+  'ریال سعودی': { code: 'SAR', symbol: 'SAR', dec: 2 },
+  'دینار کویت': { code: 'KWD', symbol: 'KWD', dec: 3 },
+  'تتر': { code: 'USDT', symbol: '₮', dec: 2 },
+  'بیت‌کوین': { code: 'BTC', symbol: '₿', dec: 8 },
+  'اتریوم': { code: 'ETH', symbol: 'Ξ', dec: 6 },
+  'طلا (گرم)': { code: 'XAU', symbol: 'گرم', dec: 3 },
+};
+export const CURRENCIES = [...Object.keys(CURRENCY_INFO), 'سایر'];
+export function currencyInfo(cur) {
+  return CURRENCY_INFO[cur] || { code: cur, symbol: cur, dec: 2 };
+}
+export const DEFAULT_BASE = 'تومان';
+export function baseCur() {
+  return (state && state.baseCurrency) || DEFAULT_BASE;
+}
+// آیا این ارز از خانوادهٔ «بزرگ‌واحد» است (هزار/میلیون به‌جای K/M)
+export function isBigUnit(cur) {
+  return !!currencyInfo(cur || baseCur()).big;
+}
 
 export function defaultState() {
   return {
@@ -97,6 +137,7 @@ export function defaultState() {
     installments: [],
     budgets: {},
     rates: {},
+    baseCurrency: DEFAULT_BASE,
     customCurrencies: [],
     updatedAt: 0,
     rev: 0,
@@ -114,6 +155,11 @@ function loadState() {
 }
 
 export let state = loadState();
+syncBase();
+export function syncBase() {
+  setBaseInfo(baseCur(), currencyInfo(baseCur()));
+  setBigUnits(new Set(Object.keys(CURRENCY_INFO).filter((c) => CURRENCY_INFO[c].big)));
+}
 
 let onSave = () => {};
 export function setOnSave(fn) {
@@ -141,6 +187,7 @@ export function save() {
 
 export function replaceState(next, { markDirty } = {}) {
   state = Object.assign(defaultState(), next);
+  syncBase();
   if (markDirty) touchMeta();
   persistLocal();
 }
@@ -151,7 +198,7 @@ export function accountById(id) {
 
 // همه واحدهای پول قابل انتخاب: پیش‌فرض‌ها + واحدهای دستی + هر واحدی که قبلاً استفاده شده
 export function allCurrencies() {
-  const set = new Set(CURRENCIES.filter((c) => c !== 'سایر'));
+  const set = new Set([baseCur(), ...CURRENCIES.filter((c) => c !== 'سایر')]);
   for (const c of state.customCurrencies || []) if (c) set.add(c);
   for (const a of state.accounts) if (a.currency) set.add(a.currency);
   for (const i of state.investments) if (i.currency) set.add(i.currency);
@@ -164,8 +211,32 @@ export function addCustomCurrency(name) {
   if (!allCurrencies().includes(name)) state.customCurrencies.push(name);
 }
 
+// نرخ یک ارز نسبت به واحد پایه (چند واحد پایه = ۱ واحد این ارز)
 export function rateOf(cur) {
-  return cur === 'تومان' || !cur ? 1 : state.rates[cur] || 0;
+  return !cur || cur === baseCur() ? 1 : state.rates[cur] || 0;
+}
+
+// تغییر واحد پایه: همهٔ نرخ‌ها با نرخِ واحد جدید بازمحاسبه می‌شوند؛ بودجه‌ها تبدیل می‌شوند.
+// newRate = چند واحدِ پایهٔ فعلی = ۱ واحدِ جدید (اگر قبلاً نرخ داشته باشد از همان استفاده می‌شود)
+export function changeBaseCurrency(next, newRate) {
+  const cur = baseCur();
+  if (!next || next === cur) return false;
+  const r = Number(newRate) || state.rates[next] || 0;
+  if (!(r > 0)) return false;
+  const rates = {};
+  const tidy = (x) => Number(x.toPrecision(10));
+  for (const [c, v] of Object.entries(state.rates || {})) if (c !== next && v > 0) rates[c] = tidy(v / r);
+  rates[cur] = tidy(1 / r);
+  delete rates[next];
+  state.rates = rates;
+  for (const mk of Object.keys(state.budgets || {})) {
+    const b = state.budgets[mk];
+    if (b && b.amount) b.amount = tidy(b.amount / r);
+  }
+  addCustomCurrency(next);
+  state.baseCurrency = next;
+  syncBase();
+  return true;
 }
 
 export function isTransfer(t) {
@@ -178,7 +249,7 @@ export function isInvoice(t) {
 
 export function txAmountToman(t) {
   const a = accountById(t.accountId);
-  return (t.amount || 0) * rateOf(a ? a.currency : 'تومان');
+  return (t.amount || 0) * rateOf(a ? a.currency : baseCur());
 }
 
 export function accountCurrent(a) {
@@ -425,6 +496,7 @@ export function mergeStates(local, remote) {
     installments: mergeById(local.installments, remote.installments),
     budgets: Object.assign({}, remote.budgets || {}, local.budgets || {}),
     rates: Object.assign({}, remote.rates || {}, local.rates || {}),
+    baseCurrency: local.baseCurrency || remote.baseCurrency || DEFAULT_BASE,
     customCurrencies: [
       ...new Set([...(remote.customCurrencies || []), ...(local.customCurrencies || [])]),
     ],

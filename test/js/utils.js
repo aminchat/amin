@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.7.1-test';
+export const APP_VERSION = '2.8.0-test';
 
 export function toFa(n) {
   return String(n).replace(/\d/g, (d) => FA[d]);
@@ -42,9 +42,17 @@ export function fmt(n) {
   return (n < 0 ? '−' : '') + toFa(s);
 }
 
+// واحد پایه (از state تزریق می‌شود تا وابستگی چرخه‌ای نباشد)
+let baseInfo = { name: 'تومان', big: true, dec: 0 };
+export function setBaseInfo(name, info) {
+  baseInfo = Object.assign({ name }, info || {});
+}
+export function baseName() {
+  return baseInfo.name;
+}
 export function fmtT(n) {
   if (hideMoney) return '••••';
-  return fmt(n) + ' تومان';
+  return fmt(n) + ' ' + baseInfo.name;
 }
 
 export function uid() {
@@ -127,26 +135,26 @@ export function haptic(ms = 10) {
   } catch (e) {}
 }
 
-// عدد کوتاه برای کارت‌های خلاصه: ۲٫۴ میلیون / ۸۵۰ هزار
-export function fmtShort(n) {
+// عدد کوتاه برای کارت‌های خلاصه: ۲٫۴ میلیون / ۸۵۰ هزار (ارزهای بزرگ‌واحد) یا 1.2M / 850K (بقیه)
+export function fmtShort(n, cur) {
   if (isMoneyHidden()) return '••••';
   n = Number(n) || 0;
   const abs = Math.abs(n);
   const sign = n < 0 ? '−' : '';
+  const big = cur ? !!(cur.big) : baseInfo.big;
   const digits = (v) => (v < 10 ? 2 : v < 100 ? 1 : 0);
   const fa = (t) => toFa(t.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', '٫'));
-  const units = [[1e9, 'میلیارد'], [1e6, 'میلیون'], [1e3, 'هزار']];
+  const units = big ? [[1e9, ' میلیارد'], [1e6, ' میلیون'], [1e3, ' هزار']] : [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
   for (let i = 0; i < units.length; i++) {
     const [div, name] = units[i];
     if (abs < div) continue;
     const v = abs / div;
     const r = Number(v.toFixed(digits(v)));
-    // اگر گرد کردن باعث شد به واحد بالاتر برسیم (مثلاً ۱۰۰۰ میلیون → ۱ میلیارد)
     if (r >= 1000 && i > 0) {
       const [d2, n2] = units[i - 1];
-      return sign + fa((abs / d2).toFixed(2)) + ' ' + n2;
+      return sign + fa((abs / d2).toFixed(2)) + n2;
     }
-    return sign + fa(r.toFixed(digits(v))) + ' ' + name;
+    return sign + fa(r.toFixed(digits(v))) + name;
   }
   return fmt(n);
 }
@@ -220,11 +228,20 @@ export function amountWords(n, cur) {
   n = Math.abs(Number(n) || 0);
   if (!n) return '';
   const trim = (t) => (t.includes('.') ? t.replace(/0+$/, '').replace(/\.$/, '') : t);
-  const u = cur || 'تومان';
-  if (n >= 1e9) return toFa(trim((n / 1e9).toFixed(2)).replace('.', '٫')) + ' میلیارد ' + u;
-  if (n >= 1e6) return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
-  if (n >= 1e3) return toFa(trim((n / 1e3).toFixed(1)).replace('.', '٫')) + ' هزار ' + u;
-  return toFa(trim(String(Math.round(n * 100) / 100)).replace('.', '٫')) + ' ' + u;
+  const u = cur || baseInfo.name;
+  const big = cur ? cur === baseInfo.name ? baseInfo.big : !!(bigUnits && bigUnits.has(cur)) : baseInfo.big;
+  if (big) {
+    if (n >= 1e9) return toFa(trim((n / 1e9).toFixed(2)).replace('.', '٫')) + ' میلیارد ' + u;
+    if (n >= 1e6) return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
+    if (n >= 1e3) return toFa(trim((n / 1e3).toFixed(1)).replace('.', '٫')) + ' هزار ' + u;
+  } else if (n >= 1e6) {
+    return toFa(trim((n / 1e6).toFixed(2)).replace('.', '٫')) + ' میلیون ' + u;
+  }
+  return fmt(n) + ' ' + u;
+}
+let bigUnits = null;
+export function setBigUnits(set) {
+  bigUnits = set;
 }
 function moneyize(el) {
   if (el.dataset.money) return;

@@ -31,8 +31,7 @@ import {
   catCeiling,
   loanFlow,
   accountCurrentToman,
-  institutionOf,
-} from './state.js';
+  institutionOf, baseCur, currencyInfo } from './state.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
@@ -191,7 +190,7 @@ function txRow(t, opts = {}) {
     (t.debtId ? '<span class="badge">طلب/بدهی</span>' : '') +
     (t.planId ? '<span class="badge">قسط</span>' : '') +
     (t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:var(--red)">پاسخ داری</span>' : '') +
-    (a && a.currency && a.currency !== 'تومان' ? '<span class="badge">' + esc(a.currency) + '</span>' : '');
+    (a && a.currency && a.currency !== baseCur() ? '<span class="badge">' + esc(a.currency) + '</span>' : '');
   const item = `<div class="item" data-tx="${t.id}" onclick="openTxForm(findTx('${t.id}'))">
       <div class="ic" style="background:${color.startsWith('var') ? color.replace(')', '-soft)') : color + '22'};color:${color}">${icon(icName)}</div>
       <div class="mid">
@@ -521,15 +520,15 @@ export function renderInvest() {
       .map((i) => {
         const val = investValue(i);
         const pl = investProfit(i);
-        const curSuffix = i.currency !== 'تومان' ? ` (${fmt(rateOf(i.currency))} ت/${i.currency})` : '';
+        const curSuffix = i.currency !== baseCur() ? ` (${fmtShort(rateOf(i.currency))} ${baseCur()}/${i.currency})` : '';
         return `<div class="card" style="padding:14px">
         <div class="row" style="align-items:center;margin-bottom:6px;cursor:pointer" onclick="openInvestForm(findInvest('${i.id}'))">
           <div style="flex:1"><b>${esc(i.name)}</b> <span class="badge">${toFa(i.qty)} ${esc(i.unit || '')}</span></div>
           <div class="small muted">${i.currency}</div><span class="schev">${icon('chevL')}</span>
         </div>
         <div class="grid2" style="margin:10px 0">
-          <div class="stat"><div class="lbl">ارزش فعلی</div><div class="val accent">${i.currency !== 'تومان' ? fmt(val) : fmtShort(val)}</div><div class="sub">${i.currency !== 'تومان' ? '≈ ' + fmtShort(val * rateOf(i.currency)) + ' تومان' : 'تومان'}</div></div>
-          <div class="stat"><div class="lbl">سود / زیان</div><div class="val ${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? '+' : '−'}${i.currency !== 'تومان' ? fmt(Math.abs(pl)) : fmtShort(Math.abs(pl))}</div><div class="sub">از زمان خرید</div></div>
+          <div class="stat"><div class="lbl">ارزش فعلی</div><div class="val accent">${i.currency !== baseCur() ? fmt(val) + ' ' + esc(currencyInfo(i.currency).symbol) : fmtShort(val)}</div><div class="sub">${i.currency !== baseCur() ? '≈ ' + fmtShort(val * rateOf(i.currency)) + ' ' + baseCur() : ''}</div></div>
+          <div class="stat"><div class="lbl">سود / زیان</div><div class="val ${pl >= 0 ? 'green' : 'red'}">${pl >= 0 ? '+' : '−'}${i.currency !== baseCur() ? fmt(Math.abs(pl)) : fmtShort(Math.abs(pl))}</div><div class="sub">از زمان خرید</div></div>
         </div>
         <div class="small muted" style="margin-bottom:10px">قیمت خرید هر ${esc(i.unit || 'واحد')}: ${fmt(i.buy)} · قیمت امروز: <b style="color:var(--text)">${fmt(i.cur)}</b>${curSuffix}</div>
         <button class="btn sm block" onclick="editInvestPrice('${i.id}')">${icon('refresh')} به‌روزرسانی قیمت امروز</button>
@@ -551,7 +550,7 @@ export function toggleAcctGroup(key) {
 
 function acctRow(a) {
   const bal = accountCurrent(a);
-  const isForeign = a.currency !== 'تومان';
+  const isForeign = a.currency !== baseCur();
   const rate = rateOf(a.currency);
   const cls = a.type === 'پول نقد' ? 'green' : a.type && a.type.includes('ارز') ? 'purple' : '';
   return `<div class="item">
@@ -569,7 +568,7 @@ function acctRow(a) {
 }
 
 export function renderAccounts() {
-  const foreign = [...new Set(state.accounts.map((a) => a.currency).filter((c) => c !== 'تومان'))];
+  const foreign = [...new Set(state.accounts.map((a) => a.currency).filter((c) => c !== baseCur()))];
   let html = '';
 
   if (state.accounts.length === 0) {
@@ -612,7 +611,7 @@ export function renderAccounts() {
       const sub =
         toFa(accts.length) +
         (accts.length === 1 ? ' حساب' : ' حساب') +
-        (curs.length > 1 ? ' · ' + curs.join('، ') : curs[0] !== 'تومان' ? ' · ' + curs[0] : '');
+        (curs.length > 1 ? ' · ' + curs.join('، ') : curs[0] !== baseCur() ? ' · ' + curs[0] : '');
       const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((sum / total) * 100))) : 0;
       html += `<div class="card acct-group ${open ? 'open' : ''}" style="padding:0;overflow:hidden">
         <button type="button" class="acct-group-head" onclick="toggleAcctGroup('${esc(k).replace(/'/g, '&#39;')}')">
@@ -637,7 +636,7 @@ export function renderAccounts() {
 
   const missingRate = foreign.filter((c) => !rateOf(c));
   if (missingRate.length) {
-    html += `<div class="hint" style="color:var(--orange)">نرخ ${missingRate.map(esc).join('، ')} ثبت نشده؛ این حساب‌ها در جمع تومانی نیستند. <button type="button" class="link" style="padding:0 4px" onclick="openSettingsRates()">ثبت نرخ</button></div>`;
+    html += `<div class="hint" style="color:var(--orange)">نرخ ${missingRate.map(esc).join('، ')} ثبت نشده؛ این حساب‌ها در جمع کل نیستند. <button type="button" class="link" style="padding:0 4px" onclick="openSettingsRates()">ثبت نرخ</button></div>`;
   }
   document.getElementById('accountsContent').innerHTML = html;
 }
@@ -675,8 +674,8 @@ export function renderAssetsOverview() {
   const inv = investTotal();
   const nw = cash + inv;
   const debts = (state.debts || []).filter((d) => !d.settled);
-  const rec = debts.filter((d) => d.kind === 'in').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || 'تومان'), 0);
-  const pay = debts.filter((d) => d.kind === 'out').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || 'تومان'), 0);
+  const rec = debts.filter((d) => d.kind === 'in').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || baseCur()), 0);
+  const pay = debts.filter((d) => d.kind === 'out').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || baseCur()), 0);
   const inst = totalRemaining();
   const oblig = pay + inst;
   const lateDebts = overdueCount() - overdueInstallments();
@@ -690,7 +689,7 @@ export function renderAssetsOverview() {
     </button>`;
   const dayTxt = (n) => (n < 0 ? toFa(-n) + ' روز عقب افتاده' : n === 0 ? 'امروز' : toFa(n) + ' روز دیگر');
   // زیرنویس‌های معنادار به‌جای شمارش
-  const foreign = state.accounts.filter((a) => a.currency && a.currency !== 'تومان').length;
+  const foreign = state.accounts.filter((a) => a.currency && a.currency !== baseCur()).length;
   const accSub = foreign ? toFa(foreign) + ' حساب ارزی' : '';
   const totalBuy = state.investments.reduce((x, i) => x + i.qty * i.buy * rateOf(i.currency), 0);
   const pl = inv - totalBuy;
@@ -749,5 +748,5 @@ export function setTodayLabel() {
   const [y, m, d] = jalaliNow();
   const txt = toFa(d) + ' ' + MONTHS[m - 1] + ' ' + toFa(y);
   const today = document.getElementById('todayLbl');
-  if (today) today.textContent = txt + ' · واحد: تومان';
+  if (today) today.textContent = txt + ' · واحد: ' + baseCur();
 }

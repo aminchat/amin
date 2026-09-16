@@ -3,7 +3,7 @@ import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
-import { state, replaceState, save, allCurrencies, rateOf } from './state.js';
+import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES } from './state.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -935,8 +935,8 @@ export function openSettingsGoogle() {
 // ─── نرخ ارز ───
 function usedCurrencies() {
   const used = new Set();
-  for (const a of state.accounts) if (a.currency && a.currency !== 'تومان') used.add(a.currency);
-  for (const i of state.investments || []) if (i.currency && i.currency !== 'تومان') used.add(i.currency);
+  for (const a of state.accounts) if (a.currency && a.currency !== baseCur()) used.add(a.currency);
+  for (const i of state.investments || []) if (i.currency && i.currency !== baseCur()) used.add(i.currency);
   for (const c of Object.keys(state.rates || {})) used.add(c);
   return [...used];
 }
@@ -951,15 +951,16 @@ function toFaNum(n) {
 }
 export function openSettingsRates() {
   const used = usedCurrencies();
-  const others = allCurrencies().filter((c) => c !== 'تومان' && !used.includes(c));
+  const others = allCurrencies().filter((c) => c !== baseCur() && !used.includes(c));
   const row = (c) => `<div class="srow" style="cursor:default">
       <span class="sic" style="background:${rateOf(c) ? '#0ea5e9' : '#f59e0b'}">${icon('coin')}</span>
-      <span class="smid"><span class="st1">${esc(c)}</span><span class="st2">${rateOf(c) ? 'هر واحد ' + toFaNum(rateOf(c)) + ' تومان' : 'ثبت نشده'}</span></span>
-      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="تومان" onchange="saveRateFrom('${esc(c)}')">
+      <span class="smid"><span class="st1">${esc(c)}</span><span class="st2">${rateOf(c) ? 'هر واحد ' + toFaNum(rateOf(c)) + ' ' + baseCur() : 'ثبت نشده'}</span></span>
+      <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${baseCur()}" onchange="saveRateFrom('${esc(c)}')">
     </div>`;
   openModal(`
     ${settingsHeader('نرخ ارز', 'openSettings()')}
-    <p class="small muted">تومان به ازای هر واحد. فقط برای محاسبهٔ ارزش تومانیِ حساب‌ها، دارایی‌ها و طلب/بدهی‌های ارزی استفاده می‌شود؛ نرخ هر انتقال را موقع همان انتقال جدا وارد می‌کنی.</p>
+    <div class="sgroup" style="margin-bottom:12px">${settingsRow('coin', '#0ea5e9', 'واحد پایهٔ برنامه', 'همهٔ جمع‌ها و گزارش‌ها به این واحد', 'openBaseCurrency()', baseCur())}</div>
+    <p class="small muted">${baseCur()} به ازای هر واحد. فقط برای محاسبهٔ ارزش کلِ حساب‌ها، دارایی‌ها و طلب/بدهی‌های ارزی استفاده می‌شود؛ نرخ هر انتقال را موقع همان انتقال جدا وارد می‌کنی.</p>
     ${used.length ? `<div class="sgroup">${used.map(row).join('')}</div>` : '<div class="hint">هنوز حساب یا دارایی ارزی نداری.</div>'}
     ${others.length ? `<h3 class="muted" style="margin:14px 0 6px">سایر واحدها</h3><div class="sgroup">${others.map(row).join('')}</div>` : ''}
   `);
@@ -1066,4 +1067,51 @@ export function initPrefs() {
     else if ((sec.isEncrypted() || hasPin()) && hiddenAt && Date.now() - hiddenAt > 45000)
       lockApp();
   });
+}
+
+// ─── تغییر واحد پایه ───
+export function openBaseCurrency() {
+  const cur = baseCur();
+  const opts = allCurrencies()
+    .map((c) => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)} (${esc(currencyInfo(c).code)})</option>`)
+    .join('');
+  openModal(`
+    ${settingsHeader('واحد پایه', 'openSettingsRates()')}
+    <p class="small muted">واحدی که جمع‌ها، بودجه و گزارش‌ها با آن نمایش داده می‌شود. حساب‌ها و تراکنش‌ها به واحد خودشان می‌مانند؛ فقط نرخ‌ها و بودجه‌ها به واحد جدید تبدیل می‌شوند.</p>
+    <div class="field"><label>واحد جدید</label>
+      <select class="input" id="bcSel" onchange="bcSync()">${opts}</select></div>
+    <div class="field" id="bcRateWrap"><label id="bcRateLbl"></label>
+      <input class="input" id="bcRate" type="number" step="any" inputmode="decimal" placeholder="نرخ"></div>
+    <button class="btn primary block" onclick="applyBaseCurrency()">تغییر واحد پایه</button>
+  `);
+  bcSync();
+}
+export function bcSync() {
+  const sel = document.getElementById('bcSel');
+  const wrap = document.getElementById('bcRateWrap');
+  const lbl = document.getElementById('bcRateLbl');
+  const inp = document.getElementById('bcRate');
+  if (!sel || !wrap) return;
+  const next = sel.value;
+  const cur = baseCur();
+  if (next === cur) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  lbl.textContent = 'هر ۱ ' + next + ' چند ' + cur + ' است؟';
+  inp.dataset.cur = cur;
+  if (state.rates[next]) inp.value = state.rates[next];
+}
+export function applyBaseCurrency() {
+  const next = document.getElementById('bcSel').value;
+  const rate = parseFloat(document.getElementById('bcRate').value);
+  if (next === baseCur()) return closeModal();
+  if (!(rate > 0)) return toast('نرخ تبدیل را وارد کن');
+  if (!changeBaseCurrency(next, rate)) return toast('تغییر انجام نشد');
+  save();
+  closeModal();
+  render();
+  if (window.setTodayLabel) window.setTodayLabel();
+  toast('واحد پایه شد: ' + next);
 }
