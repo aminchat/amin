@@ -495,6 +495,62 @@ export function payRow(planId, rowId, opts) {
   toast(rowLabel(p, r) + (' ' + tr('پرداخت شد') + ' ✓'));
   if (document.getElementById('plDetail')) openPlanDetail(planId);
 }
+// ── تعداد قسط‌های قبلاً پرداخت‌شده (بدون تراکنش) را بعداً هم می‌شود کم/زیاد کرد ──
+function payRows(p) {
+  return (p.rows || []).filter((r) => r.kind !== 'down');
+}
+export function openPrepaid(planId) {
+  const p = findPlan(planId);
+  if (!p) return;
+  const rows = payRows(p);
+  const noTxPaid = rows.filter((r) => r.paidISO && r.noTx).length;
+  const txPaid = rows.filter((r) => r.paidISO && !r.noTx).length;
+  openModal(`
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('قبلاً پرداخت‌شده')}</h2>
+    <p class="small muted">${tr('چند قسط از این طرح را قبل از ثبت در برنامه پرداخت کرده بودی؟ این‌ها فقط تیک می‌خورند؛ تراکنشی ساخته یا حذف نمی‌شود و موجودی حساب تغییر نمی‌کند.')}</p>
+    ${txPaid ? `<p class="small muted">${tr('{n} قسط با تراکنش واقعی پرداخت شده و دست نمی‌خورد.', { n: toFa(txPaid) })}</p>` : ''}
+    <div class="row" style="align-items:center;justify-content:center;gap:16px;margin:14px 0">
+      <button type="button" class="btn" style="min-width:48px" onclick="prepaidStep('${p.id}',-1)">−</button>
+      <div style="text-align:center"><div id="ppN" style="font-size:var(--fs-2xl);font-weight:700">${toFa(noTxPaid)}</div><div class="small muted">${tr('از {n} قسط', { n: toFa(rows.length - txPaid) })}</div></div>
+      <button type="button" class="btn" style="min-width:48px" onclick="prepaidStep('${p.id}',1)">+</button>
+    </div>
+    <button class="btn primary block" onclick="prepaidApply('${p.id}')">${tr('ذخیره')}</button>
+  `);
+  window.__ppN = noTxPaid;
+}
+export function prepaidStep(planId, d) {
+  const p = findPlan(planId);
+  if (!p) return;
+  const rows = payRows(p);
+  const max = rows.filter((r) => !(r.paidISO && !r.noTx)).length;
+  window.__ppN = Math.max(0, Math.min(max, (window.__ppN || 0) + d));
+  const el = document.getElementById('ppN');
+  if (el) el.textContent = toFa(window.__ppN);
+}
+export function prepaidApply(planId) {
+  const p = findPlan(planId);
+  if (!p) return;
+  let n = window.__ppN || 0;
+  // به ترتیب سررسید: اولین n ردیفِ بدون تراکنش واقعی «پرداخت‌شده بدون تراکنش»، بقیه «پرداخت‌نشده»
+  const rows = payRows(p).slice().sort((a, b) => (a.dueISO < b.dueISO ? -1 : a.dueISO > b.dueISO ? 1 : 0));
+  for (const r of rows) {
+    if (r.paidISO && !r.noTx) continue; // پرداخت واقعی، دست نزن
+    if (n > 0) {
+      r.paidISO = r.paidISO || r.dueISO;
+      r.noTx = true;
+      n--;
+    } else {
+      r.paidISO = null;
+      r.noTx = false;
+    }
+  }
+  p.updatedAt = Date.now();
+  save();
+  render();
+  toast(tr('ذخیره شد') + ' ✓');
+  openPlanDetail(planId);
+}
 export function unpayRow(planId, rowId) {
   const p = findPlan(planId);
   const r = p && (p.rows || []).find((x) => x.id === rowId);
@@ -648,6 +704,7 @@ export function openPlanDetail(id) {
     <div class="row" style="margin-bottom:12px">
       <button class="btn sm" style="flex:1" onclick="openRowEdit('${p.id}','')">${icon('plus')} ${tr('ردیف')}</button>
       <button class="btn sm" style="flex:1" onclick="openPlanForm(findPlan('${p.id}'))">${icon('edit')} ${tr('مشخصات')}</button>
+      <button class="btn sm" style="flex:1" onclick="openPrepaid('${p.id}')">${icon('check')} ${tr('قبلاً پرداخت‌شده')}</button>
     </div>
     <div style="max-height:52vh;overflow:auto">${rows || ('<div class="empty">' + tr('ردیفی نیست.') + '</div>')}</div>
     </div>
