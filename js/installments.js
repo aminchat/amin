@@ -154,7 +154,8 @@ function buildRows(o) {
   const rows = [];
   const count = Math.max(1, Math.round(o.count || 1));
   if (o.mode === 'purchase' && o.down > 0) {
-    rows.push({ id: uid(), kind: 'down', dueISO: o.startISO, amount: o.down, interest: 0, penalty: 0, paidISO: o.downPaid ? o.startISO : null });
+    // پیش‌پرداخت همیشه پرداخت‌شده است؛ فقط این‌که تراکنش بسازد (از حساب کم کند) یا نه
+    rows.push({ id: uid(), kind: 'down', dueISO: o.startISO, amount: o.down, interest: 0, penalty: 0, paidISO: o.startISO, noTx: !o.downPaid });
   }
   const firstISO = o.firstISO || addJMonths(o.startISO, 1);
   const per = Number(o.per) || 0;
@@ -244,7 +245,7 @@ export function openPlanForm(p) {
         <div class="col field"><label>${tr('تاریخ خرید')}</label>
           <input class="input" id="plBuyDate" type="date" value="${todayISO()}" onchange="plStartChanged(this.value)"></div>
       </div>
-      <label class="row" style="gap:8px;align-items:center;margin:-4px 0 12px;font-size:var(--fs-sm)"><input type="checkbox" id="plDownPaid" checked> ${tr('پیش‌پرداخت را الان از حساب کم کن')}</label>
+      <label class="row" style="gap:8px;align-items:center;margin:-4px 0 12px;font-size:var(--fs-sm)"><input type="checkbox" id="plDownPaid" checked> ${tr('پیش‌پرداخت را الان از حساب کم کن')} ${infoTip(tr('پیش‌پرداخت در هر حالت «پرداخت‌شده» ثبت می‌شود. اگر قبلاً پرداختش کرده‌ای و از موجودی فعلی‌ات رفته، تیک را بردار تا دوباره از حساب کم نشود.'))}</label>
     </div>
     <div class="row">
       <div class="col field"><label>${tr('مدت (ماه)')}</label>
