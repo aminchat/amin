@@ -306,6 +306,7 @@ Object.assign(window, {
   savePlan: inst.savePlan,
   delPlan: inst.delPlan,
   plSetKind: inst.plSetKind,
+  plStartChanged: inst.plStartChanged,
   plSetMode: inst.plSetMode,
   plRecalc: inst.plRecalc,
   payRow: inst.payRow,

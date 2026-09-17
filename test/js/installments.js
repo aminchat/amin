@@ -156,7 +156,7 @@ function buildRows(o) {
   if (o.mode === 'purchase' && o.down > 0) {
     rows.push({ id: uid(), kind: 'down', dueISO: o.startISO, amount: o.down, interest: 0, penalty: 0, paidISO: o.downPaid ? o.startISO : null });
   }
-  const firstISO = o.mode === 'purchase' ? addJMonths(o.startISO, 1) : o.firstISO || o.startISO;
+  const firstISO = o.firstISO || addJMonths(o.startISO, 1);
   const per = Number(o.per) || 0;
   const perInt = o.mode === 'equal' ? Number(o.perInterest) || 0 : 0;
   for (let i = 0; i < count; i++) {
@@ -172,6 +172,13 @@ function buildRows(o) {
 // ── فرم ساخت / ویرایش مشخصات ──
 let editingId = null;
 const F = { kind: 'loan', mode: 'equal' };
+window.plFirstTouched = false;
+// با تغییر تاریخ دریافت/خرید، اولین قسط (اگر دستی عوض نشده) یک ماه بعد از آن می‌شود
+export function plStartChanged(iso) {
+  const f = document.getElementById('plFirst');
+  if (!f || !iso || window.plFirstTouched) return;
+  f.value = addJMonths(iso, 1);
+}
 
 function catOptions(sel) {
   return CATS.filter((c) => !c.loan)
@@ -181,6 +188,7 @@ function catOptions(sel) {
 
 export function openPlanForm(p) {
   editingId = p ? p.id : null;
+  window.plFirstTouched = false;
   if (!state.accounts.length) {
     toast(tr('اول یک حساب بساز'));
     return;
@@ -203,7 +211,7 @@ export function openPlanForm(p) {
         <div class="col field"><label>${tr('مبلغ دریافتی (اصل وام)')}</label>
           <input class="input" id="plPrincipal" type="number" inputmode="numeric" placeholder="${tr('مثلاً 100000000')}" value="${p && p.principal ? p.principal : ''}"></div>
         <div class="col field"><label>${tr('تاریخ دریافت')}</label>
-          <input class="input" id="plStart" type="date" value="${p ? p.startISO : todayISO()}"></div>
+          <input class="input" id="plStart" type="date" value="${p ? p.startISO : todayISO()}" onchange="plStartChanged(this.value)"></div>
       </div>
       <div class="field"><label>${tr('واریز اصل وام به حساب')} ${infoTip(tr('فقط اگر همین الان وام گرفته‌ای و هنوز موجودی‌اش را در حساب وارد نکرده‌ای، حساب را انتخاب کن. برای وام‌های قدیمی که پولش الان در حساب‌هایت هست «ثبت نشود» بماند وگرنه دوبار حساب می‌شود.'))}</label>
         <select class="input" id="plDisburseAcc" onchange="plRecalc()"><option value="" ${!p || !p.disburseAccountId ? 'selected' : ''}>${tr('ثبت نشود — پول قبلاً در حسابم هست')}</option>${accountOptGroups(p ? p.disburseAccountId : '')}</select>
@@ -234,7 +242,7 @@ export function openPlanForm(p) {
         <div class="col field"><label>${tr('پیش‌پرداخت')}</label>
           <input class="input" id="plDown" type="number" inputmode="numeric" placeholder="0"></div>
         <div class="col field"><label>${tr('تاریخ خرید')}</label>
-          <input class="input" id="plBuyDate" type="date" value="${todayISO()}"></div>
+          <input class="input" id="plBuyDate" type="date" value="${todayISO()}" onchange="plStartChanged(this.value)"></div>
       </div>
       <label class="row" style="gap:8px;align-items:center;margin:-4px 0 12px;font-size:var(--fs-sm)"><input type="checkbox" id="plDownPaid" checked> ${tr('پیش‌پرداخت را الان از حساب کم کن')}</label>
     </div>
@@ -258,8 +266,8 @@ export function openPlanForm(p) {
           <input class="input" id="plEvery" type="number" inputmode="numeric" value="12" oninput="plRecalc()"></div>
       </div>
     </div>
-    <div class="field" id="plFirstBox" style="${F.kind === 'loan' ? '' : 'display:none'}"><label>${tr('تاریخ اولین قسط')}</label>
-      <input class="input" id="plFirst" type="date" value="${addJMonths(todayISO(), 1)}"></div>
+    <div class="field" id="plFirstBox"><label>${tr('تاریخ اولین قسط')} ${infoTip(tr('پیش‌فرض: همان روزِ ماه بعد از تاریخ دریافت/خرید. اگر قرارداد چیز دیگری می‌گوید عوضش کن؛ بقیهٔ قسط‌ها هر ماه همین روز می‌افتند.'))}</label>
+      <input class="input" id="plFirst" type="date" value="${addJMonths(todayISO(), 1)}" onchange="plFirstTouched=true"></div>
     <div class="field"><label>${tr('قسط‌های پرداخت‌شدهٔ قبلی')} ${infoTip(tr('برای وام‌های در جریان. این‌ها فقط تیک می‌خورند؛ تراکنشی ساخته نمی‌شود و از حسابی کم نمی‌شود — چون آن پرداخت‌ها قبلاً از موجودی فعلی‌ات رفته‌اند.'))}</label>
       <input class="input" id="plPrepaid" type="number" inputmode="numeric" value="0" oninput="plRecalc()"></div>
     <div class="hint" id="plSummary" style="margin-bottom:12px"></div>`}
@@ -282,7 +290,6 @@ export function plSetKind(k) {
   show('plLoanBox', k === 'loan');
   show('plModeBox', k === 'loan');
   show('plPurchaseBox', k === 'purchase');
-  show('plFirstBox', k === 'loan');
   show('plRateBox', k === 'loan');
   plPerTouched = false;
   plIntTouched = false;
@@ -434,6 +441,7 @@ export function savePlan() {
       down: v('plDown'),
       downPaid: document.getElementById('plDownPaid').checked,
       startISO: p.startISO,
+      firstISO: document.getElementById('plFirst').value || addJMonths(p.startISO, 1),
     });
   }
   // اقساط از قبل پرداخت‌شده: فقط تیک، بدون تراکنش

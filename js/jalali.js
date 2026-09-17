@@ -169,3 +169,105 @@ export function parseAppDate(v) {
   } else if (y < 1800) return '';
   return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
 }
+
+// ─── ورودی تاریخ: در دفتر شمسی، به‌جای تقویم میلادیِ مرورگر سه انتخابگر روز/ماه/سال شمسی ───
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+function jMax(jy, jm) {
+  return jm <= 6 ? 31 : jm <= 11 ? 30 : toGregorian(jy, 12, 30) ? 30 : 29;
+}
+export function enhanceDateInputs(root) {
+  if (bookCal !== 'jalali' || !root || !root.querySelectorAll) return;
+  for (const inp of root.querySelectorAll('input[type="date"]:not([data-jd])')) {
+    inp.dataset.jd = '1';
+    const wrap = document.createElement('div');
+    wrap.className = 'jdate';
+    const sel = (cls) => {
+      const s = document.createElement('select');
+      s.className = 'input ' + cls;
+      return s;
+    };
+    const sd = sel('jd-d');
+    const sm = sel('jd-m');
+    const sy = sel('jd-y');
+    const sub = document.createElement('div');
+    sub.className = 'jd-sub small muted';
+    const names = jalaliMonths();
+    const [ty] = jalaliNow();
+    const fill = (s, from, to, lab) => {
+      s.innerHTML = '';
+      for (let i = from; i <= to; i++) {
+        const o = document.createElement('option');
+        o.value = i;
+        o.textContent = lab ? lab(i) : toFa(i);
+        s.appendChild(o);
+      }
+    };
+    fill(sm, 1, 12, (i) => names[i - 1]);
+    fill(sy, ty - 30, ty + 30);
+    let empty = !inp.value; // فیلد خالی (مثلاً «پرداخت نشده») خالی می‌ماند تا کاربر دست بزند
+    const optEmpty = () => {
+      if (!inp.required && (empty || !inp.value)) {
+        for (const s of [sd, sm, sy]) {
+          if (!s.querySelector('option[value=""]')) {
+            const o = document.createElement('option');
+            o.value = '';
+            o.textContent = '—';
+            s.insertBefore(o, s.firstChild);
+          }
+        }
+      }
+    };
+    const fromInput = () => {
+      if (!inp.value) {
+        empty = true;
+        optEmpty();
+        sd.value = sm.value = sy.value = '';
+        sub.textContent = '';
+        return;
+      }
+      empty = false;
+      const [gy, gm, gd] = inp.value.split('-').map(Number);
+      const [jy, jm, jd] = toJalali(gy, gm, gd);
+      if (jy < ty - 30 || jy > ty + 30) fill(sy, Math.min(jy, ty - 30), Math.max(jy, ty + 30));
+      fill(sd, 1, jMax(jy, jm));
+      sy.value = jy;
+      sm.value = jm;
+      sd.value = jd;
+      sub.textContent = toFa(gd) + ' ' + gregMonths()[gm - 1] + ' ' + toFa(gy);
+    };
+    const toInput = () => {
+      let jy = +sy.value || ty;
+      let jm = +sm.value || 1;
+      let jd = +sd.value || 1;
+      const mx = jMax(jy, jm);
+      if (jd > mx) jd = mx;
+      const g = toGregorian(jy, jm, jd);
+      if (!g) return;
+      inp.value = g[0] + '-' + pad2(g[1]) + '-' + pad2(g[2]);
+      fromInput();
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    for (const s of [sd, sm, sy]) s.addEventListener('change', toInput);
+    inp.addEventListener('change', fromInput);
+    inp.classList.add('jd-native');
+    inp.after(wrap);
+    wrap.append(sd, sm, sy);
+    wrap.after(sub);
+    fromInput();
+    // اگر کد بعداً value را عوض کرد (بدون رویداد) هم‌گام بماند
+    const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    Object.defineProperty(inp, 'value', {
+      get() {
+        return desc.get.call(this);
+      },
+      set(v) {
+        desc.set.call(this, v);
+        fromInput();
+      },
+      configurable: true,
+    });
+  }
+}

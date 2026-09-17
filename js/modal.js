@@ -1,5 +1,6 @@
 import { icon } from './icons.js';
 import { enhanceMoneyInputs } from './utils.js';
+import { enhanceDateInputs } from './jalali.js';
 import { t as tr } from './i18n.js';
 const overlay = document.getElementById('overlay');
 const sheet = document.getElementById('sheet');
@@ -7,6 +8,7 @@ const sheet = document.getElementById('sheet');
 export function openModal(html) {
   sheet.innerHTML = '<div class="handle"></div>' + html;
   enhanceMoneyInputs(sheet);
+  enhanceDateInputs(sheet);
   overlay.classList.add('show');
 }
 

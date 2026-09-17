@@ -634,6 +634,7 @@ export default {
   'دانلود نسخهٔ پشتیبان': 'Download backup',
   'فایل JSON': 'JSON file',
   'بازیابی از فایل': 'Restore from file',
+  'پیش‌فرض: همان روزِ ماه بعد از تاریخ دریافت/خرید. اگر قرارداد چیز دیگری می‌گوید عوضش کن؛ بقیهٔ قسط‌ها هر ماه همین روز می‌افتند.': 'Default: the same day next month after the disbursement/purchase date. Change it if your contract says otherwise; the remaining installments fall on this day each month.',
   'اول قفل برنامه را باز کن': 'Unlock the app first',
   'فایل پشتیبان رمزشده ساخته شد': 'Encrypted backup file created',
   'پشتیبان رمزشده': 'Encrypted backup',
