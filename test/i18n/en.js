@@ -39,7 +39,7 @@ export default {
 
   // categories
   'cat.need': 'Essentials',
-  'cat.invest': 'Investing',
+  'cat.invest': 'Financial freedom',
   'cat.fun': 'Fun',
   'cat.charity': 'Giving',
   'cat.waste': 'Waste',

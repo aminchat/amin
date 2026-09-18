@@ -213,6 +213,7 @@ export function save() {
 
 export function replaceState(next, { markDirty } = {}) {
   state = Object.assign(defaultState(), next);
+  monthsCache = null;
   syncBase();
   if (markDirty) touchMeta();
   persistLocal();
@@ -437,10 +438,21 @@ export function pocketItems(mk, catId) {
   return items.sort((a, b) => String(b.dateISO || '').localeCompare(String(a.dateISO || '')));
 }
 
-export function catCeiling(mk, catId) {
+// سهم پایهٔ پاکت از بودجهٔ همین ماه (بدون ماندهٔ قبلی)
+export function catShare(mk, catId) {
   const cat = catById(catId);
   const target = cat ? cat.target : 0;
   return Math.round((budgetOf(mk) * target) / 100);
+}
+// سقف پاکت = سهم این ماه + ماندهٔ همان پاکت از ماه‌های قبل
+export function catCeiling(mk, catId) {
+  const m = computeMonths()[mk];
+  const carried = (m && m.carriedCats && m.carriedCats[catId]) || 0;
+  return catShare(mk, catId) + carried;
+}
+export function catCarried(mk, catId) {
+  const m = computeMonths()[mk];
+  return (m && m.carriedCats && m.carriedCats[catId]) || 0;
 }
 
 // درآمد واقعی ماه — بدون پول قرضی/برگشتی
@@ -457,19 +469,39 @@ export function allMonthKeys() {
   return [...set].sort();
 }
 
+// ماندهٔ هر ماه به تفکیک پاکت به ماه بعد می‌رود: ماندهٔ «آزادی مالی» فقط سقف
+// «آزادی مالی» ماه بعد را بالا می‌برد، نه کل بودجه. جمع مانده‌ها همان «مانده قبلی» است.
+let monthsCache = null;
+let monthsCacheKey = '';
+export function invalidateMonths() {
+  monthsCache = null;
+}
 export function computeMonths() {
+  const key = state.updatedAt + ':' + state.transactions.length + ':' + Object.keys(state.budgets).length;
+  if (monthsCache && monthsCacheKey === key) return monthsCache;
   const keys = allMonthKeys();
-  let carried = 0;
+  const cats = CATS.filter((c) => !c.loan && c.target > 0);
+  let carriedCats = {};
   const res = {};
   for (const k of keys) {
     const budget = (state.budgets[k] && state.budgets[k].amount) || 0;
     const spent = spentIn(k);
     const income = incomeIn(k);
+    let carried = 0;
+    for (const c of cats) carried += carriedCats[c.id] || 0;
     const available = budget + carried;
     const remaining = available - spent;
-    res[k] = { budget, carriedIn: carried, spent, income, available, remaining };
-    carried = remaining > 0 ? remaining : 0;
+    res[k] = { budget, carriedIn: carried, carriedCats, spent, income, available, remaining };
+    const next = {};
+    for (const c of cats) {
+      const ceil = Math.round((budget * c.target) / 100) + (carriedCats[c.id] || 0);
+      const left = ceil - catSpent(k, c.id);
+      if (left > 0) next[c.id] = left;
+    }
+    carriedCats = next;
   }
+  monthsCache = res;
+  monthsCacheKey = key;
   return res;
 }
 
@@ -478,6 +510,7 @@ export function curStats() {
     computeMonths()[curMonthKey()] || {
       budget: 0,
       carriedIn: 0,
+      carriedCats: {},
       spent: 0,
       income: 0,
       available: 0,

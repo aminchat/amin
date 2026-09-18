@@ -44,7 +44,8 @@ export function toJalali(gy, gm, gd) {
   days %= 12053;
   jy += 4 * Math.floor(days / 1461);
   days %= 1461;
-  jy += Math.floor((days - 1) / 365);
+  // trunc نه floor: وقتی days===0 (نوروزِ سال‌های خاص) باید 0 بدهد، نه −1 (پورت از PHP intval)
+  jy += Math.trunc((days - 1) / 365);
   if (days > 365) days = (days - 1) % 365;
   const jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
   const jd = 1 + (days < 186 ? days % 31 : (days - 186) % 30);

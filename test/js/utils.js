@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.11.3-test';
+export const APP_VERSION = '2.12.0-test';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -61,6 +61,7 @@ export function fmt(n) {
   } else {
     s = '0';
   }
+  if (faDigits) s = s.replace(/,/g, '٬').replace('.', '٫');
   return (n < 0 ? '−' : '') + toFa(s);
 }
 

@@ -36,7 +36,7 @@ export default {
   'act.setRate': 'ثبت نرخ',
 
   'cat.need': 'ضروریات',
-  'cat.invest': 'سرمایه‌گذاری',
+  'cat.invest': 'آزادی مالی',
   'cat.fun': 'تفریح',
   'cat.charity': 'نیکوکاری',
   'cat.waste': 'هدررفت',

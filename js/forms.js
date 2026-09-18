@@ -18,6 +18,7 @@ import {
   catById,
   loanFlow,
   catCeiling,
+  catCarried,
   catSpent,
   isInvoice,
   isTransfer,
@@ -1263,6 +1264,7 @@ export function openPocketLedger(catId, mk) {
   mk = mk || curMonthKey();
   const spent = catSpent(mk, catId);
   const ceil = catCeiling(mk, catId);
+  const carried = catCarried(mk, catId);
   const over = c.target === 0 ? spent > 0 : ceil > 0 && spent > ceil;
   const left = Math.max(0, ceil - spent);
   const items = pocketItems(mk, catId);
@@ -1306,6 +1308,7 @@ export function openPocketLedger(catId, mk) {
       <div class="lbl">${monthLabel(mk)} · ${tr('سهم')} ${toFa(c.target)}${pctSign()}</div>
       <div class="val ${over ? 'red' : 'green'}">${fmt(spent)} ${curName(baseCur())}</div>
       <div class="sub">${ceil ? (tr('سقف') + ' ') + fmt(ceil) + (over ? (' · ' + tr('از سقف رد شد')) : (' · ' + tr('مانده') + ' ') + fmt(left)) : tr('بودجه این ماه ثبت نشده')}</div>
+      ${carried ? `<div class="sub">${tr('شامل {amt} ماندهٔ همین پاکت از ماه قبل', { amt: fmt(carried) })}</div>` : ''}
     </div>
     <button class="btn sm primary block" style="margin-bottom:12px" onclick="openTxForm(null,{cat:'${c.id}'})">+ ${tr('خرج در این پاکت')}</button>
     <div style="max-height:48vh;overflow:auto">${rows}</div>
@@ -1343,7 +1346,7 @@ export function openInvestForm(inv) {
   const isEdit = !!inv;
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
-    <h2 style="display:flex;align-items:center">${isEdit ? tr('ویرایش دارایی') : tr('دارایی جدید')}${infoTip(tr('این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در تراکنش‌ها (پاکت سرمایه‌گذاری) ثبت کن.'), 'lg')}</h2>
+    <h2 style="display:flex;align-items:center">${isEdit ? tr('ویرایش دارایی') : tr('دارایی جدید')}${infoTip(tr('این بخش فقط برای ردیابی «ارزش دارایی» است. خرجِ خریدِ آن را جداگانه در تراکنش‌ها (پاکت آزادی مالی) ثبت کن.'), 'lg')}</h2>
     <div class="field"><label>${tr('نام دارایی')}</label>
       <input class="input" id="iName" placeholder="${tr('مثلاً طلا، زمین، ماشین')}" value="${inv ? esc(inv.name) : ''}">
     </div>
