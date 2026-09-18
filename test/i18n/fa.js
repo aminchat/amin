@@ -93,6 +93,7 @@ export default {
   'rep.mood': 'حال این ماه',
   'rep.noSpend': 'هنوز خرجی ثبت نشده',
   'rep.overCat': '{cats} از سهمش رد شد',
+  'rep.wasteHigh': '{amt} هدر رفت؛ بیشتر از ۵٪ خرج ماه',
   'rep.onTrack': 'طبق برنامه پیش می‌روی',
   'rep.drift': 'کمی از برنامه فاصله داری',
   'rep.offPlan': 'توزیع خرج با برنامه نمی‌خواند',

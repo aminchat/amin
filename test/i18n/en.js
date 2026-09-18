@@ -99,6 +99,7 @@ export default {
   'rep.mood': 'This month',
   'rep.noSpend': 'No spending recorded yet',
   'rep.overCat': '{cats} went over its share',
+  'rep.wasteHigh': '{amt} wasted — over 5% of the month',
   'rep.onTrack': 'You’re on plan',
   'rep.drift': 'Slightly off plan',
   'rep.offPlan': 'Spending doesn’t match the plan',

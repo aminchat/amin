@@ -455,6 +455,7 @@ export function renderReport() {
   let verdict, cls;
   if (!totalSpent) { verdict = tr('rep.noSpend'); cls = 'muted'; }
   else if (overCats.length) { verdict = tr('rep.overCat', { cats: overCats.map((c) => c.label).join(tr('rep.and')) }); cls = 'red'; }
+  else if (waste > 0 && waste >= totalSpent * 0.05) { verdict = tr('rep.wasteHigh', { amt: fmtShort(waste) }); cls = 'red'; }
   else if (score >= 80) { verdict = tr('rep.onTrack'); cls = 'green'; }
   else if (score >= 55) { verdict = tr('rep.drift'); cls = 'amber'; }
   else { verdict = tr('rep.offPlan'); cls = 'red'; }

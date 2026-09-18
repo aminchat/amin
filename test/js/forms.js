@@ -29,7 +29,7 @@ import {
   state,
   accountGroups,
   accountOptGroups,
-  institutionOf, baseCur } from './state.js';
+  institutionOf, baseCur, rateOf } from './state.js';
 import { t as tr } from './i18n.js';
 import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor } from './subs.js';
 import { pickSub } from './subsui.js';
@@ -1413,7 +1413,7 @@ export function openPocketLedger(catId, mk) {
                 <div class="t1">${esc(it.title)}${it.invoice ? (' <span class="badge">' + tr('فاکتور') + '</span>') : ''}</div>
                 <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>
               </div>
-              <div class="amt ${it.inflow ? 'in' : 'out'}">${it.inflow ? '+' : '−'}${fmt(it.amount)}</div>
+              <div class="amt ${it.inflow ? 'in' : 'out'}">${it.inflow ? '+' : '−'}${fmt(it.amount)}${a && a.currency !== baseCur() ? ` <small class="muted">${esc(curName(a.currency))}</small><div class="small muted" style="font-weight:400">≈ ${fmtShort(it.amount * rateOf(a.currency))}</div>` : ''}</div>
             </div>`;
           })
           .join('');

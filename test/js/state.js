@@ -209,6 +209,7 @@ export function touchMeta() {
 
 export function save() {
   touchMeta();
+  monthsCache = null;
   persistLocal();
   onSave();
 }

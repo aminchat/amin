@@ -85,6 +85,7 @@ export function normTitle(s) {
     .replace(/[ۀة]/g, 'ه')
     .replace(/[\u200c\u200f\u200e]/g, ' ')
     .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/\p{M}/gu, '') // اعراب (کِتاب → کتاب)
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -363,12 +364,13 @@ export function uncategorized(catId) {
   for (const tx of state.transactions) {
     if (tx.type !== 'out' || isTransfer(tx) || isLoanTx(tx)) continue;
     if (isInvoice(tx)) {
+      const k1 = txAmountToman(tx) / (tx.amount || 1); // نرخ ارز حساب → تومان
       for (const l of tx.lines || []) {
-        if (l.sub || (catId && l.cat !== catId)) continue;
+        if (l.sub || l.cat === 'loan' || (catId && l.cat !== catId)) continue;
         const k = l.cat + '|' + (normTitle(l.name) || '—');
         const e = m.get(k) || { key: k, cat: l.cat, title: l.name || tr('بدون عنوان'), n: 0, amount: 0 };
         e.n++;
-        e.amount += l.amount || 0;
+        e.amount += (l.amount || 0) * k1;
         m.set(k, e);
       }
     } else {
