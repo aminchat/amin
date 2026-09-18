@@ -729,11 +729,11 @@ export function renderAll() {
     [tr('خانه'), renderHome],
     [tr('تراکنش'), renderTx],
     [tr('گزارش'), renderReport],
-    [tr('سرمایه'), renderInvest],
+    [tr('سرمایه‌گذاری'), renderInvest],
     [tr('حساب‌ها'), renderAccounts],
     [tr('طلب و بدهی'), renderDebts],
     [tr('اقساط'), renderInstallments],
-    [tr('دارایی'), renderAssetsOverview],
+    [tr('سرمایه'), renderAssetsOverview],
   ];
   for (const [name, fn] of steps) {
     try {

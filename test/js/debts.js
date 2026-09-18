@@ -99,8 +99,11 @@ export function openDebtForm(d) {
     <div class="field"><label id="dAmountLbl">${tr('مبلغ')} (${curName(acc ? acc.currency : baseCur())})</label>
       <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 500000')}" value="${d ? d.amount : ''}">
     </div>
+    <div class="field"><label>${tr('تاریخ ثبت')}</label>
+      <input class="input" id="dDate" type="date" value="${d && d.createdISO ? d.createdISO : todayISO()}">
+    </div>
     <div class="field"><label>${tr('تاریخ سررسید')}</label>
-      <input class="input" id="dDue" type="date" value="${d && d.dueISO ? d.dueISO : ''}">
+      <input class="input" id="dDue" type="date" value="${d && d.dueISO ? d.dueISO : todayISO()}">
     </div>
     <div class="field"><label>${tr('توضیح (اختیاری)')}</label>
       <input class="input" id="dNote" placeholder="${tr('مثلاً قرض برای اجاره')}" value="${d ? esc(d.note || '') : ''}">
@@ -130,6 +133,7 @@ export function saveDebt() {
   const onBtn = document.querySelector('#debtKindSeg button.on');
   const kind = onBtn ? onBtn.dataset.k : 'in';
   const dueISO = document.getElementById('dDue').value || '';
+  const createdISO = (document.getElementById('dDate') || {}).value || todayISO();
   const note = (document.getElementById('dNote').value || '').trim();
   const accSel = document.getElementById('dAccount');
   const accountId = accSel && accSel.value && accountById(accSel.value) ? accSel.value : '';
@@ -137,7 +141,7 @@ export function saveDebt() {
   if (editingDebtId) {
     const d = allDebts().find((x) => x.id === editingDebtId);
     if (!d) return;
-    Object.assign(d, { person, amount, kind, dueISO, note, accountId, updatedAt: stamp });
+    Object.assign(d, { person, amount, kind, dueISO, note, accountId, createdISO, updatedAt: stamp });
     syncDebtTxs(d);
     toast(tr('ویرایش شد'));
   } else {
@@ -150,7 +154,7 @@ export function saveDebt() {
       dueISO,
       note,
       accountId,
-      createdISO: todayISO(),
+      createdISO,
       settled: false,
       settledAt: null,
       updatedAt: stamp,

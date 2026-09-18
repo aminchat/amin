@@ -8,7 +8,7 @@ export default {
   'nav.home': 'خانه',
   'nav.tx': 'تراکنش‌ها',
   'nav.report': 'گزارش',
-  'nav.assets': 'دارایی',
+  'nav.assets': 'سرمایه',
   'nav.accounts': 'حساب‌ها',
   'nav.invest': 'سرمایه',
   'nav.debts': 'طلب و بدهی',

@@ -176,11 +176,11 @@ export function spendItems(mk, catId) {
     if (isInvoice(tx)) {
       for (const l of tx.lines || []) {
         if (catId && l.cat !== catId) continue;
-        items.push({ txId: tx.id, cat: l.cat, sub: l.sub || '', title: l.name || '', amount: (l.amount || 0) * (txAmountToman(tx) / (tx.amount || 1)), dateISO: tx.dateISO });
+        items.push({ txId: tx.id, cat: l.cat, sub: l.sub || '', title: l.name || '', amount: (l.amount || 0) * (txAmountToman(tx) / (tx.amount || 1)), qty: parseFloat(l.qty) || 0, unit: l.unit || '', dateISO: tx.dateISO });
       }
     } else {
       if (catId && tx.cat !== catId) continue;
-      items.push({ txId: tx.id, cat: tx.cat, sub: tx.sub || '', title: tx.note || '', amount: txAmountToman(tx), dateISO: tx.dateISO });
+      items.push({ txId: tx.id, cat: tx.cat, sub: tx.sub || '', title: tx.note || '', amount: txAmountToman(tx), qty: parseFloat(tx.qty) || 0, unit: tx.unit || '', dateISO: tx.dateISO });
     }
   }
   return items;
@@ -197,15 +197,22 @@ export function subTotals(mk, catId) {
   }
   return { total, rows: [...m.values()].sort((a, b) => b.amount - a.amount) };
 }
+// میانگین وزنی: اگر همهٔ خریدها «تعداد/مقدار» دارند، میانگینِ هر واحد = کل مبلغ ÷ کل مقدار
+// (۱۰ نان ۱۰ هزار + ۲۰ نان ۲۰ هزار → هر نان ۱ هزار، نه میانگین خرید ۱۵ هزار)
+export function avgLabel(r) {
+  if (r.allQty && r.qty > 0) return tr('میانگین هر {u}', { u: r.unit || tr('واحد') }) + ' ' + fmtShort(r.amount / r.qty);
+  return tr('میانگین هر خرید') + ' ' + fmtShort(r.amount / r.n);
+}
 export function titleTotals(mk, catId, sub) {
   const m = new Map();
   let total = 0;
   for (const it of spendItems(mk, catId)) {
     if ((it.sub || '') !== (sub || '')) continue;
     const k = normTitle(it.title) || '—';
-    const e = m.get(k) || { key: k, title: it.title || tr('بدون عنوان'), amount: 0, n: 0, items: [] };
+    const e = m.get(k) || { key: k, title: it.title || tr('بدون عنوان'), amount: 0, n: 0, qty: 0, unit: '', allQty: true, items: [] };
     e.amount += it.amount;
     e.n++;
+    if (it.qty > 0) { e.qty += it.qty; if (!e.unit) e.unit = it.unit; } else e.allQty = false;
     e.items.push(it);
     m.set(k, e);
     total += it.amount;
@@ -340,7 +347,7 @@ export function titleReportHtml(mk, catId, sub) {
         .map((r) => {
           const ts = titleSeries(mk, catId, sub, r.key, 6);
           return `<button type="button" class="srow subrow" onclick="openTitleItems('${catId}','${sub || ''}','${esc(r.key)}','${mk}')">
-          <span class="smid"><span class="st1">${esc(r.title)}</span><span class="st2">${toFa(r.n)} ${tr('بار')} · ${tr('میانگین')} ${fmtShort(r.amount / r.n)}</span></span>
+          <span class="smid"><span class="st1">${esc(r.title)}</span><span class="st2">${toFa(r.n)} ${tr('بار')} · ${avgLabel(r)}</span></span>
           ${sparkline(ts, catById(catId).color)}
           <span class="sval"><b>${fmtShort(r.amount)}</b> <small class="muted">${toFa(Math.round((r.amount / (total || 1)) * 100))}${pctSign()}</small></span>
         </button>`;
