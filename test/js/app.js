@@ -3,7 +3,9 @@ import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i1
 import { icon } from './icons.js';
 import * as inst from './installments.js';
 import { openNewBook, bookToggle, bookCreate } from './book.js';
-import { openCatReport, openSubReport, openTitleItems, openQuickCategorize, qcPick } from './subsui.js';
+import { openCatReport, openSubReport, openTitleItems,
+  gsAnswer,
+  gsUngroup, openQuickCategorize, qcPick } from './subsui.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
@@ -420,6 +422,8 @@ Object.assign(window, {
   openCatReport,
   openSubReport,
   openTitleItems,
+  gsAnswer,
+  gsUngroup,
   openQuickCategorize,
   qcPick,
   openSettingsBackup,

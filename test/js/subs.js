@@ -91,6 +91,90 @@ export function normTitle(s) {
     .trim();
 }
 
+// ── گروه‌بندی عنوان‌ها: «نان تست سحر» و «نان تست سه نان» زیر «نان تست» ──
+// state.titleGroups = { کلیدِ نرمالِ عضو: کلیدِ نرمالِ سرگروه } ؛ تراکنش‌ها دست نمی‌خورند.
+// state.titleNo = ['k1|k2', ...] پیشنهادهای ردشده (تا دوباره پرسیده نشود)
+export function groupOf(key) {
+  const g = state.titleGroups || {};
+  let k = key;
+  for (let i = 0; i < 5 && g[k] && g[k] !== k; i++) k = g[k];
+  return k;
+}
+export function titleKey(title) {
+  return groupOf(normTitle(title) || '—');
+}
+export function groupMembers(key) {
+  const g = state.titleGroups || {};
+  return Object.keys(g).filter((k) => g[k] === key);
+}
+export function groupTitle(key) {
+  const tm = state.titleMap && state.titleMap[key];
+  return (tm && tm.title) || key;
+}
+export function mergeTitles(keys, canonKey) {
+  if (!state.titleGroups) state.titleGroups = {};
+  for (const k of keys) {
+    if (k === canonKey) continue;
+    for (const m of groupMembers(k)) state.titleGroups[m] = canonKey; // اعضای قبلی هم منتقل شوند
+    state.titleGroups[k] = canonKey;
+  }
+  delete state.titleGroups[canonKey];
+  state.titleGroupsAt = Date.now();
+}
+export function ungroupTitle(key) {
+  if (!state.titleGroups) return;
+  delete state.titleGroups[key];
+  state.titleGroupsAt = Date.now();
+}
+export function rejectGroup(keys) {
+  if (!state.titleNo) state.titleNo = [];
+  const id = [...keys].sort().join('|');
+  if (!state.titleNo.includes(id)) state.titleNo.push(id);
+  state.titleGroupsAt = Date.now();
+}
+function allItems() {
+  const items = [];
+  for (const tx of state.transactions) {
+    if (tx.type !== 'out' || isTransfer(tx) || isLoanTx(tx)) continue;
+    if (isInvoice(tx)) for (const l of tx.lines || []) { if (l.cat !== 'loan') items.push({ cat: l.cat, sub: l.sub || '', title: l.name || '' }); }
+    else items.push({ cat: tx.cat, sub: tx.sub || '', title: tx.note || '' });
+  }
+  return items;
+}
+// پیشنهاد محافظه‌کارانه: هم‌پاکت، کلمهٔ اول ≥ ۳ حرف یکی، و کوتاه‌ترین «پیشوندِ کلمه‌کاملِ» بقیه باشد
+export function suggestGroups(catId, sub) {
+  const seen = new Map();
+  for (const it of allItems()) {
+    if (catId && it.cat !== catId) continue;
+    if (sub != null && (it.sub || '') !== (sub || '')) continue;
+    const k = normTitle(it.title);
+    if (!k || k === '—') continue;
+    if (groupOf(k) !== k) continue; // قبلاً عضو گروهی است
+    const e = seen.get(k) || { key: k, title: it.title, n: 0, cat: it.cat };
+    e.n++;
+    seen.set(k, e);
+  }
+  const byFirst = new Map();
+  for (const k of seen.keys()) {
+    const w = k.split(' ')[0];
+    if (w.length < 3) continue;
+    if (!byFirst.has(w)) byFirst.set(w, []);
+    byFirst.get(w).push(k);
+  }
+  const no = new Set(state.titleNo || []);
+  const out = [];
+  for (const [, ks] of byFirst) {
+    if (ks.length < 2) continue;
+    const sorted = ks.slice().sort((a, b) => a.length - b.length);
+    const head = sorted[0];
+    const members = sorted.filter((k) => k === head || k.startsWith(head + ' '));
+    if (members.length < 2) continue;
+    if (no.has(members.slice().sort().join('|'))) continue;
+    out.push({ canon: head, keys: members, titles: members.map((k) => seen.get(k).title), cat: seen.get(head).cat, n: members.reduce((a, k) => a + seen.get(k).n, 0) });
+  }
+  return out.sort((a, b) => b.n - a.n);
+}
+
 // ── یادگیری: هر ثبت با عنوان → نگاشت عنوان به (پاکت، زیرشاخه، آخرین مبلغ) ──
 export function learnTitle(title, cat, sub, amt) {
   const k = normTitle(title);
@@ -101,7 +185,8 @@ export function learnTitle(title, cat, sub, amt) {
 }
 export function lookupTitle(title) {
   const k = normTitle(title);
-  return (k && state.titleMap && state.titleMap[k]) || null;
+  if (!k || !state.titleMap) return null;
+  return state.titleMap[k] || state.titleMap[groupOf(k)] || null;
 }
 
 // ── پیشنهاد عنوان: پرتکرارترین‌های ۹۰ روز اخیر با وزن تازگی و ساعت روز ──
@@ -119,8 +204,10 @@ export function suggestTitles(catId, limit) {
   const since = now - 90 * 864e5;
   const score = new Map();
   const bump = (title, cat, sub, amt, at, hourAt) => {
-    const k = normTitle(title);
-    if (!k) return;
+    const k0 = normTitle(title);
+    if (!k0) return;
+    const k = groupOf(k0);
+    if (k !== k0) title = groupTitle(k); // چیپ با نام سرگروه
     let w = 1;
     if (at) w += Math.max(0, 1 - (now - at) / (90 * 864e5)); // تازگی
     if (hourAt != null && Math.abs(hourAt - hour) <= 2) w += 0.5; // ساعت روز
@@ -209,8 +296,9 @@ export function titleTotals(mk, catId, sub) {
   let total = 0;
   for (const it of spendItems(mk, catId)) {
     if ((it.sub || '') !== (sub || '')) continue;
-    const k = normTitle(it.title) || '—';
-    const e = m.get(k) || { key: k, title: it.title || tr('بدون عنوان'), amount: 0, n: 0, qty: 0, unit: '', allQty: true, items: [] };
+    const k0 = normTitle(it.title) || '—';
+    const k = groupOf(k0);
+    const e = m.get(k) || { key: k, title: (k === k0 ? it.title : groupTitle(k)) || tr('بدون عنوان'), grouped: groupMembers(k).length, amount: 0, n: 0, qty: 0, unit: '', allQty: true, items: [] };
     e.amount += it.amount;
     e.n++;
     if (it.qty > 0) { e.qty += it.qty; if (!e.unit) e.unit = it.unit; } else e.allQty = false;
@@ -233,7 +321,7 @@ export function subSeries(mk, catId, sub, n) {
   return series(mk, n || 6, (k) => spendItems(k, catId).filter((it) => (it.sub || '') === (sub || '')).reduce((s, it) => s + it.amount, 0));
 }
 export function titleSeries(mk, catId, sub, key, n) {
-  return series(mk, n || 6, (k) => spendItems(k, catId).filter((it) => (it.sub || '') === (sub || '') && normTitle(it.title) === key).reduce((s, it) => s + it.amount, 0));
+  return series(mk, n || 6, (k) => spendItems(k, catId).filter((it) => (it.sub || '') === (sub || '') && titleKey(it.title) === key).reduce((s, it) => s + it.amount, 0));
 }
 export function catSeries(mk, catId, n) {
   return series(mk, n || 6, (k) => spendItems(k, catId).reduce((s, it) => s + it.amount, 0));
@@ -348,14 +436,22 @@ export function titleReportHtml(mk, catId, sub) {
         .map((r) => {
           const ts = titleSeries(mk, catId, sub, r.key, 6);
           return `<button type="button" class="srow subrow" onclick="openTitleItems('${catId}','${sub || ''}','${esc(r.key)}','${mk}')">
-          <span class="smid"><span class="st1">${esc(r.title)}</span><span class="st2">${toFa(r.n)} ${tr('بار')} · ${avgLabel(r)}</span></span>
+          <span class="smid"><span class="st1">${esc(r.title)}${r.grouped ? ` <small class="badge">${toFa(r.grouped + 1)} ${tr('عنوان')}</small>` : ''}</span><span class="st2">${toFa(r.n)} ${tr('بار')} · ${avgLabel(r)}</span></span>
           ${sparkline(ts, catById(catId).color)}
           <span class="sval"><b>${fmtShort(r.amount)}</b> <small class="muted">${toFa(Math.round((r.amount / (total || 1)) * 100))}${pctSign()}</small></span>
         </button>`;
         })
         .join('')
     : `<div class="empty">${tr('موردی نیست.')}</div>`;
-  return head + `<div class="sgroup">${list}</div>`;
+  return head + groupSuggestHtml(catId, sub) + `<div class="sgroup">${list}</div>`;
+}
+// کارت پیشنهاد ادغام عنوان‌های شبیه (تأیید با کاربر)
+export function groupSuggestHtml(catId, sub) {
+  const g = suggestGroups(catId, sub)[0];
+  if (!g) return '';
+  const id = g.keys.join('|');
+  return `<div class="ins gsug">${icon('help')}<span>${tr('{n} عنوان شبیه هم: {list} — یکی شوند؟', { n: toFa(g.keys.length), list: g.titles.map((t) => '«' + esc(t) + '»').join(tr('، ')) })}
+    <span class="row" style="margin-top:6px;gap:6px"><button type="button" class="btn sm primary" onclick="gsAnswer('${esc(id)}','${esc(g.canon)}',1,'${catId}','${sub || ''}')">${tr('بله، «{t}»', { t: esc(g.titles[0]) })}</button><button type="button" class="btn sm" onclick="gsAnswer('${esc(id)}','',0,'${catId}','${sub || ''}')">${tr('نه')}</button></span></span></div>`;
 }
 
 // ── دسته‌بندی سریع تاریخچه: هر عنوانِ یکتا یک بار ──
@@ -367,7 +463,7 @@ export function uncategorized(catId) {
       const k1 = txAmountToman(tx) / (tx.amount || 1); // نرخ ارز حساب → تومان
       for (const l of tx.lines || []) {
         if (l.sub || l.cat === 'loan' || (catId && l.cat !== catId)) continue;
-        const k = l.cat + '|' + (normTitle(l.name) || '—');
+        const k = l.cat + '|' + titleKey(l.name);
         const e = m.get(k) || { key: k, cat: l.cat, title: l.name || tr('بدون عنوان'), n: 0, amount: 0 };
         e.n++;
         e.amount += (l.amount || 0) * k1;
@@ -375,7 +471,7 @@ export function uncategorized(catId) {
       }
     } else {
       if (tx.sub || (catId && tx.cat !== catId)) continue;
-      const k = tx.cat + '|' + (normTitle(tx.note) || '—');
+      const k = tx.cat + '|' + titleKey(tx.note);
       const e = m.get(k) || { key: k, cat: tx.cat, title: tx.note || tr('بدون عنوان'), n: 0, amount: 0 };
       e.n++;
       e.amount += txAmountToman(tx);
@@ -392,14 +488,14 @@ export function applySubToTitle(catId, key, sub) {
     if (isInvoice(tx)) {
       for (const l of tx.lines || []) {
         if (l.sub || l.cat !== catId) continue;
-        if ((normTitle(l.name) || '—') !== key) continue;
+        if (titleKey(l.name) !== key) continue;
         l.sub = sub;
         n++;
         tx.updatedAt = Date.now();
       }
     } else {
       if (tx.sub || tx.cat !== catId) continue;
-      if ((normTitle(tx.note) || '—') !== key) continue;
+      if (titleKey(tx.note) !== key) continue;
       tx.sub = sub;
       tx.updatedAt = Date.now();
       n++;

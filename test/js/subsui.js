@@ -5,7 +5,7 @@ import { openModal, closeModal } from './modal.js';
 import { icon } from './icons.js';
 import { esc, toast, fmt, fmtShort, toFa, haptic } from './utils.js';
 import { curMonthKey, monthLabel, fmtDate } from './jalali.js';
-import { subReportHtml, titleReportHtml, titleTotals, uncategorized, applySubToTitle, subsFor, subLabel, addCustomSub, subChipsHtml } from './subs.js';
+import { subReportHtml, titleReportHtml, titleTotals, uncategorized, applySubToTitle, subsFor, subLabel, addCustomSub, subChipsHtml, mergeTitles, rejectGroup, ungroupTitle, groupMembers, groupTitle } from './subs.js';
 
 function header(title, backCall) {
   return backCall
@@ -30,6 +30,7 @@ export function openCatReport(catId, mk) {
 // سطح ۳
 export function openSubReport(catId, sub, mk) {
   mk = mk || curMonthKey();
+  curMk = mk;
   openModal(`
     ${header(esc(subLabel(sub)), `openCatReport('${catId}','${mk}')`)}
     <div style="max-height:66vh;overflow:auto">${titleReportHtml(mk, catId, sub)}</div>
@@ -43,6 +44,7 @@ export function openTitleItems(catId, sub, key, mk) {
   openModal(`
     ${header(esc(row.title), `openSubReport('${catId}','${sub}','${mk}')`)}
     <div class="small muted" style="margin-bottom:8px">${monthLabel(mk)} · ${toFa(row.n)} ${tr('بار')} · ${fmt(row.amount)}</div>
+    ${groupMembers(key).length ? `<div class="ins" style="margin-bottom:8px">${icon('tag')}<span>${tr('شامل: {list}', { list: groupMembers(key).map((k) => '«' + esc(groupTitle(k)) + '»').join(tr('، ')) })} <button type="button" class="btn sm" style="margin-inline-start:6px" onclick="gsUngroup('${esc(key)}','${catId}','${sub}','${mk}')">${tr('جدا کن')}</button></span></div>` : ''}
     <div style="max-height:62vh;overflow:auto">${row.items
       .sort((a, b) => String(b.dateISO).localeCompare(String(a.dateISO)))
       .map((it) => `<div class="item" onclick="openTxForm(findTx('${it.txId}'))"><div class="mid"><div class="t1">${esc(it.title || row.title)}</div><div class="t2">${fmtDate(it.dateISO)}</div></div><div class="amt out">−${fmt(it.amount)}</div></div>`)
@@ -110,4 +112,21 @@ export function pickSub(btn, catId, setter) {
     if (!btn.classList.contains('on')) sub = '';
   }
   setter(sub || '');
+}
+
+// ── پاسخ به پیشنهاد ادغام عنوان‌ها ──
+let curMk = null;
+export function gsAnswer(id, canon, yes, catId, sub) {
+  const keys = id.split('|');
+  if (yes) { mergeTitles(keys, canon); toast(tr('ادغام شد')); }
+  else rejectGroup(keys);
+  save();
+  haptic(6);
+  openSubReport(catId, sub, curMk);
+}
+export function gsUngroup(key, catId, sub, mk) {
+  for (const k of groupMembers(key)) ungroupTitle(k);
+  save();
+  toast(tr('جدا شد'));
+  openSubReport(catId, sub, mk);
 }
