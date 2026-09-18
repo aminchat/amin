@@ -409,7 +409,7 @@ function bulletRows(mk, budget, totalSpent) {
               : c.id === 'invest' && spent < target
               ? tr('rep.toGoal', { amt: fmtShort(target - spent) })
               : tr('rep.left', { amt: fmtShort(target - spent) });
-      return `<button type="button" class="brow ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')" style="--c:${c.color}">
+      return `<button type="button" class="brow ${over ? 'over' : ''}" onclick="openCatReport('${c.id}','${mk}')" style="--c:${c.color}">
         <div class="brow-head">
           <span class="brow-ic">${icon('cat_' + c.id)}</span>
           <span class="brow-name">${c.label}</span>

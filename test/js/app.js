@@ -3,6 +3,7 @@ import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i1
 import { icon } from './icons.js';
 import * as inst from './installments.js';
 import { openNewBook, bookToggle, bookCreate } from './book.js';
+import { openCatReport, openSubReport, openTitleItems, openQuickCategorize, qcPick } from './subsui.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
@@ -105,6 +106,9 @@ import {
   saveTransfer,
   saveTx,
   setTxCat,
+  setTxSub,
+  pickTxTitle,
+  onTxNoteInput,
   setTxType,
   setTxMode,
   onTxAmountInput,
@@ -113,6 +117,7 @@ import {
   removeTxLine,
   syncTxLine,
   setLineCat,
+  setLineSub,
   addRemainderLine,
   startInvoicePhoto,
   onInvoicePhoto,
@@ -132,6 +137,7 @@ import {
   qaFn,
   qaSetType,
   qaSetCat,
+  qaPickTitle,
   qaPickAccount,
   qaChooseAccount,
   qaMore,
@@ -326,12 +332,16 @@ Object.assign(window, {
   qaFn,
   qaSetType,
   qaSetCat,
+  qaPickTitle,
   qaPickAccount,
   qaChooseAccount,
   qaMore,
   qaSave,
   setTxType,
   setTxCat,
+  setTxSub,
+  pickTxTitle,
+  onTxNoteInput,
   saveTx,
   delTx,
   syncTxAmountLabel,
@@ -342,6 +352,7 @@ Object.assign(window, {
   removeTxLine,
   syncTxLine,
   setLineCat,
+  setLineSub,
   addRemainderLine,
   startInvoicePhoto,
   onInvoicePhoto,
@@ -406,6 +417,11 @@ Object.assign(window, {
   openNewBook,
   bookToggle,
   bookCreate,
+  openCatReport,
+  openSubReport,
+  openTitleItems,
+  openQuickCategorize,
+  qcPick,
   openSettingsBackup,
   exportBackup,
   importBackup,

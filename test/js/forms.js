@@ -31,6 +31,8 @@ import {
   accountOptGroups,
   institutionOf, baseCur } from './state.js';
 import { t as tr } from './i18n.js';
+import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor } from './subs.js';
+import { pickSub } from './subsui.js';
 
 const LAST_ACCT_KEY = 'capital_last_account';
 
@@ -85,6 +87,7 @@ let editingTransferPair = null;
 let transferStoredRates = {};
 let txMode = 'simple';
 let draftLines = [];
+let txSub = '';
 let paperDraft = [];
 
 function catChipsHtml(selected, onclickName, extraArg) {
@@ -145,6 +148,7 @@ export function openTxForm(tx, opts) {
 
   txMode = tx && isInvoice(tx) ? 'invoice' : 'simple';
   draftLines = tx && isInvoice(tx) ? tx.lines.map((l) => Object.assign({}, l)) : [];
+  txSub = tx && !isInvoice(tx) ? tx.sub || '' : (pre.sub || '');
 
   const selectedAccountId = tx ? tx.accountId : pre.accountId || lastAccountId();
   const selectedAccount = accountById(selectedAccountId);
@@ -195,6 +199,8 @@ export function openTxForm(tx, opts) {
     <div class="field" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
       <label>${tr('دسته‌بندی خرج')}</label>
       <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
+      <div id="txSubWrap" style="margin-top:8px">${subChipsHtml(defaultCat, txSub, 'setTxSub')}</div>
+      <div id="txTitleChips" style="margin-top:8px">${titleChipsHtml(defaultCat, 'pickTxTitle')}</div>
     </div>
     <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
       <label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
@@ -209,7 +215,7 @@ export function openTxForm(tx, opts) {
       </div>
     </div>
     <div class="field"><label>${tr('توضیح (اختیاری)')}</label>
-      <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? tr('مثلاً: فروشگاه رفاه') : tr('مثلاً: خرید هفتگی')}" value="${tx ? esc(tx.note || '') : esc(pre.note || '')}">
+      <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? tr('مثلاً: فروشگاه رفاه') : tr('مثلاً: خرید هفتگی')}" value="${tx ? esc(tx.note || '') : esc(pre.note || '')}" oninput="onTxNoteInput(this)">
     </div>
     <div class="field"><label>${tr('تاریخ')}</label>
       <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
@@ -317,6 +323,56 @@ export function setTxCat(btn) {
   btn.style.background = CATS.find((c) => c.id === btn.dataset.cat).color;
   const rw = document.getElementById('txReflectWrap');
   if (rw) rw.style.display = btn.dataset.cat === 'waste' && txMode === 'simple' ? '' : 'none';
+  const cat = btn.dataset.cat;
+  if (!subsFor(cat).some((x) => x.id === txSub)) txSub = '';
+  const sw = document.getElementById('txSubWrap');
+  if (sw) sw.innerHTML = subChipsHtml(cat, txSub, 'setTxSub');
+  const tc = document.getElementById('txTitleChips');
+  if (tc) tc.innerHTML = titleChipsHtml(cat, 'pickTxTitle');
+}
+export function setTxSub(btn) {
+  const active = document.querySelector('#txCats .chip.on');
+  pickSub(btn, active ? active.dataset.cat : 'need', (sub) => { txSub = sub; });
+}
+// چیپ عنوان: عنوان + زیرشاخه + آخرین مبلغ (قابل اصلاح) پر می‌شود
+export function pickTxTitle(btn) {
+  const note = document.getElementById('txNote');
+  if (note) note.value = btn.dataset.title || '';
+  const m = lookupTitle(btn.dataset.title);
+  const sub = btn.dataset.sub || (m && m.sub) || '';
+  const cat = m && m.cat;
+  if (cat) {
+    const chip = document.querySelector('#txCats .chip[data-cat="' + cat + '"]');
+    if (chip && !chip.classList.contains('on')) setTxCat(chip);
+  }
+  txSub = sub;
+  const active = document.querySelector('#txCats .chip.on');
+  const sw = document.getElementById('txSubWrap');
+  if (sw) sw.innerHTML = subChipsHtml(active ? active.dataset.cat : 'need', txSub, 'setTxSub');
+  const amt = Number(btn.dataset.amt) || (m && m.amt) || 0;
+  const a = document.getElementById('txAmount');
+  if (a && !a.value && amt) {
+    a.value = String(amt);
+    a.dispatchEvent(new Event('input', { bubbles: true }));
+    a.focus();
+    try { a.select(); } catch (e) {}
+  }
+  haptic(4);
+}
+// عنوان تایپ‌شده → پاکت/زیرشاخهٔ یادگرفته‌شده (اگر کاربر هنوز دست نزده)
+export function onTxNoteInput(el) {
+  const m = lookupTitle(el.value);
+  if (!m) return;
+  if (m.sub && !txSub) {
+    txSub = m.sub;
+    const active = document.querySelector('#txCats .chip.on');
+    if (active && active.dataset.cat !== m.cat) {
+      const chip = document.querySelector('#txCats .chip[data-cat="' + m.cat + '"]');
+      if (chip) setTxCat(chip);
+    }
+    const sw = document.getElementById('txSubWrap');
+    if (sw) sw.innerHTML = subChipsHtml(m.cat, txSub, 'setTxSub');
+  }
 }
 
 function readDraftLinesFromDom() {
@@ -329,6 +385,8 @@ function readDraftLinesFromDom() {
     if (price) l.unitPrice = price.value;
     if (qty) l.qty = qty.value;
     if (unit) l.unit = unit.value;
+    const rf = document.getElementById('lnReflect_' + l.id);
+    if (rf) l.reflect = rf.value;
     const p = parseFloat(l.unitPrice) || 0;
     const q = parseFloat(l.qty) || 0;
     l.amount = p > 0 && q > 0 ? p * q : 0;
@@ -397,11 +455,16 @@ export function renderTxLines() {
         </div>
         <div class="field" style="margin-bottom:8px"><label>${tr('پاکت این قلم')}</label>
           <div class="chips">${catChipsHtml(cat, 'setLineCat', l.id)}</div>
+          <div id="lnSub_${l.id}" style="margin-top:8px">${subChipsHtml(cat, l.sub || '', 'setLineSub', l.id)}</div>
+          <div id="lnTitles_${l.id}" style="margin-top:8px">${l.name ? '' : titleChipsHtml(cat, 'pickLineTitle_' + l.id)}</div>
         </div>
+        ${cat === 'waste' ? `<div class="field" style="margin-bottom:8px"><label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
+          <input class="input" id="lnReflect_${l.id}" value="${esc(l.reflect || '')}" oninput="syncTxLine('${l.id}')"></div>` : ''}
         <button type="button" class="btn sm danger block" onclick="removeTxLine('${l.id}')">${tr('حذف این قلم')}</button>
       </div>`;
     })
     .join('');
+  for (const l of draftLines) window['pickLineTitle_' + l.id] = (btn) => pickLineTitle(l.id, btn);
   updateInvoiceRemain();
 }
 
@@ -436,6 +499,16 @@ export function syncTxLine(id) {
   if (price) l.unitPrice = price.value;
   if (qty) l.qty = qty.value;
   if (unit) l.unit = unit.value;
+  const rf = document.getElementById('lnReflect_' + id);
+  if (rf) l.reflect = rf.value;
+  if (name && !l.sub) {
+    const m = lookupTitle(l.name);
+    if (m && m.sub && m.cat === (l.cat || 'need')) {
+      l.sub = m.sub;
+      const sw = document.getElementById('lnSub_' + id);
+      if (sw) sw.innerHTML = subChipsHtml(l.cat || 'need', l.sub, 'setLineSub', id);
+    }
+  }
   const p = parseFloat(l.unitPrice) || 0;
   const q = parseFloat(l.qty) || 0;
   l.amount = p > 0 && q > 0 ? p * q : 0;
@@ -444,6 +517,27 @@ export function syncTxLine(id) {
   updateInvoiceRemain();
 }
 
+export function setLineSub(btn, lineId) {
+  const l = draftLines.find((x) => x.id === lineId);
+  if (!l) return;
+  pickSub(btn, l.cat || 'need', (sub) => { l.sub = sub; });
+}
+// pickLineTitle_<id> به‌صورت پویا روی window ست می‌شود (renderTxLines)
+export function pickLineTitle(lineId, btn) {
+  const l = draftLines.find((x) => x.id === lineId);
+  if (!l) return;
+  readDraftLinesFromDom();
+  l.name = btn.dataset.title || '';
+  l.sub = btn.dataset.sub || l.sub || '';
+  const amt = Number(btn.dataset.amt) || 0;
+  if (amt && !(parseFloat(l.unitPrice) > 0)) {
+    l.unitPrice = String(amt);
+    l.qty = l.qty || '1';
+  }
+  renderTxLines();
+  const q = document.getElementById('lnQty_' + lineId);
+  if (q) q.focus();
+}
 export function setLineCat(btn, lineId) {
   const l = draftLines.find((x) => x.id === lineId);
   if (!l) return;
@@ -458,6 +552,9 @@ export function setLineCat(btn, lineId) {
   btn.classList.add('on');
   const found = CATS.find((c) => c.id === l.cat);
   if (found) btn.style.background = found.color;
+  if (!subsFor(l.cat).some((x) => x.id === l.sub)) l.sub = '';
+  readDraftLinesFromDom();
+  renderTxLines();
 }
 
 export function startInvoicePhoto(kind) {
@@ -830,7 +927,10 @@ export function saveTx() {
       unit: String(l.unit || '').trim(),
       amount: parseFloat(l.unitPrice) * parseFloat(l.qty),
       cat: l.cat || 'need',
+      sub: l.sub || '',
+      reflect: (l.cat || 'need') === 'waste' ? String(l.reflect || '').trim() : '',
     }));
+    for (const l of lines) learnTitle(l.name, l.cat, l.sub, l.unitPrice);
   } else {
     const p = parseFloat((document.getElementById('txUnitPrice') || {}).value) || 0;
     const q = parseFloat((document.getElementById('txQty') || {}).value) || 0;
@@ -855,6 +955,7 @@ export function saveTx() {
     cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
     const rf = document.getElementById('txReflect');
     reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
+    if (type === 'out' && note) learnTitle(note, cat, txSub, amount);
   }
 
   const payload = {
@@ -864,6 +965,7 @@ export function saveTx() {
     dateISO,
     type,
     cat,
+    sub: type === 'out' && !invoice ? txSub || '' : '',
     reflect,
     month,
     updatedAt: stamp,
@@ -893,7 +995,7 @@ export function saveTx() {
 }
 
 /* ═══════════════════ فرم سریع دو مرحله‌ای ═══════════════════ */
-const qa = { amount: '', type: 'out', cat: 'need', accountId: '', dateISO: '', note: '' };
+const qa = { amount: '', type: 'out', cat: 'need', accountId: '', dateISO: '', note: '', sub: '' };
 
 // عدد به حروف کوتاه (برای تأیید مبلغ زیر صفحه‌کلید)
 // حذف صفرهای اضافی فقط در بخش اعشاری («۵۰» دست‌نخورده می‌ماند)
@@ -910,6 +1012,7 @@ export function openQuickTx(opts) {
   qa.accountId = (rep && accountById(rep.accountId) ? rep.accountId : '') || lastAccountId();
   qa.dateISO = todayISO();
   qa.note = rep ? rep.note || '' : '';
+  qa.sub = rep ? rep.sub || '' : '';
   editingTxId = null;
   txMode = 'simple';
   draftLines = [];
@@ -929,6 +1032,7 @@ export function openQuickTx(opts) {
     </div>
     <div id="qaCatsWrap" style="${qa.type === 'in' ? 'display:none' : ''}">
       <div class="qa-cats" id="qaCats"></div>
+      <div id="qaTitles" class="qa-titles"></div>
     </div>
     <div class="kbd" id="qaKbd">
       ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button type="button" onclick="qaKey('${d}')">${toFa(d)}</button>`).join('')}
@@ -959,6 +1063,33 @@ function qaRenderCats() {
     .join('');
   const on = wrap.querySelector('.on');
   if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) {}
+  qaRenderTitles();
+}
+function qaRenderTitles() {
+  const box = document.getElementById('qaTitles');
+  if (!box) return;
+  box.innerHTML = qa.type === 'out' ? titleChipsHtml(qa.cat, 'qaPickTitle') : '';
+  if (qa.note) {
+    const on = [...box.querySelectorAll('.tchip')].find((b) => b.dataset.title === qa.note);
+    if (on) on.classList.add('on');
+  }
+}
+export function qaPickTitle(btn) {
+  const same = qa.note === btn.dataset.title;
+  qa.note = same ? '' : btn.dataset.title || '';
+  qa.sub = same ? '' : btn.dataset.sub || '';
+  const m = lookupTitle(qa.note);
+  if (!same && m && m.cat && m.cat !== qa.cat) {
+    qa.cat = m.cat;
+    qaRenderCats();
+  }
+  if (!same && !qa.amount) {
+    const amt = Number(btn.dataset.amt) || (m && m.amt) || 0;
+    if (amt) qa.amount = String(amt);
+  }
+  haptic(4);
+  qaRenderTitles();
+  qaPaint();
 }
 
 function qaPaint() {
@@ -1011,6 +1142,7 @@ export function qaSetType(t) {
   });
   const cw = document.getElementById('qaCatsWrap');
   if (cw) cw.style.display = t === 'in' ? 'none' : '';
+  qaRenderTitles();
 }
 
 export function qaSetCat(id) {
@@ -1061,7 +1193,7 @@ export function qaChooseAccount(id) {
 export function qaMore() {
   openTxForm(null, {
     full: true,
-    prefill: { amount: Number(qa.amount) || '', type: qa.type, cat: qa.cat, accountId: qa.accountId, note: qa.note, dateISO: qa.dateISO },
+    prefill: { amount: Number(qa.amount) || '', type: qa.type, cat: qa.cat, sub: qa.sub, accountId: qa.accountId, note: qa.note, dateISO: qa.dateISO },
   });
 }
 
@@ -1082,6 +1214,7 @@ export function qaSave() {
     dateISO,
     type: qa.type,
     cat: qa.type === 'out' ? qa.cat : null,
+    sub: qa.type === 'out' ? qa.sub || '' : '',
     reflect: '',
     month: monthOfISO(dateISO),
     updatedAt: Date.now(),
@@ -1091,6 +1224,7 @@ export function qaSave() {
     qty: 0,
     unit: '',
   });
+  if (qa.type === 'out' && qa.note) learnTitle(qa.note, qa.cat, qa.sub, amount);
   haptic(10);
   save();
   closeModal();
@@ -1310,7 +1444,10 @@ export function openPocketLedger(catId, mk) {
       <div class="sub">${ceil ? (tr('سقف') + ' ') + fmt(ceil) + (over ? (' · ' + tr('از سقف رد شد')) : (' · ' + tr('مانده') + ' ') + fmt(left)) : tr('بودجه این ماه ثبت نشده')}</div>
       ${carried ? `<div class="sub">${tr('شامل {amt} ماندهٔ همین پاکت از ماه قبل', { amt: fmt(carried) })}</div>` : ''}
     </div>
-    <button class="btn sm primary block" style="margin-bottom:12px" onclick="openTxForm(null,{cat:'${c.id}'})">+ ${tr('خرج در این پاکت')}</button>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn sm primary" style="flex:1" onclick="openTxForm(null,{cat:'${c.id}'})">+ ${tr('خرج در این پاکت')}</button>
+      <button class="btn sm" style="flex:1" onclick="openCatReport('${c.id}','${mk}')">${icon('chart')} ${tr('به تفکیک زیرشاخه')}</button>
+    </div>
     <div style="max-height:48vh;overflow:auto">${rows}</div>
   `);
 }

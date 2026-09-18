@@ -150,6 +150,8 @@ export function defaultState() {
     baseCurrency: DEFAULT_BASE,
     calendar: 'jalali',
     bookId: '',
+    titleMap: {},
+    customSubs: [],
     customCurrencies: [],
     updatedAt: 0,
     rev: 0,
@@ -547,6 +549,15 @@ function mergeById(a, b) {
   return [...map.values()];
 }
 
+function mergeTitleMap(a, b) {
+  const out = Object.assign({}, b || {});
+  for (const k of Object.keys(a || {})) {
+    const x = a[k];
+    const y = out[k];
+    out[k] = !y || (x.at || 0) >= (y.at || 0) ? x : y;
+  }
+  return out;
+}
 export function mergeStates(local, remote) {
   // دفترهای متفاوت (تقویم متفاوت یا شناسهٔ دفتر متفاوت) با هم ادغام نمی‌شوند؛
   // نسخهٔ جدیدتر به‌طور کامل برنده است (مثلاً بعد از «دفتر جدید» روی دستگاه دیگر)
@@ -570,6 +581,8 @@ export function mergeStates(local, remote) {
     installments: mergeById(local.installments, remote.installments),
     budgets: Object.assign({}, remote.budgets || {}, local.budgets || {}),
     rates: Object.assign({}, remote.rates || {}, local.rates || {}),
+    titleMap: mergeTitleMap(local.titleMap, remote.titleMap),
+    customSubs: mergeById(local.customSubs, remote.customSubs),
     baseCurrency: local.baseCurrency || remote.baseCurrency || DEFAULT_BASE,
     customCurrencies: [
       ...new Set([...(remote.customCurrencies || []), ...(local.customCurrencies || [])]),
