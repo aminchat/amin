@@ -829,6 +829,7 @@ export function openSettings() {
       )}
     </div>
     <div class="sgroup">
+      ${settingsRow('target', '#16a34a', t('hl.title'), t('hl.set.fun'), 'openHealthSettings()')}
       ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('receipt', '#f97316', tr('خواندن فاکتور از عکس'), tr('کلید هوش مصنوعی گوگل'), 'openSettingsScan()', gemini ? tr('فعال') : tr('خاموش'))}
       ${settingsRow('info', '#64748b', tr('دربارهٔ برنامه'), (tr('نسخه') + ' ') + APP_VERSION, 'openSettingsAbout()')}

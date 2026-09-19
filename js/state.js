@@ -150,6 +150,12 @@ export function defaultState() {
     baseCurrency: DEFAULT_BASE,
     calendar: 'jalali',
     bookId: '',
+    titleMap: {},
+    titleGroups: {},
+    titleNo: [],
+    titleGroupsAt: 0,
+    health: {},
+    customSubs: [],
     customCurrencies: [],
     updatedAt: 0,
     rev: 0,
@@ -207,6 +213,7 @@ export function touchMeta() {
 
 export function save() {
   touchMeta();
+  monthsCache = null;
   persistLocal();
   onSave();
 }
@@ -476,6 +483,28 @@ let monthsCacheKey = '';
 export function invalidateMonths() {
   monthsCache = null;
 }
+// توزیع کسری به تناسب درصد سهم روی پاکت‌های دارای مانده؛ سهمِ پاکتی که مانده‌اش
+// تمام شد، به تناسب بین بقیه بازتوزیع می‌شود (Σ خروجی = max(0, Σ مانده − کسری)).
+function absorbDeficit(left, deficit, cats) {
+  const out = Object.assign({}, left);
+  let rest = Math.round(deficit);
+  for (let guard = 0; rest > 0 && guard < 10; guard++) {
+    const alive = cats.filter((c) => (out[c.id] || 0) > 0);
+    if (!alive.length) break;
+    const shareSum = alive.reduce((a, c) => a + c.target, 0) || 1;
+    let taken = 0;
+    for (const c of alive) {
+      const want = Math.round((rest * c.target) / shareSum);
+      const take = Math.min(out[c.id], want);
+      out[c.id] -= take;
+      taken += take;
+      if (out[c.id] <= 0) delete out[c.id];
+    }
+    if (!taken) break;
+    rest -= taken;
+  }
+  return out;
+}
 export function computeMonths() {
   const key = state.updatedAt + ':' + state.transactions.length + ':' + Object.keys(state.budgets).length;
   if (monthsCache && monthsCacheKey === key) return monthsCache;
@@ -492,13 +521,18 @@ export function computeMonths() {
     const available = budget + carried;
     const remaining = available - spent;
     res[k] = { budget, carriedIn: carried, carriedCats, spent, income, available, remaining };
+    // ماندهٔ هر پاکت؛ کسری پاکت‌های ردشده + هدررفت (سقف صفر) به تناسب سهم از همهٔ
+    // مانده‌های مثبت کم می‌شود تا جمعِ منتقل‌شده هرگز از باقیماندهٔ واقعی ماه بیشتر نشود.
     const next = {};
+    let deficit = 0;
     for (const c of cats) {
       const ceil = Math.round((budget * c.target) / 100) + (carriedCats[c.id] || 0);
       const left = ceil - catSpent(k, c.id);
       if (left > 0) next[c.id] = left;
+      else deficit += -left;
     }
-    carriedCats = next;
+    deficit += CATS.filter((c) => !c.loan && c.target === 0).reduce((a, c) => a + catSpent(k, c.id), 0);
+    carriedCats = absorbDeficit(next, deficit, cats);
   }
   monthsCache = res;
   monthsCacheKey = key;
@@ -547,6 +581,15 @@ function mergeById(a, b) {
   return [...map.values()];
 }
 
+function mergeTitleMap(a, b) {
+  const out = Object.assign({}, b || {});
+  for (const k of Object.keys(a || {})) {
+    const x = a[k];
+    const y = out[k];
+    out[k] = !y || (x.at || 0) >= (y.at || 0) ? x : y;
+  }
+  return out;
+}
 export function mergeStates(local, remote) {
   // دفترهای متفاوت (تقویم متفاوت یا شناسهٔ دفتر متفاوت) با هم ادغام نمی‌شوند؛
   // نسخهٔ جدیدتر به‌طور کامل برنده است (مثلاً بعد از «دفتر جدید» روی دستگاه دیگر)
@@ -570,6 +613,10 @@ export function mergeStates(local, remote) {
     installments: mergeById(local.installments, remote.installments),
     budgets: Object.assign({}, remote.budgets || {}, local.budgets || {}),
     rates: Object.assign({}, remote.rates || {}, local.rates || {}),
+    titleMap: mergeTitleMap(local.titleMap, remote.titleMap),
+    ...((local.titleGroupsAt || 0) >= (remote.titleGroupsAt || 0) ? { titleGroups: local.titleGroups || {}, titleNo: local.titleNo || [], titleGroupsAt: local.titleGroupsAt || 0 } : { titleGroups: remote.titleGroups || {}, titleNo: remote.titleNo || [], titleGroupsAt: remote.titleGroupsAt || 0 }),
+    customSubs: mergeById(local.customSubs, remote.customSubs),
+    health: ((local.health || {}).updatedAt || 0) >= ((remote.health || {}).updatedAt || 0) ? local.health || {} : remote.health || {},
     baseCurrency: local.baseCurrency || remote.baseCurrency || DEFAULT_BASE,
     customCurrencies: [
       ...new Set([...(remote.customCurrencies || []), ...(local.customCurrencies || [])]),

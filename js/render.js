@@ -1,4 +1,5 @@
 import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign } from './utils.js';
+import { lightsHtml } from './health.js';
 import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
@@ -253,6 +254,7 @@ export function renderHome() {
   </div>`;
 
   html += homeStatusChips();
+  if (hasBudget || s.spent) html += lightsHtml(mk, true);
   html += onboardingCard(mk);
 
   html += `<div class="card" style="padding-bottom:var(--sp-2)">
@@ -409,7 +411,7 @@ function bulletRows(mk, budget, totalSpent) {
               : c.id === 'invest' && spent < target
               ? tr('rep.toGoal', { amt: fmtShort(target - spent) })
               : tr('rep.left', { amt: fmtShort(target - spent) });
-      return `<button type="button" class="brow ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')" style="--c:${c.color}">
+      return `<button type="button" class="brow ${over ? 'over' : ''}" onclick="openCatReport('${c.id}','${mk}')" style="--c:${c.color}">
         <div class="brow-head">
           <span class="brow-ic">${icon('cat_' + c.id)}</span>
           <span class="brow-name">${c.label}</span>
@@ -455,6 +457,7 @@ export function renderReport() {
   let verdict, cls;
   if (!totalSpent) { verdict = tr('rep.noSpend'); cls = 'muted'; }
   else if (overCats.length) { verdict = tr('rep.overCat', { cats: overCats.map((c) => c.label).join(tr('rep.and')) }); cls = 'red'; }
+  else if (waste > 0 && waste >= totalSpent * 0.05) { verdict = tr('rep.wasteHigh', { amt: fmtShort(waste) }); cls = 'red'; }
   else if (score >= 80) { verdict = tr('rep.onTrack'); cls = 'green'; }
   else if (score >= 55) { verdict = tr('rep.drift'); cls = 'amber'; }
   else { verdict = tr('rep.offPlan'); cls = 'red'; }
@@ -478,6 +481,8 @@ export function renderReport() {
     </div>
     ${score !== null ? ringSVG(score, cls) : ''}
   </div>`;
+
+  html += lightsHtml(mk);
 
   html += `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -729,11 +734,11 @@ export function renderAll() {
     [tr('خانه'), renderHome],
     [tr('تراکنش'), renderTx],
     [tr('گزارش'), renderReport],
-    [tr('سرمایه'), renderInvest],
+    [tr('سرمایه‌گذاری'), renderInvest],
     [tr('حساب‌ها'), renderAccounts],
     [tr('طلب و بدهی'), renderDebts],
     [tr('اقساط'), renderInstallments],
-    [tr('دارایی'), renderAssetsOverview],
+    [tr('سرمایه'), renderAssetsOverview],
   ];
   for (const [name, fn] of steps) {
     try {
