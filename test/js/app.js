@@ -3,6 +3,7 @@ import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i1
 import { icon } from './icons.js';
 import * as inst from './installments.js';
 import { openNewBook, bookToggle, bookCreate } from './book.js';
+import { openHealth, openHealthSettings, saveHealthSettings, resetHealthSettings } from './healthui.js';
 import { openCatReport, openSubReport, openTitleItems,
   gsAnswer,
   gsUngroup, openQuickCategorize, qcPick } from './subsui.js';
@@ -424,6 +425,10 @@ Object.assign(window, {
   openTitleItems,
   gsAnswer,
   gsUngroup,
+  openHealth,
+  openHealthSettings,
+  saveHealthSettings,
+  resetHealthSettings,
   openQuickCategorize,
   qcPick,
   openSettingsBackup,

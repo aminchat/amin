@@ -689,3 +689,32 @@ input.jd-native{position:absolute;opacity:0;pointer-events:none;width:1px;height
 .qc{padding:10px 0;border-bottom:1px solid var(--border-soft);transition:opacity .25s,transform .25s}
 .qc.done{opacity:0;transform:translateX(-12px)}
 .qc-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+
+/* ── سه چراغ سلامت مالی ── */
+.lights{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 4px}
+.light-card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px;border-radius:var(--r-sm);border:1px solid var(--border-soft);background:var(--card);font:inherit;color:var(--text);text-align:start;cursor:pointer;min-width:0}
+.light-card .lt{font-size:var(--fs-xs);color:var(--muted);font-weight:700}
+.light-card .ll{font-size:var(--fs-sm);font-weight:800;line-height:1.3}
+.light-card .dot,.hcard .dot,.lights.compact .light i{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none;display:inline-block}
+.green .dot,.lights.compact .light.green i{background:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)}
+.amber .dot,.lights.compact .light.amber i{background:#f59e0b;box-shadow:0 0 0 3px #f59e0b38}
+.red .dot,.lights.compact .light.red i{background:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 22%,transparent)}
+.light-card.red .ll{color:var(--red)}.light-card.amber .ll{color:#f59e0b}.light-card.green .ll{color:var(--green)}
+.lights.compact{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:var(--r-sm);background:var(--card);border:1px solid var(--border-soft);margin:0 0 var(--sp-3);cursor:pointer;font-size:var(--fs-xs);font-weight:700;color:var(--muted);overflow:hidden}
+.lights.compact .light{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.lights.compact .i{margin-inline-start:auto;width:16px;height:16px;flex:none}
+.hcard{border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:10px;background:var(--card)}
+.hcard.focus{border-color:var(--accent)}
+.hhead{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm)}
+.hhead .hline{margin-inline-start:auto;font-weight:700}
+.hcard.red .hline{color:var(--red)}.hcard.amber .hline{color:#f59e0b}.hcard.green .hline{color:var(--green)}
+.hwhy{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.hw{display:flex;align-items:flex-start;gap:8px;font-size:var(--fs-sm);line-height:1.6;padding:6px 8px;border-radius:8px;background:var(--bg2)}
+.hw[onclick]{cursor:pointer}
+.hw .i{width:16px;height:16px;flex:none;margin-top:4px;color:var(--muted)}
+.hw b{margin-inline-start:auto;white-space:nowrap}
+.hw.muted{color:var(--muted)}
+.hgap{margin-top:10px;font-size:var(--fs-sm);font-weight:800}
+.hfix{margin-top:8px}
+.hft{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);font-weight:700;color:var(--muted);margin-bottom:6px}
+.hft .i{width:14px;height:14px}

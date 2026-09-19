@@ -154,6 +154,7 @@ export function defaultState() {
     titleGroups: {},
     titleNo: [],
     titleGroupsAt: 0,
+    health: {},
     customSubs: [],
     customCurrencies: [],
     updatedAt: 0,
@@ -615,6 +616,7 @@ export function mergeStates(local, remote) {
     titleMap: mergeTitleMap(local.titleMap, remote.titleMap),
     ...((local.titleGroupsAt || 0) >= (remote.titleGroupsAt || 0) ? { titleGroups: local.titleGroups || {}, titleNo: local.titleNo || [], titleGroupsAt: local.titleGroupsAt || 0 } : { titleGroups: remote.titleGroups || {}, titleNo: remote.titleNo || [], titleGroupsAt: remote.titleGroupsAt || 0 }),
     customSubs: mergeById(local.customSubs, remote.customSubs),
+    health: ((local.health || {}).updatedAt || 0) >= ((remote.health || {}).updatedAt || 0) ? local.health || {} : remote.health || {},
     baseCurrency: local.baseCurrency || remote.baseCurrency || DEFAULT_BASE,
     customCurrencies: [
       ...new Set([...(remote.customCurrencies || []), ...(local.customCurrencies || [])]),

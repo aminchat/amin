@@ -1,4 +1,5 @@
 import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign } from './utils.js';
+import { lightsHtml } from './health.js';
 import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
@@ -253,6 +254,7 @@ export function renderHome() {
   </div>`;
 
   html += homeStatusChips();
+  if (hasBudget || s.spent) html += lightsHtml(mk, true);
   html += onboardingCard(mk);
 
   html += `<div class="card" style="padding-bottom:var(--sp-2)">
@@ -479,6 +481,8 @@ export function renderReport() {
     </div>
     ${score !== null ? ringSVG(score, cls) : ''}
   </div>`;
+
+  html += lightsHtml(mk);
 
   html += `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
