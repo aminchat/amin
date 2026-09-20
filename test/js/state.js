@@ -1,6 +1,6 @@
 import { store, setBaseInfo, setBigUnits, setCurDisplay } from './utils.js';
 import { t, lang } from './i18n.js';
-import { curMonthKey, setBookCalendar, monthOfISO } from './jalali.js';
+import { curMonthKey, setBookCalendar, monthOfISO, shiftMonth } from './jalali.js';
 import { langInfo } from './i18n.js';
 import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securestore.js';
 
@@ -473,7 +473,11 @@ export function allMonthKeys() {
   const set = new Set([curMonthKey()]);
   for (const t of state.transactions) if (t.month) set.add(t.month);
   for (const k of Object.keys(state.budgets)) set.add(k);
-  return [...set].sort();
+  // ماه‌های خالیِ بین اولین و آخرین کلید هم وارد زنجیره می‌شوند تا ماندهٔ پاکت‌ها ماهی را نپَرد
+  const sorted = [...set].sort();
+  const out = [];
+  for (let k = sorted[0], i = 0; k <= sorted[sorted.length - 1] && i < 240; k = shiftMonth(k, 1), i++) out.push(k);
+  return out;
 }
 
 // ماندهٔ هر ماه به تفکیک پاکت به ماه بعد می‌رود: ماندهٔ «آزادی مالی» فقط سقف

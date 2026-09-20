@@ -96,6 +96,7 @@ export default {
   'tx.balance': 'Balance {amt}',
 
   // report
+  'hl.shortHistory': 'Less than 3 months of history; income basis is this month for now and switches to the average after 3 months.',
   'hl.title': 'Three financial health lights',
   'hl.intro': 'Each light is inferred from several signals at once, not a single number. Tap any item for details.',
   'hl.settings': 'Light settings',

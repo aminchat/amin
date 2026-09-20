@@ -1,7 +1,7 @@
 // ─── سه چراغ سلامت مالی: «دخل و خرج» · «مدیریت ثروت» · «زندگی» ───────────────
 // هر چراغ از چند نشانهٔ هم‌زمان نتیجه می‌شود، نه از یک عدد؛ و هر نشانه یک علت و یک پیام دارد.
 import { state, CATS, catById, catSpent, catCeiling, catShare, incomeIn, spentIn, computeMonths, loanFlow, budgetOf, isTransfer, isInvoice, isLoanTx, txAmountToman } from './state.js';
-import { curMonthKey, shiftMonth, monthLabel } from './jalali.js';
+import { curMonthKey, shiftMonth, monthLabel, daysInMonthKey } from './jalali.js';
 import { t as tr } from './i18n.js';
 import { fmtShort, toFa, esc, pctSign } from './utils.js';
 import { icon } from './icons.js';
@@ -27,9 +27,12 @@ export function incomeBase(mk) {
   if (p.incomeMode === 'month') return { amount: inc, mode: 'month' };
   const last = [0, 1, 2].map((i) => incomeIn(shiftMonth(mk, -i)));
   const nz = last.filter((v) => v > 0);
-  // میانگین ۳ ماه شامل ماه‌های صفر (پیمانکار: ۳۰ میلیون در یک ماه = ۱۰ میلیون در ماه)
-  const avg3 = nz.length ? last.reduce((a, b) => a + b, 0) / 3 : 0;
-  if (p.incomeMode === 'avg3') return { amount: avg3, mode: 'avg3' };
+  // «سابقه» = ماه‌هایی که اصلاً استفاده شده‌اند (بودجه یا خرج داشته‌اند)؛ ماه‌های قبل از نصب، «درآمد صفر» نیستند
+  const usedMonths = [0, 1, 2].filter((i) => { const k = shiftMonth(mk, -i); return budgetOf(k) || spentIn(k) || incomeIn(k); }).length;
+  // میانگین ۳ ماه شامل ماه‌های صفر (پیمانکار: ۳۰ میلیون در یک ماه = ۱۰ میلیون در ماه) — فقط با ۳ ماه سابقه
+  const avg3 = nz.length && usedMonths >= 3 ? last.reduce((a, b) => a + b, 0) / 3 : inc;
+  if (p.incomeMode === 'avg3') return { amount: avg3, mode: usedMonths >= 3 ? 'avg3' : 'month', short: usedMonths < 3 };
+  if (usedMonths < 3) return { amount: inc, mode: 'month', short: true };
   // خودکار: ماه جاری بی‌درآمد ولی ماه‌های قبل درآمد داشته، یا نوسان ماه‌ها زیاد → میانگین
   const max = Math.max(...last, 0);
   const min = Math.min(...last);
@@ -91,7 +94,7 @@ export function healthLights(mk) {
   {
     const why = [];
     let cls = 'green';
-    const overNow = cur.over.filter((o) => o.cat.id !== 'waste');
+    const overNow = cur.over;
     const overCount = months.filter((m) => m.over.length).length;
     if (cur.loanIn > 0 && cur.deficit > 0) { cls = 'red'; why.push({ t: tr('hl.loanToLive', { amt: fmtShort(cur.loanIn) }) }); }
     if (cur.base.amount && cur.overIncome > 0) { cls = 'red'; why.push({ t: tr(cur.base.mode === 'avg3' ? 'hl.overIncomeAvg' : 'hl.overIncome', { amt: fmtShort(cur.overIncome) }) }); }
@@ -109,6 +112,7 @@ export function healthLights(mk) {
       if (cls === 'green') cls = 'amber';
       why.push({ t: tr(cur.base.mode === 'avg3' ? 'hl.budgetOverIncomeAvg' : 'hl.budgetOverIncome', { b: fmtShort(cur.budget), i: fmtShort(cur.base.amount) }), on: `openBudgetForm('${mk}')` });
     }
+    if (cur.base.short && cur.hasData) why.push({ t: tr('hl.shortHistory') });
     if (!cur.hasData) cls = 'muted';
     const line = cls === 'green' ? tr('hl.io.ok') : cls === 'amber' ? tr('hl.io.watch') : cls === 'red' ? tr('hl.io.bad') : tr('hl.noData');
     lights.push({ id: 'io', cls, title: tr('hl.io'), line, why, fix: cls === 'red' ? ioFix(cur, mk) : null });
@@ -176,7 +180,7 @@ function ioFix(cur, mk) {
   }
   candidates.sort((a, b) => b.amount - a.amount);
   const earn = needShare >= 0.7 && fixed >= flexible;
-  return { gap, earn, perDay: Math.round(gap / 30), fixed, flexible, candidates: candidates.slice(0, 5) };
+  return { gap, earn, perDay: Math.round(gap / (daysInMonthKey(mk) || 30)), fixed, flexible, candidates: candidates.slice(0, 5) };
 }
 
 // ── HTML: سه چراغ (فشرده برای خانه، کامل برای گزارش) ──
