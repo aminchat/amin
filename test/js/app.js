@@ -6,7 +6,10 @@ import { openNewBook, bookToggle, bookCreate } from './book.js';
 import { openHealth, openHealthSettings, saveHealthSettings, resetHealthSettings } from './healthui.js';
 import { openCatReport, openSubReport, openTitleItems,
   gsAnswer,
-  gsUngroup, openQuickCategorize, qcPick } from './subsui.js';
+  gsUngroup,
+  openTitleNode,
+  ndDetach,
+  ndReattach, openQuickCategorize, qcPick } from './subsui.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
@@ -425,6 +428,9 @@ Object.assign(window, {
   openTitleItems,
   gsAnswer,
   gsUngroup,
+  openTitleNode,
+  ndDetach,
+  ndReattach,
   openHealth,
   openHealthSettings,
   saveHealthSettings,

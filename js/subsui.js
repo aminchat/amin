@@ -5,7 +5,7 @@ import { openModal, closeModal } from './modal.js';
 import { icon } from './icons.js';
 import { esc, toast, fmt, fmtShort, toFa, haptic } from './utils.js';
 import { curMonthKey, monthLabel, fmtDate } from './jalali.js';
-import { subReportHtml, titleReportHtml, titleTotals, uncategorized, applySubToTitle, subsFor, subLabel, addCustomSub, subChipsHtml, mergeTitles, rejectGroup, ungroupTitle, groupMembers, groupTitle } from './subs.js';
+import { subReportHtml, titleReportHtml, titleTotals, uncategorized, applySubToTitle, subsFor, subLabel, addCustomSub, subChipsHtml, mergeTitles, rejectGroup, ungroupTitle, groupMembers, groupTitle, nodeReportHtml, detachTitle, reattachTitle, isDetached, nodeOf, firstWord } from './subs.js';
 
 function header(title, backCall) {
   return backCall
@@ -39,11 +39,12 @@ export function openSubReport(catId, sub, mk) {
 // فهرست خام اقلام یک عنوان
 export function openTitleItems(catId, sub, key, mk) {
   mk = mk || curMonthKey();
-  const row = titleTotals(mk, catId, sub).rows.find((r) => r.key === key);
+  const row = titleTotals(mk, catId, sub, { level: 'title' }).rows.find((r) => r.key === key);
   if (!row) return openSubReport(catId, sub, mk);
   openModal(`
-    ${header(esc(row.title), `openSubReport('${catId}','${sub}','${mk}')`)}
+    ${header(esc(row.title), nodeOf(catId, sub, key) !== key ? `openTitleNode('${catId}','${sub}','${esc(nodeOf(catId, sub, key))}','${mk}')` : `openSubReport('${catId}','${sub}','${mk}')`)}
     <div class="small muted" style="margin-bottom:8px">${monthLabel(mk)} · ${toFa(row.n)} ${tr('بار')} · ${fmt(row.amount)}</div>
+    ${isDetached(catId, sub, key) && firstWord(key) ? `<div class="ins" style="margin-bottom:8px">${icon('tag')}<span>${tr('از گرهٔ «{w}» جدا شده.', { w: esc(firstWord(key)) })} <button type="button" class="btn sm" style="margin-inline-start:6px" onclick="ndReattach('${catId}','${sub}','${esc(key)}','${mk}')">${tr('برگردان به گره')}</button></span></div>` : ''}
     ${groupMembers(key).length ? `<div class="ins" style="margin-bottom:8px">${icon('tag')}<span>${tr('شامل: {list}', { list: groupMembers(key).map((k) => '«' + esc(groupTitle(k)) + '»').join(tr('، ')) })} <button type="button" class="btn sm" style="margin-inline-start:6px" onclick="gsUngroup('${esc(key)}','${catId}','${sub}','${mk}')">${tr('جدا کن')}</button></span></div>` : ''}
     <div style="max-height:62vh;overflow:auto">${row.items
       .sort((a, b) => String(b.dateISO).localeCompare(String(a.dateISO)))
@@ -129,4 +130,27 @@ export function gsUngroup(key, catId, sub, mk) {
   save();
   toast(tr('جدا شد'));
   openSubReport(catId, sub, mk);
+}
+
+// ── گرهٔ خودکار: اعضا / جدا کردن / برگرداندن ──
+export function openTitleNode(catId, sub, node, mk) {
+  mk = mk || curMonthKey();
+  openModal(`
+    ${header(esc(node), `openSubReport('${catId}','${sub}','${mk}')`)}
+    <div style="max-height:66vh;overflow:auto">${nodeReportHtml(mk, catId, sub, node)}</div>
+  `);
+}
+export function ndDetach(catId, sub, key, node, mk) {
+  detachTitle(catId, sub, key);
+  save();
+  toast(tr('جدا شد'));
+  const left = nodeReportHtml(mk, catId, sub, node);
+  if (nodeOf(catId, sub, key) === key && !left.includes('class="srow')) openSubReport(catId, sub, mk);
+  else openTitleNode(catId, sub, node, mk);
+}
+export function ndReattach(catId, sub, key, mk) {
+  reattachTitle(catId, sub, key);
+  save();
+  toast(tr('برگشت'));
+  openTitleItems(catId, sub, key, mk);
 }

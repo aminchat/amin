@@ -291,17 +291,85 @@ export function avgLabel(r) {
   if (r.allQty && r.qty > 0) return tr('میانگین هر {u}', { u: r.unit || tr('واحد') }) + ' ' + fmtShort(r.amount / r.qty);
   return tr('میانگین هر خرید') + ' ' + fmtShort(r.amount / r.n);
 }
-export function titleTotals(mk, catId, sub) {
+// ── گرهٔ خودکار: داخل هر پاکت+زیرشاخه، عنوان‌ها بر اساس کلمهٔ اول گره می‌شوند («نان بربری»+«نان لواش» → «نان») ──
+// استثناها: state.titleNo شامل 'x:cat|sub|key' (جداشده‌ها)؛ state.titleGroups (الحاق دستی) اولویت دارد.
+const STOP = new Set(['خرید', 'یک', 'یه', 'بسته', 'عدد', 'کیلو', 'گرم', 'دو', 'سه', 'چند', 'مقداری', 'buy', 'a', 'the', 'one', 'pack']);
+export function firstWord(key) {
+  const ws = String(key || '').split(' ').filter((w) => w && !STOP.has(w));
+  const w = ws[0] || '';
+  return w.length >= 2 ? w : '';
+}
+export function isDetached(catId, sub, key) {
+  return (state.titleNo || []).includes('x:' + catId + '|' + (sub || '') + '|' + key);
+}
+export function detachTitle(catId, sub, key) {
+  if (!state.titleNo) state.titleNo = [];
+  const id = 'x:' + catId + '|' + (sub || '') + '|' + key;
+  if (!state.titleNo.includes(id)) state.titleNo.push(id);
+  state.titleGroupsAt = Date.now();
+}
+export function reattachTitle(catId, sub, key) {
+  const id = 'x:' + catId + '|' + (sub || '') + '|' + key;
+  state.titleNo = (state.titleNo || []).filter((x) => x !== id);
+  state.titleGroupsAt = Date.now();
+}
+// نقشهٔ کلید عنوان → کلید گره برای یک پاکت+زیرشاخه (روی همهٔ ماه‌ها تا گره‌ها بین ماه‌ها ثابت بمانند)
+const nodeCache = new Map();
+let nodeCacheStamp = '';
+export function nodeMap(catId, sub) {
+  const stamp = (state.updatedAt || 0) + ':' + (state.titleGroupsAt || 0) + ':' + state.transactions.length;
+  if (nodeCacheStamp !== stamp) { nodeCache.clear(); nodeCacheStamp = stamp; }
+  const ck = catId + '|' + (sub || '');
+  if (nodeCache.has(ck)) return nodeCache.get(ck);
+  const keys = new Set();
+  for (const it of allItems()) {
+    if (it.cat !== catId || (it.sub || '') !== (sub || '')) continue;
+    const k = normTitle(it.title);
+    if (k) keys.add(groupOf(k));
+  }
+  const byWord = new Map();
+  for (const k of keys) {
+    if (isDetached(catId, sub, k)) continue;
+    const w = firstWord(k);
+    if (!w) continue;
+    if (!byWord.has(w)) byWord.set(w, []);
+    byWord.get(w).push(k);
+  }
+  const map = new Map();
+  for (const [w, ks] of byWord) if (ks.length >= 2) for (const k of ks) map.set(k, w);
+  nodeCache.set(ck, map);
+  return map;
+}
+export function nodeOf(catId, sub, key) {
+  return nodeMap(catId, sub).get(key) || key;
+}
+export function nodeMembers(catId, sub, node) {
+  const out = [];
+  for (const [k, w] of nodeMap(catId, sub)) if (w === node) out.push(k);
+  return out;
+}
+// نام نمایشی یک کلید (سرگروه دستی → عنوان یادگرفته‌شده؛ وگرنه خودِ کلید)
+export function displayTitle(key, fallback) {
+  const tm = state.titleMap && state.titleMap[key];
+  return (tm && tm.title) || fallback || key;
+}
+
+export function titleTotals(mk, catId, sub, opts) {
+  opts = opts || {};
   const m = new Map();
   let total = 0;
   for (const it of spendItems(mk, catId)) {
     if ((it.sub || '') !== (sub || '')) continue;
     const k0 = normTitle(it.title) || '—';
-    const k = groupOf(k0);
-    const e = m.get(k) || { key: k, title: (k === k0 ? it.title : groupTitle(k)) || tr('بدون عنوان'), grouped: groupMembers(k).length, amount: 0, n: 0, qty: 0, unit: '', allQty: true, items: [] };
+    const kg = groupOf(k0);
+    const node = nodeOf(catId, sub, kg);
+    if (opts.node && node !== opts.node) continue;
+    const k = opts.node || opts.level === 'title' ? kg : node;
+    const isNode = k !== kg;
+    const e = m.get(k) || { key: k, title: isNode ? k : (kg === k0 ? it.title : displayTitle(kg)) || tr('بدون عنوان'), node: isNode, members: isNode ? nodeMembers(catId, sub, k).length : 0, grouped: groupMembers(kg).length, amount: 0, n: 0, qty: 0, unit: '', allQty: true, items: [] };
     e.amount += it.amount;
     e.n++;
-    if (it.qty > 0) { e.qty += it.qty; if (!e.unit) e.unit = it.unit; } else e.allQty = false;
+    if (it.qty > 0) { e.qty += it.qty; if (!e.unit) e.unit = it.unit; else if (e.unit !== it.unit) e.allQty = false; } else e.allQty = false;
     e.items.push(it);
     m.set(k, e);
     total += it.amount;
@@ -320,8 +388,8 @@ function series(mk, n, fn) {
 export function subSeries(mk, catId, sub, n) {
   return series(mk, n || 6, (k) => spendItems(k, catId).filter((it) => (it.sub || '') === (sub || '')).reduce((s, it) => s + it.amount, 0));
 }
-export function titleSeries(mk, catId, sub, key, n) {
-  return series(mk, n || 6, (k) => spendItems(k, catId).filter((it) => (it.sub || '') === (sub || '') && titleKey(it.title) === key).reduce((s, it) => s + it.amount, 0));
+export function titleSeries(mk, catId, sub, key, n, exact) {
+  return series(mk, n || 6, (k) => spendItems(k, catId).filter((it) => (it.sub || '') === (sub || '') && (exact ? titleKey(it.title) : nodeOf(catId, sub, titleKey(it.title))) === key).reduce((s, it) => s + it.amount, 0));
 }
 export function catSeries(mk, catId, n) {
   return series(mk, n || 6, (k) => spendItems(k, catId).reduce((s, it) => s + it.amount, 0));
@@ -435,15 +503,41 @@ export function titleReportHtml(mk, catId, sub) {
     ? rows
         .map((r) => {
           const ts = titleSeries(mk, catId, sub, r.key, 6);
-          return `<button type="button" class="srow subrow" onclick="openTitleItems('${catId}','${sub || ''}','${esc(r.key)}','${mk}')">
-          <span class="smid"><span class="st1">${esc(r.title)}${r.grouped ? ` <small class="badge">${toFa(r.grouped + 1)} ${tr('عنوان')}</small>` : ''}</span><span class="st2">${toFa(r.n)} ${tr('بار')} · ${avgLabel(r)}</span></span>
+          const go = r.node ? `openTitleNode('${catId}','${sub || ''}','${esc(r.key)}','${mk}')` : `openTitleItems('${catId}','${sub || ''}','${esc(r.key)}','${mk}')`;
+          return `<button type="button" class="srow subrow" onclick="${go}">
+          <span class="smid"><span class="st1">${esc(r.title)}${r.node ? ` <small class="badge">${toFa(r.members)} ${tr('عنوان')}</small>` : r.grouped ? ` <small class="badge">${toFa(r.grouped + 1)} ${tr('عنوان')}</small>` : ''}</span><span class="st2">${toFa(r.n)} ${tr('بار')} · ${avgLabel(r)}</span></span>
           ${sparkline(ts, catById(catId).color)}
           <span class="sval"><b>${fmtShort(r.amount)}</b> <small class="muted">${toFa(Math.round((r.amount / (total || 1)) * 100))}${pctSign()}</small></span>
         </button>`;
         })
         .join('')
     : `<div class="empty">${tr('موردی نیست.')}</div>`;
-  return head + groupSuggestHtml(catId, sub) + `<div class="sgroup">${list}</div>`;
+  return head + `<div class="sgroup">${list}</div>`;
+}
+// ── اعضای یک گره ──
+export function nodeReportHtml(mk, catId, sub, node) {
+  const { total, rows } = titleTotals(mk, catId, sub, { node });
+  const s6 = titleSeries(mk, catId, sub, node, 6);
+  const prev = s6[s6.length - 2] || 0;
+  const head = `
+    <div class="stat" style="background:var(--bg2);margin-bottom:10px">
+      <div class="lbl">${monthLabel(mk)} · ${esc(subLabel(sub))}</div>
+      <div class="val">${fmtShort(total)} ${trendHtml(total, prev)}</div>
+      <div class="sub" style="display:flex;align-items:center;gap:8px">${tr('۶ ماه اخیر')} ${sparkline(s6, catById(catId).color)}</div>
+    </div>
+    <p class="small muted">${tr('این عنوان‌ها چون با «{w}» شروع می‌شوند خودکار یک گره شده‌اند. اگر موردی اشتباه است، جدایش کن.', { w: esc(node) })}</p>`;
+  const list = rows
+    .map((r) => {
+      const ts = titleSeries(mk, catId, sub, r.key, 6, true);
+      return `<div class="srow subrow" style="cursor:default">
+        <span class="smid" onclick="openTitleItems('${catId}','${sub || ''}','${esc(r.key)}','${mk}')" style="cursor:pointer"><span class="st1">${esc(r.title)}</span><span class="st2">${toFa(r.n)} ${tr('بار')} · ${avgLabel(r)}</span></span>
+        ${sparkline(ts, catById(catId).color)}
+        <span class="sval"><b>${fmtShort(r.amount)}</b></span>
+        <button type="button" class="btn sm ghost" title="${tr('جدا کن')}" onclick="event.stopPropagation();ndDetach('${catId}','${sub || ''}','${esc(r.key)}','${esc(node)}','${mk}')">${icon('x')}</button>
+      </div>`;
+    })
+    .join('');
+  return head + `<div class="sgroup">${list}</div>`;
 }
 // کارت پیشنهاد ادغام عنوان‌های شبیه (تأیید با کاربر)
 export function groupSuggestHtml(catId, sub) {
