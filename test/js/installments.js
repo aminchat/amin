@@ -14,6 +14,8 @@ import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
 import { save, state, accountById, accountOptGroups, CATS, LOAN_CAT, baseCur, curName } from './state.js';
 import { t as tr } from './i18n.js';
+import { subChipsHtml } from './subs.js';
+import { pickSub } from './subsui.js';
 
 export function allPlans() {
   if (!state.installments) state.installments = [];
@@ -112,6 +114,7 @@ function syncRowTx(p, r) {
     month: monthOfISO(r.paidISO),
     type: 'out',
     cat: p.cat || 'need',
+    sub: p.sub || '',
     reflect: '',
     kind: 'simple',
     lines: null,
@@ -189,6 +192,7 @@ function catOptions(sel) {
 
 export function openPlanForm(p) {
   editingId = p ? p.id : null;
+  plSub = p ? p.sub || '' : '';
   window.plFirstTouched = false;
   if (!state.accounts.length) {
     toast(tr('اول یک حساب بساز'));
@@ -223,8 +227,9 @@ export function openPlanForm(p) {
     <div class="field"><label>${tr('هر قسط از کدام حساب و پاکت؟')} ${infoTip(tr('پرداخت قسط خرجِ واقعی ماه است و از بودجهٔ همان پاکت کم می‌شود.'))}</label>
       <div class="row">
         <select class="input col" id="plAcc">${accountOptGroups(acc)}</select>
-        <select class="input col" id="plCat">${catOptions(p ? p.cat : 'need')}</select>
+        <select class="input col" id="plCat" onchange="plCatChanged()">${catOptions(p ? p.cat : 'need')}</select>
       </div>
+      <div id="plSubWrap" style="margin-top:8px">${subChipsHtml(p ? p.cat : 'need', p ? p.sub || '' : '', 'plPickSub')}</div>
     </div>
 
     ${p ? '' : `
@@ -385,6 +390,16 @@ export function plRecalc(fromRate) {
   }
 }
 
+let plSub = '';
+export function plPickSub(btn) {
+  const cat = document.getElementById('plCat').value;
+  pickSub(btn, cat, (sub) => { plSub = sub; });
+}
+export function plCatChanged() {
+  plSub = '';
+  const wrap = document.getElementById('plSubWrap');
+  if (wrap) wrap.innerHTML = subChipsHtml(document.getElementById('plCat').value, '', 'plPickSub');
+}
 export function savePlan() {
   const title = (document.getElementById('plTitle').value || '').trim();
   if (!title) return toast(tr('عنوان را بنویس'));
@@ -396,7 +411,7 @@ export function savePlan() {
   if (editingId) {
     const p = findPlan(editingId);
     if (!p) return;
-    Object.assign(p, { title, accountId, cat, note, updatedAt: stamp });
+    Object.assign(p, { title, accountId, cat, sub: plSub || '', note, updatedAt: stamp });
     if (p.kind === 'loan') {
       p.principal = v('plPrincipal');
       p.startISO = document.getElementById('plStart').value || p.startISO;
@@ -415,7 +430,7 @@ export function savePlan() {
   if (!count || count > 600) return toast(tr('مدت را به ماه وارد کن'));
   if (!per) return toast(tr('مبلغ هر قسط را بنویس'));
   const kind = F.kind;
-  const p = { id: uid(), kind, mode: F.mode, title, accountId, cat, note, createdISO: todayISO(), updatedAt: stamp, rows: [] };
+  const p = { id: uid(), kind, mode: F.mode, title, accountId, cat, sub: plSub || '', note, createdISO: todayISO(), updatedAt: stamp, rows: [] };
   if (kind === 'loan') p.rate = v('plRate') || 0;
   else p.cashPrice = v('plCash') || 0;
   if (kind === 'loan') {

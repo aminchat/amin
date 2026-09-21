@@ -318,6 +318,8 @@ function findInvest(id) {
 
 Object.assign(window, {
   openPlanForm: inst.openPlanForm,
+  plPickSub: inst.plPickSub,
+  plCatChanged: inst.plCatChanged,
   openPlanDetail: inst.openPlanDetail,
   findPlan: inst.findPlan,
   savePlan: inst.savePlan,

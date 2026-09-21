@@ -738,7 +738,7 @@ export function renderAll() {
     [tr('حساب‌ها'), renderAccounts],
     [tr('طلب و بدهی'), renderDebts],
     [tr('اقساط'), renderInstallments],
-    [tr('سرمایه'), renderAssetsOverview],
+    [tr('ثروت'), renderAssetsOverview],
   ];
   for (const [name, fn] of steps) {
     try {

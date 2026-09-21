@@ -10,7 +10,7 @@ export default {
   'nav.home': 'Home',
   'nav.tx': 'Transactions',
   'nav.report': 'Report',
-  'nav.assets': 'Assets',
+  'nav.assets': 'Wealth',
   'nav.accounts': 'Accounts',
   'nav.invest': 'Investments',
   'nav.debts': 'Debts & Loans',

@@ -309,6 +309,7 @@ export default {
   'سررسید': 'Due',
   'سررسید گذشته': 'Past due',
   'سرمایه': 'Assets',
+  'ثروت': 'Wealth',
   'سرمایه‌گذاری': 'Investments',
   'تاریخ ثبت': 'Date',
   '{n} عنوان شبیه هم: {list} — یکی شوند؟': '{n} similar titles: {list} — merge them?',
