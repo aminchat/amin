@@ -1336,6 +1336,7 @@ export function openAccountForm(a, presetBank) {
       <input class="input" id="aInit" type="number" step="any" inputmode="decimal" placeholder="${toFa(0)}" value="${a ? a.initial : ''}">
     </div>
     <button class="btn primary block" onclick="saveAccount()">${isEdit && !a.__preset ? tr('ذخیره') : tr('افزودن حساب')}</button>
+    ${isEdit && !a.__preset ? `<button class="btn danger block" style="margin-top:8px" onclick="delAccount('${a.id}')">${tr('حذف این حساب')}</button>` : ''}
   `);
 }
 
@@ -1487,9 +1488,24 @@ export function openPocketLedger(catId, mk) {
   `);
 }
 
-export function delAccount(id) {
-  const hasTx = state.transactions.some((t) => t.accountId === id);
-  askConfirm(hasTx ? tr('این حساب و تراکنش‌های مربوط به آن حذف می‌شود. ادامه می‌دهی؟') : tr('این حساب حذف شود؟'), () => {
+export function delAccount(id, confirmed) {
+  const n = state.transactions.filter((t) => t.accountId === id).length;
+  const a = accountById(id);
+  if (n && !confirmed) {
+    // مرحلهٔ ۱: بگو چه چیزی از دست می‌رود؛ مرحلهٔ ۲ (askConfirm) تأیید نهایی
+    openModal(`
+      <div style="text-align:center;padding:10px 4px">
+        <span class="ib lg red" style="margin-bottom:12px">${icon('trash')}</span>
+        <p style="font-size:15px;margin:0 0 6px">${tr('حساب «{a}» حذف شود؟', { a: esc(a ? a.name : '') })}</p>
+        <p class="small muted" style="margin:0 0 18px">${tr('{n} تراکنش این حساب هم برای همیشه حذف می‌شوند و از گزارش‌ها می‌روند. این کار غیرقابل برگشت است.', { n: toFa(n) })}</p>
+        <div class="row">
+          <button class="btn" style="flex:1" onclick="openAccountForm(findAccount('${id}'))">${tr('انصراف')}</button>
+          <button class="btn danger" style="flex:1" onclick="delAccount('${id}',1)">${tr('ادامه')}</button>
+        </div>
+      </div>`);
+    return;
+  }
+  askConfirm(n ? tr('مطمئنی؟ حساب و {n} تراکنشش برای همیشه حذف می‌شوند.', { n: toFa(n) }) : tr('این حساب حذف شود؟'), () => {
     for (const d of state.debts || []) {
       if (d.accountId === id) {
         d.accountId = '';
