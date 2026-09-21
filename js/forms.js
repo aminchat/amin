@@ -160,7 +160,7 @@ export function openTxForm(tx, opts) {
   const showReflect = !!(defaultCat === 'waste' && type === 'out' && txMode === 'simple');
 
   openModal(`
-    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <button class="x" onclick="cancelTxForm()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${isEdit ? (txMode === 'invoice' ? tr('ویرایش فاکتور') : tr('ویرایش تراکنش')) : tr('تراکنش جدید')}</h2>
     <div class="seg" id="txTypeSeg" style="margin-bottom:10px">
       <button class="${type === 'out' ? 'on out' : ''}" data-t="out" onclick="setTxType(this)">${tr('خرج')} −</button>
@@ -1013,6 +1013,11 @@ export function saveTx() {
   save();
   closeModal();
   render();
+  returnAfterTx();
+}
+// بستن فرم بدون ذخیره: اگر از صفحه‌ای باز شده بود (دفترچه، گزارش سه‌سطحی) به همان برمی‌گردد
+export function cancelTxForm() {
+  closeModal();
   returnAfterTx();
 }
 // برگشت به صفحه‌ای که تراکنش از آن باز شده بود (دفترچهٔ پاکت، گزارش سه‌سطحی، …)

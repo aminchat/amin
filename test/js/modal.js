@@ -12,16 +12,23 @@ export function openModal(html) {
   overlay.classList.add('show');
 }
 
+// بستن با پس‌زمینه/Escape: اگر صفحه‌ای «دکمهٔ بستن» سفارشی دارد (مثل فرم تراکنش با برگشت به مبدأ)، همان اجرا می‌شود
+function dismiss() {
+  const x = document.querySelector('#sheet .x[onclick]');
+  const call = x && x.getAttribute('onclick');
+  if (call && call !== 'closeModal()') { try { new Function(call)(); return; } catch (e) { /* fallthrough */ } }
+  closeModal();
+}
 export function closeModal() {
   overlay.classList.remove('show');
 }
 
 overlay.addEventListener('click', (e) => {
-  if (e.target === overlay) closeModal();
+  if (e.target === overlay) dismiss();
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && overlay.classList.contains('show')) closeModal();
+  if (e.key === 'Escape' && overlay.classList.contains('show')) dismiss();
 });
 
 export function askConfirm(msg, onYes) {
