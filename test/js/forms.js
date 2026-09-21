@@ -81,6 +81,7 @@ function readCurrencyChoice(prefix) {
 }
 
 let editingTxId = null;
+let txReturnTo = ''; // فراخوانیِ صفحه‌ای که فرم از آن باز شده؛ بعد از ذخیره/حذف همان‌جا برمی‌گردیم
 let editingAcctId = null;
 let editingInvId = null;
 let editingTransferPair = null;
@@ -108,6 +109,7 @@ function nearlyZero(n) {
 }
 
 export function openTxForm(tx, opts) {
+  txReturnTo = (opts && opts.back) || '';
   if (tx && isTransfer(tx)) {
     openTransferForm(tx);
     return;
@@ -223,6 +225,7 @@ export function openTxForm(tx, opts) {
     <button class="btn primary block" onclick="saveTx()">${isEdit ? tr('ذخیره تغییرات') : tr('ثبت')}</button>
     ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? tr('حذف این فاکتور') : tr('حذف این تراکنش')}</button>` : ''}
   `);
+  { const ai = document.getElementById('txAmount'); if (ai) ai.dataset.cur = amountCur; } // ارزِ مبدأ برای تبدیل هنگام تغییر حساب
   if (txMode === 'invoice') {
     if (!draftLines.length) addTxLine(presetCat || 'need');
     else renderTxLines();
@@ -232,10 +235,28 @@ export function openTxForm(tx, opts) {
 }
 
 export function syncTxAmountLabel() {
-  const a = accountById(document.getElementById('txAccount').value);
+  const sel = document.getElementById('txAccount');
+  const a = accountById(sel.value);
   const lbl = document.getElementById('txAmountLbl');
   if (!lbl) return;
   const cur = a ? a.currency : baseCur();
+  // تغییر حساب به ارز دیگر: عدد را تبدیل کن یا لااقل هشدار بده (۳۰۰ هزار تومان نباید بی‌صدا ۳۰۰ هزار دلار شود)
+  const amtInp = document.getElementById('txAmount');
+  const prevCur = (amtInp && amtInp.dataset.cur) || '';
+  const val = parseFloat(amtInp && amtInp.value);
+  if (amtInp && prevCur && prevCur !== cur && val > 0) {
+    const from = rateOf(prevCur);
+    const to = rateOf(cur);
+    if (from && to) {
+      const conv = Math.round((val * from) / to * 100) / 100;
+      amtInp.value = conv;
+      toast(tr('مبلغ از {a} به {b} تبدیل شد: {v}', { a: curName(prevCur), b: curName(cur), v: fmt(conv) }));
+    } else {
+      toast(tr('حساب مقصد ارز دیگری دارد ({b})؛ مبلغ را دوباره وارد کن', { b: curName(cur) }));
+      amtInp.value = '';
+    }
+    amtInp.dispatchEvent(new Event('input'));
+  }
   lbl.textContent = (txMode === 'invoice' ? tr('مبلغ کل فاکتور') : tr('مبلغ')) + ' (' + curName(cur) + ')';
   ['txAmount', 'txUnitPrice'].forEach((id) => {
     const inp = document.getElementById(id);
@@ -992,6 +1013,14 @@ export function saveTx() {
   save();
   closeModal();
   render();
+  returnAfterTx();
+}
+// برگشت به صفحه‌ای که تراکنش از آن باز شده بود (دفترچهٔ پاکت، گزارش سه‌سطحی، …)
+function returnAfterTx() {
+  const back = txReturnTo;
+  txReturnTo = '';
+  if (!back) return;
+  try { new Function(back)(); } catch (e) { /* صفحهٔ مبدأ دیگر معتبر نیست */ }
 }
 
 /* ═══════════════════ فرم سریع دو مرحله‌ای ═══════════════════ */
@@ -1258,6 +1287,7 @@ export function delTx(id) {
     state.transactions = state.transactions.filter((t) => !ids.has(t.id));
     save();
     render();
+    returnAfterTx();
     toast(tr('حذف شد'));
   });
 }
@@ -1408,7 +1438,7 @@ export function openPocketLedger(catId, mk) {
       : items
           .map((it) => {
             const a = accountById(it.accountId);
-            return `<div class="item" onclick="openTxForm(findTx('${it.txId}'))">
+            return `<div class="item" onclick="openTxForm(findTx('${it.txId}'),{back:&quot;openPocketLedger('${catId}','${mk}')&quot;})">
               <div class="mid">
                 <div class="t1">${esc(it.title)}${it.invoice ? (' <span class="badge">' + tr('فاکتور') + '</span>') : ''}</div>
                 <div class="t2">${fmtDate(it.dateISO)} · ${a ? esc(a.name) : '—'}</div>

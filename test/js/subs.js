@@ -65,6 +65,29 @@ export function subOf(id) {
 export function subsFor(catId) {
   return SUBS.filter((s) => s.cat === catId).concat((state.customSubs || []).filter((s) => s.cat === catId));
 }
+export function countSubUse(id) {
+  let n = 0;
+  for (const tx of state.transactions) {
+    if (tx.sub === id) n++;
+    for (const l of tx.lines || []) if (l.sub === id) n++;
+  }
+  return n;
+}
+export function renameCustomSub(id, label) {
+  const x = (state.customSubs || []).find((s) => s.id === id);
+  if (x) x.label = label;
+}
+export function removeCustomSub(id) {
+  state.customSubs = (state.customSubs || []).filter((s) => s.id !== id);
+  const now = Date.now();
+  for (const tx of state.transactions) {
+    let hit = false;
+    if (tx.sub === id) { tx.sub = ''; hit = true; }
+    for (const l of tx.lines || []) if (l.sub === id) { l.sub = ''; hit = true; }
+    if (hit) tx.updatedAt = now;
+  }
+  for (const k of Object.keys(state.titleMap || {})) if (state.titleMap[k].sub === id) state.titleMap[k].sub = '';
+}
 export function addCustomSub(catId, label) {
   label = String(label || '').trim();
   if (!label) return null;
@@ -252,7 +275,7 @@ export function subChipsHtml(catId, selected, onPick, extra) {
   const ex = extra ? ",'" + extra + "'" : '';
   return `<div class="chips subchips">${list
     .map((s) => `<button type="button" class="chip sub ${s.id === selected ? 'on' : ''}" data-sub="${s.id}" onclick="${onPick}(this${ex})">${subLabel(s.id)}</button>`)
-    .join('')}<button type="button" class="chip sub add" data-sub="__add" onclick="${onPick}(this${ex})">+ ${tr('دلخواه')}</button></div>`;
+    .join('')}<button type="button" class="chip sub add" data-sub="__add" onclick="${onPick}(this${ex})">+ ${tr('دلخواه')}</button>${(state.customSubs || []).some((s) => s.cat === catId) ? `<button type="button" class="chip sub add" title="${tr('زیرشاخه‌های دلخواه')}" onclick="openCustomSubs('${catId}')">${icon('settings')}</button>` : ''}</div>`;
 }
 
 // ── تجمیع برای گزارش ──

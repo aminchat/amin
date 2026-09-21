@@ -9,7 +9,12 @@ import { openCatReport, openSubReport, openTitleItems,
   gsUngroup,
   openTitleNode,
   ndDetach,
-  ndReattach, openQuickCategorize, qcPick } from './subsui.js';
+  ndReattach,
+  openCustomSubs,
+  csRename,
+  csDelete,
+  csDelete2,
+  csDelete3, openQuickCategorize, qcPick } from './subsui.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state } from './state.js';
@@ -431,6 +436,11 @@ Object.assign(window, {
   openTitleNode,
   ndDetach,
   ndReattach,
+  openCustomSubs,
+  csRename,
+  csDelete,
+  csDelete2,
+  csDelete3,
   openHealth,
   openHealthSettings,
   saveHealthSettings,

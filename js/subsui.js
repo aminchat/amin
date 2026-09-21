@@ -5,7 +5,7 @@ import { openModal, closeModal } from './modal.js';
 import { icon } from './icons.js';
 import { esc, toast, fmt, fmtShort, toFa, haptic } from './utils.js';
 import { curMonthKey, monthLabel, fmtDate } from './jalali.js';
-import { subReportHtml, titleReportHtml, titleTotals, uncategorized, applySubToTitle, subsFor, subLabel, addCustomSub, subChipsHtml, mergeTitles, rejectGroup, ungroupTitle, groupMembers, groupTitle, nodeReportHtml, detachTitle, reattachTitle, isDetached, nodeOf, firstWord } from './subs.js';
+import { subReportHtml, titleReportHtml, titleTotals, uncategorized, applySubToTitle, subsFor, subLabel, addCustomSub, subChipsHtml, mergeTitles, rejectGroup, ungroupTitle, groupMembers, groupTitle, nodeReportHtml, detachTitle, reattachTitle, isDetached, nodeOf, firstWord, renameCustomSub, removeCustomSub, countSubUse } from './subs.js';
 
 function header(title, backCall) {
   return backCall
@@ -48,7 +48,7 @@ export function openTitleItems(catId, sub, key, mk) {
     ${groupMembers(key).length ? `<div class="ins" style="margin-bottom:8px">${icon('tag')}<span>${tr('شامل: {list}', { list: groupMembers(key).map((k) => '«' + esc(groupTitle(k)) + '»').join(tr('، ')) })} <button type="button" class="btn sm" style="margin-inline-start:6px" onclick="gsUngroup('${esc(key)}','${catId}','${sub}','${mk}')">${tr('جدا کن')}</button></span></div>` : ''}
     <div style="max-height:62vh;overflow:auto">${row.items
       .sort((a, b) => String(b.dateISO).localeCompare(String(a.dateISO)))
-      .map((it) => `<div class="item" onclick="openTxForm(findTx('${it.txId}'))"><div class="mid"><div class="t1">${esc(it.title || row.title)}</div><div class="t2">${fmtDate(it.dateISO)}</div></div><div class="amt out">−${fmt(it.amount)}</div></div>`)
+      .map((it) => `<div class="item" onclick="openTxForm(findTx('${it.txId}'),{back:&quot;openTitleItems('${catId}','${sub}','${esc(key)}','${mk}')&quot;})"><div class="mid"><div class="t1">${esc(it.title || row.title)}</div><div class="t2">${fmtDate(it.dateISO)}</div></div><div class="amt out">−${fmt(it.amount)}</div></div>`)
       .join('')}</div>
   `);
 }
@@ -153,4 +153,64 @@ export function ndReattach(catId, sub, key, mk) {
   save();
   toast(tr('برگشت'));
   openTitleItems(catId, sub, key, mk);
+}
+
+// ── مدیریت زیرشاخه‌های دلخواه: تغییر نام / حذف (با تأیید دو مرحله‌ای) ──
+export function openCustomSubs(catId) {
+  const c = catById(catId);
+  const list = (state.customSubs || []).filter((x) => x.cat === catId);
+  openModal(`
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('زیرشاخه‌های دلخواه')} <small class="muted" style="font-weight:400;font-size:var(--fs-sm)">· ${c ? esc(c.label) : ''}</small></h2>
+    ${list.length ? `<div class="sgroup">${list.map((x) => `<div class="srow" style="cursor:default">
+      <span class="smid"><span class="st1">${esc(x.label)}</span><span class="st2">${tr('{n} تراکنش', { n: toFa(countSubUse(x.id)) })}</span></span>
+      <button type="button" class="btn sm ghost" onclick="csRename('${x.id}','${catId}')">${icon('edit')}</button>
+      <button type="button" class="btn sm ghost" style="color:var(--red)" onclick="csDelete('${x.id}','${catId}')">${icon('trash')}</button>
+    </div>`).join('')}</div>` : `<div class="empty">${tr('هنوز زیرشاخهٔ دلخواهی برای این پاکت نساخته‌ای.')}</div>`}
+  `);
+}
+export function csRename(id, catId) {
+  const x = (state.customSubs || []).find((s) => s.id === id);
+  if (!x) return;
+  const label = window.prompt(tr('نام جدید'), x.label);
+  if (!label || label.trim() === x.label) return;
+  renameCustomSub(id, label.trim());
+  save();
+  toast(tr('تغییر نام شد'));
+  openCustomSubs(catId);
+}
+export function csDelete(id, catId) {
+  const x = (state.customSubs || []).find((s) => s.id === id);
+  if (!x) return;
+  const n = countSubUse(id);
+  openModal(`
+    <div style="text-align:center;padding:10px 4px">
+      <span class="ib lg red" style="margin-bottom:12px">${icon('trash')}</span>
+      <p style="font-size:15px;margin:0 0 6px">${tr('زیرشاخهٔ «{s}» حذف شود؟', { s: esc(x.label) })}</p>
+      <p class="small muted" style="margin:0 0 18px">${n ? tr('{n} تراکنش این زیرشاخه را دارند؛ آن‌ها حذف نمی‌شوند، فقط «دسته‌بندی‌نشده» می‌شوند.', { n: toFa(n) }) : tr('هیچ تراکنشی از آن استفاده نمی‌کند.')}</p>
+      <div class="row">
+        <button class="btn" style="flex:1" onclick="openCustomSubs('${catId}')">${tr('انصراف')}</button>
+        <button class="btn danger" style="flex:1" onclick="csDelete2('${id}','${catId}')">${tr('ادامه')}</button>
+      </div>
+    </div>`);
+}
+export function csDelete2(id, catId) {
+  const x = (state.customSubs || []).find((s) => s.id === id);
+  if (!x) return;
+  openModal(`
+    <div style="text-align:center;padding:10px 4px">
+      <span class="ib lg red" style="margin-bottom:12px">${icon('alert')}</span>
+      <p style="font-size:15px;margin:0 0 6px"><b>${tr('مطمئنی؟ این کار غیرقابل برگشت است.')}</b></p>
+      <p class="small muted" style="margin:0 0 18px">${tr('زیرشاخهٔ «{s}» برای همیشه حذف می‌شود.', { s: esc(x.label) })}</p>
+      <div class="row">
+        <button class="btn" style="flex:1" onclick="openCustomSubs('${catId}')">${tr('انصراف')}</button>
+        <button class="btn danger" style="flex:1" onclick="csDelete3('${id}','${catId}')">${tr('بله، برای همیشه حذف کن')}</button>
+      </div>
+    </div>`);
+}
+export function csDelete3(id, catId) {
+  removeCustomSub(id);
+  save();
+  toast(tr('حذف شد'));
+  openCustomSubs(catId);
 }
