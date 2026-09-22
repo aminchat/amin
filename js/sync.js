@@ -19,6 +19,9 @@ const DRIVE_FILENAME = 'capital-app-data.json';
 const DRIVE_FILE_KEY = 'capital_app_drive_file_id';
 const TOKEN_KEY = 'capital_app_g_token';
 const TOKEN_SESSION = 'capital_app_g_token';
+// ورود از طریق Worker (refresh token رمزشده روی همین دستگاه؛ تمدید بی‌صدا بدون کوکی/iframe)
+const SYNC_WORKER = 'https://taraz-sync.taraz.workers.dev';
+const SEALED_KEY = 'capital_app_g_sealed';
 
 export let gUser = null;
 let gToken = null;
@@ -116,13 +119,58 @@ export function requestAccessToken(cb, interactive) {
   const done = function (ok) {
     if (cb) cb(ok);
   };
+  if (tokenAlive() && gToken.exp > Date.now() + 60000) {
+    done(true);
+    return;
+  }
+  // ۱) اگر کلید مهرشده داریم: تمدید بی‌صدا از Worker (روی هر مرورگر/PWA کار می‌کند)
+  const sealed = store.get(SEALED_KEY);
+  if (sealed) {
+    if (tokenRequesting) {
+      tokenWaiters.push(done);
+      return;
+    }
+    tokenRequesting = true;
+    tokenWaiters.push(done);
+    const finish = function (ok) {
+      tokenRequesting = false;
+      const w = tokenWaiters.splice(0);
+      w.forEach((fn) => fn(ok));
+      render();
+    };
+    fetch(SYNC_WORKER + '/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) })
+      .then((r) => r.json().then((j) => ({ status: r.status, j })))
+      .then(({ status, j }) => {
+        if (j && j.access_token) {
+          lastTokenError = '';
+          rememberToken({ token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 });
+          finish(true);
+        } else {
+          lastTokenError = (j && j.error) || 'refresh_failed';
+          // کلید باطل شده (خروج از گوگل / حذف دسترسی): دیگر تلاش نکن؛ ورود دوباره لازم است
+          if (status === 401 || status === 400) store.set(SEALED_KEY, '');
+          if (interactive) startWorkerLogin();
+          else finish(false);
+        }
+      })
+      .catch(() => {
+        lastTokenError = 'network';
+        finish(false);
+      });
+    return;
+  }
+  // ۲) بدون کلید: فقط با اقدام کاربر → هدایت به صفحهٔ ورود گوگل (یک بار)
+  if (interactive) {
+    startWorkerLogin();
+    return;
+  }
+  done(false);
+  return;
+  // (مسیر قدیمی GIS زیر، فقط برای مرجع؛ اجرا نمی‌شود)
+  // eslint-disable-next-line no-unreachable
   if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
     lastTokenError = 'gsi-not-loaded';
     done(false);
-    return;
-  }
-  if (tokenAlive() && gToken.exp > Date.now() + 60000) {
-    done(true);
     return;
   }
   // اگر یک درخواستِ بی‌صدا در جریان است و حالا کاربر خودش دکمه زده، منتظرش نمی‌مانیم؛
@@ -200,17 +248,47 @@ function tokenErrorHint() {
       return tr('دسترسی به درایو داده نشد؛ در پنجرهٔ گوگل تیک دسترسی به Drive را بزن.');
     case 'timeout':
       return tr('گوگل جواب نداد؛ اتصال اینترنت را چک کن.');
+    case 'network':
+      return tr('به سرور همگام‌سازی نرسیدم؛ اینترنت را چک کن.');
+    case 'invalid_grant':
+    case 'refresh_failed':
+      return tr('دسترسی قبلی باطل شده؛ دوباره وارد شو.');
     default:
       return '';
   }
 }
 
-export function googleSignIn() {
-  if (typeof google === 'undefined' || !google.accounts) {
-    toast(tr('در حال بارگذاری گوگل…'));
-    return;
+// ── ورود از طریق Worker ──
+function startWorkerLogin() {
+  const app = location.origin + location.pathname;
+  const u = SYNC_WORKER + '/start?app=' + encodeURIComponent(app) + (gUser && gUser.email ? '&login_hint=' + encodeURIComponent(gUser.email) : '');
+  location.href = u;
+}
+// بعد از برگشت از گوگل: توکن‌ها در #fragment هستند
+export function consumeWorkerCallback() {
+  if (!location.hash || location.hash.length < 2) return false;
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (!h.get('access_token') && !h.get('gerr')) return false;
+  history.replaceState(null, '', location.pathname + location.search);
+  const err = h.get('gerr');
+  if (err && !h.get('access_token')) {
+    lastTokenError = err;
+    toast(tr('ورود انجام نشد.') + ' ' + tokenErrorHint());
+    return true;
   }
-  requestDriveSignIn();
+  rememberToken({ token: h.get('access_token'), exp: Date.now() + (parseInt(h.get('expires_in'), 10) || 3600) * 1000 });
+  if (h.get('sealed')) store.set(SEALED_KEY, h.get('sealed'));
+  else if (err === 'no_refresh_token') toast(tr('گوگل کلید تمدید نداد؛ اگر باز هم ورود خواست، در myaccount.google.com دسترسی «تراز» را حذف و دوباره وارد شو'));
+  setSignedIn({ name: h.get('name') || tr('حساب گوگل'), email: h.get('email') || '', picture: h.get('picture') || '' });
+  loadFromDrive(function () {
+    render();
+    toast(tr('ورود موفق') + ' ✓ ' + tr('همگام‌سازی فعال شد'));
+  }, true);
+  return true;
+}
+export function googleSignIn() {
+  if (store.get(SEALED_KEY)) requestDriveSignIn();
+  else startWorkerLogin();
 }
 
 function requestDriveSignIn() {
@@ -247,6 +325,11 @@ function openModalSafe(html) {
 }
 
 export function googleSignOut() {
+  const sealed = store.get(SEALED_KEY);
+  if (sealed) {
+    fetch(SYNC_WORKER + '/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) }).catch(() => {});
+    store.set(SEALED_KEY, '');
+  }
   clearSignedIn();
   if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
     google.accounts.id.disableAutoSelect();
@@ -869,8 +952,10 @@ export function renderSyncCard() {
   );
 }
 
+let initDone = false;
 export function initGoogleOnLoad() {
-  if (typeof google === 'undefined' || !google.accounts) return;
+  if (initDone) return;
+  initDone = true;
   const u = store.get('g_user');
   if (u) {
     try {
@@ -878,7 +963,7 @@ export function initGoogleOnLoad() {
     } catch (e) {}
   }
   loadSavedToken();
-  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredential });
+  if (consumeWorkerCallback()) return;
   if (store.get('g_signed') === '1') {
     // اول تلاشِ بی‌صدا؛ اگر سشن گوگل زنده باشد کاربر هیچ صفحهٔ لاگینی نمی‌بیند
     requestAccessToken(function (ok) {
