@@ -69,8 +69,18 @@ export function syncStatusText() {
 // دکمهٔ پروفایل در هدر
 export function updateAvatar() {
   if (typeof document === 'undefined') return;
-  const b = document.getElementById('btnProfile');
-  if (!b) return;
+  let b = document.getElementById('btnProfile');
+  if (!b) {
+    // اگر index.html قدیمی از کش آمده باشد، دکمه را خودمان می‌سازیم
+    const acts = document.querySelector('.hdr-actions');
+    if (!acts) return;
+    b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'hdr-btn av-btn';
+    b.id = 'btnProfile';
+    b.onclick = openProfileMenu;
+    acts.insertBefore(b, acts.firstChild);
+  }
   if (gUser) {
     b.innerHTML = avatarHTML(gUser, 30);
     b.title = (gUser.email || gUser.name || '');
@@ -328,6 +338,19 @@ function startWorkerLogin() {
   location.href = u;
 }
 // بعد از برگشت از گوگل: توکن‌ها در #fragment هستند
+// اگر نام/عکس در بازگشت نیامد، مستقیم از گوگل بگیر
+function fetchProfile() {
+  if (!tokenAlive()) return;
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + gToken.token } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((p) => {
+      if (!p || !(p.name || p.email)) return;
+      setSignedIn({ name: p.name || (gUser && gUser.name) || tr('حساب گوگل'), email: p.email || (gUser && gUser.email) || '', picture: p.picture || (gUser && gUser.picture) || '' });
+      render();
+    })
+    .catch(() => {});
+}
+
 export function consumeWorkerCallback() {
   if (!location.hash || location.hash.length < 2) return false;
   const h = new URLSearchParams(location.hash.slice(1));
@@ -343,6 +366,7 @@ export function consumeWorkerCallback() {
   if (h.get('sealed')) store.set(SEALED_KEY, h.get('sealed'));
   else if (err === 'no_refresh_token') toast(tr('گوگل کلید تمدید نداد؛ اگر باز هم ورود خواست، در myaccount.google.com دسترسی «تراز» را حذف و دوباره وارد شو'));
   setSignedIn({ name: h.get('name') || tr('حساب گوگل'), email: h.get('email') || '', picture: h.get('picture') || '' });
+  if (!h.get('name') || !h.get('picture')) fetchProfile();
   loadFromDrive(function () {
     render();
     toast(tr('ورود موفق') + ' ✓ ' + tr('همگام‌سازی فعال شد'));
@@ -1041,6 +1065,8 @@ export function initGoogleOnLoad() {
   }
   loadSavedToken();
   if (consumeWorkerCallback()) return;
+  // پروفایل ناقص از ورودهای قبلی: اگر توکن زنده است، بی‌هزینه تکمیل کن
+  if (gUser && tokenAlive() && (!gUser.picture || !gUser.email || gUser.name === tr('حساب گوگل'))) setTimeout(fetchProfile, 1500);
   if (store.get('g_signed') === '1') {
     // اول تلاشِ بی‌صدا؛ اگر سشن گوگل زنده باشد کاربر هیچ صفحهٔ لاگینی نمی‌بیند
     requestAccessToken(function (ok) {

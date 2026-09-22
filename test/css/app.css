@@ -737,3 +737,9 @@ input.jd-native{position:absolute;opacity:0;pointer-events:none;width:1px;height
 .pc-status.bad .dot{background:var(--red)}
 .pc-hint{font-size:12px;color:var(--muted);margin-top:6px}
 .srow .av{margin-inline-end:2px}
+
+/* ─── وضعیت به‌روزرسانی ─── */
+.upd{display:inline-flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);padding:6px 12px;border-radius:999px;background:var(--press)}
+.upd.ok{color:var(--green)}
+.upd.ready{color:var(--text);background:color-mix(in srgb,var(--green) 14%,transparent)}
+.upd .btn.sm{min-height:30px;padding:0 10px;font-size:12px;border-radius:999px}

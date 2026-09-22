@@ -579,7 +579,32 @@ if ('serviceWorker' in navigator && store.persisted && allowSW) {
       const kick = (w) => {
         if (w) w.postMessage('skipWaiting');
       };
-      if (reg.waiting) kick(reg.waiting);
+      const setUpd = (st) => {
+        window.__appUpdate = st;
+        document.dispatchEvent(new CustomEvent('appupdate', { detail: st }));
+      };
+      // اگر نسخهٔ جدید نصب شده ولی فعال نشده (بعضی مرورگرها خودکار جابه‌جا نمی‌کنند)
+      if (reg.waiting) {
+        setUpd('ready');
+        kick(reg.waiting);
+      }
+      window.__applyUpdate = () => {
+        if (reg.waiting) kick(reg.waiting);
+        else location.reload();
+      };
+      window.__checkUpdate = () =>
+        reg
+          .update()
+          .then(() => {
+            if (reg.waiting) setUpd('ready');
+            else if (reg.installing) setUpd('installing');
+            else setUpd('latest');
+            return window.__appUpdate;
+          })
+          .catch(() => {
+            setUpd('offline');
+            return 'offline';
+          });
       reg.update();
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update();
@@ -587,8 +612,14 @@ if ('serviceWorker' in navigator && store.persisted && allowSW) {
       reg.addEventListener('updatefound', () => {
         const w = reg.installing;
         if (!w) return;
+        setUpd('installing');
         w.addEventListener('statechange', () => {
-          if (w.state === 'installed') kick(w);
+          if (w.state === 'installed') {
+            if (navigator.serviceWorker.controller) {
+              setUpd('ready');
+              kick(w); // خودکار اعمال می‌شود؛ اگر نشد، دکمهٔ «اعمال» در دربارهٔ برنامه هست
+            } else setUpd('latest');
+          }
         });
       });
     })

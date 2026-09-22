@@ -833,7 +833,7 @@ export function openSettings() {
       ${settingsRow('target', '#16a34a', t('hl.title'), t('hl.set.fun'), 'openHealthSettings()')}
       ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('receipt', '#f97316', tr('خواندن فاکتور از عکس'), tr('کلید هوش مصنوعی گوگل'), 'openSettingsScan()', gemini ? tr('فعال') : tr('خاموش'))}
-      ${settingsRow('info', '#64748b', tr('دربارهٔ برنامه'), (tr('نسخه') + ' ') + APP_VERSION, 'openSettingsAbout()')}
+      ${settingsRow('info', '#64748b', tr('دربارهٔ برنامه'), (tr('نسخه') + ' ') + APP_VERSION + (window.__appUpdate === 'ready' ? ' · ' + tr('به‌روزرسانی آماده است') : ''), 'openSettingsAbout()')}
     </div>
   `);
 }
@@ -990,6 +990,33 @@ export function openSettingsScan() {
   `);
 }
 
+// وضعیت به‌روزرسانی (فقط وقتی سرویس‌ورکر فعال است؛ نسخهٔ تست ندارد)
+function updateStateHTML() {
+  const st = window.__appUpdate;
+  if (!('serviceWorker' in navigator) || !window.__checkUpdate) return '';
+  if (st === 'ready')
+    return `<div class="upd ready"><span>${tr('نسخهٔ جدید آماده است')}</span><button class="btn primary sm" onclick="window.__applyUpdate()">${tr('اعمال و بازنشانی')}</button></div>`;
+  if (st === 'installing' || st === 'checking') return `<div class="upd busy">${tr('در حال بررسی به‌روزرسانی…')}</div>`;
+  if (st === 'offline') return `<div class="upd"><span>${tr('بررسی ممکن نشد (آفلاین؟)')}</span><button class="btn sm" onclick="checkAppUpdate()">${tr('دوباره')}</button></div>`;
+  return `<div class="upd ok"><span>✓ ${tr('آخرین نسخه را داری')}</span><button class="btn sm" onclick="checkAppUpdate()">${tr('بررسی دوباره')}</button></div>`;
+}
+export function checkAppUpdate() {
+  if (!window.__checkUpdate) return;
+  window.__appUpdate = 'checking';
+  const el = document.getElementById('updState');
+  if (el) el.innerHTML = updateStateHTML();
+  window.__checkUpdate().then(() => {
+    const e2 = document.getElementById('updState');
+    if (e2) e2.innerHTML = updateStateHTML();
+  });
+}
+if (typeof document !== 'undefined')
+  document.addEventListener('appupdate', () => {
+    const el = document.getElementById('updState');
+    if (el) el.innerHTML = updateStateHTML();
+  });
+if (typeof window !== 'undefined') window.checkAppUpdate = checkAppUpdate;
+
 export function openSettingsAbout() {
   openModal(`
     ${settingsHeader(('ℹ️ ' + tr('دربارهٔ برنامه')), 'openSettings()')}
@@ -997,6 +1024,7 @@ export function openSettingsAbout() {
       <div class="logo" style="margin:0 auto 10px">${icon('wallet')}</div>
       <div style="font-weight:800;font-size:16px">${tr('مدیریت سرمایه')}</div>
       <div class="small muted" style="margin-top:4px">${tr('نسخه')} ${APP_VERSION}</div>
+      <div id="updState" class="upd-state" style="margin-top:10px">${updateStateHTML()}</div>
     </div>
     <div class="sgroup" style="margin-top:14px">
       <div class="hint">${tr('روش پاکت‌ها: ضروریات ۶۰٪')} · ${tr('سرمایه‌گذاری ۲۰٪')} · ${tr('تفریح ۱۵٪')} · ${tr('نیکوکاری ۵٪ — به‌علاوهٔ «هدررفت» برای صداقت با خودت و «قرض / امانت» که خارج از بودجه است.')}</div>

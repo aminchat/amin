@@ -106,7 +106,10 @@ async function callback(url, env) {
   let picture = '';
   if (tok.id_token) {
     try {
-      const p = JSON.parse(atob(tok.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      const b64 = tok.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const bin = atob(b64 + '==='.slice((b64.length + 3) % 4));
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      const p = JSON.parse(new TextDecoder().decode(bytes)); // نام‌های فارسی (UTF-8) درست خوانده شوند
       email = p.email || '';
       name = p.name || '';
       picture = p.picture || '';

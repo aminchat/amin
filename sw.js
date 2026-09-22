@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v56';
+const CACHE = 'capital-app-v57';
 const ASSETS = [
   './',
   './index.html',
@@ -39,7 +39,10 @@ const ASSETS = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(ASSETS.map((a) => new Request(a, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
 });
 
