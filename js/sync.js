@@ -98,6 +98,7 @@ let gToken = null;
 let tokenClient = null;
 let tokenWaiters = [];
 let tokenRequesting = false;
+let lastRefreshTry = 0;
 let syncTimer = null;
 let pushInFlight = false;
 let pullInFlight = false;
@@ -211,18 +212,28 @@ export function requestAccessToken(cb, interactive) {
       w.forEach((fn) => fn(ok));
       render();
     };
+    // ترمز: بعد از یک شکست موقت، تا ۳۰ ثانیه دوباره به Worker نزن (حلقهٔ باگ‌دار سهمیه را نسوزاند)
+    if (!interactive && Date.now() - lastRefreshTry < 30000) {
+      finish(false);
+      return;
+    }
+    lastRefreshTry = Date.now();
     fetch(SYNC_WORKER + '/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) })
-      .then((r) => r.json().then((j) => ({ status: r.status, j })))
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })))
       .then(({ status, j }) => {
         if (j && j.access_token) {
           lastTokenError = '';
+          lastRefreshTry = 0;
+          if (j.sealed) store.set(SEALED_KEY, j.sealed); // چرخش کلید
           rememberToken({ token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 });
           finish(true);
         } else {
-          lastTokenError = (j && j.error) || 'refresh_failed';
-          // کلید باطل شده (خروج از گوگل / حذف دسترسی): دیگر تلاش نکن؛ ورود دوباره لازم است
-          if (status === 401 || status === 400) store.set(SEALED_KEY, '');
-          if (interactive) startWorkerLogin();
+          const err = (j && j.error) || 'refresh_failed';
+          lastTokenError = err;
+          // فقط وقتی گوگل صریحاً کلید را رد کرده یا کلید با مهر باز نمی‌شود، پاکش کن؛ خطاهای موقت (۵xx) کلید را نگه می‌دارند
+          const dead = err === 'invalid_grant' || err === 'bad_sealed';
+          if (dead) store.set(SEALED_KEY, '');
+          if (interactive && dead) startWorkerLogin();
           else finish(false);
         }
       })
@@ -323,6 +334,20 @@ function tokenErrorHint() {
       return tr('گوگل جواب نداد؛ اتصال اینترنت را چک کن.');
     case 'network':
       return tr('به سرور همگام‌سازی نرسیدم؛ اینترنت را چک کن.');
+    case 'google_down':
+    case 'bad_response':
+      return tr('گوگل موقتاً جواب نمی‌دهد؛ چند دقیقه بعد دوباره امتحان کن.');
+    case 'bad_nonce':
+      return tr('این بازگشت با درخواست ورود این دستگاه نمی‌خواند؛ دوباره «ورود» را بزن.');
+    case 'exchange_failed':
+    case 'invalid_request':
+    case 'no_code':
+      return tr('گوگل کد ورود را نپذیرفت؛ دوباره امتحان کن.');
+    case 'bad_app':
+    case 'state_expired':
+      return tr('زمان صفحهٔ ورود گذشت؛ دوباره «ورود» را بزن.');
+    case 'misconfigured':
+      return tr('سرور همگام‌سازی درست تنظیم نشده است.');
     case 'invalid_grant':
     case 'refresh_failed':
     case 'bad_sealed':
@@ -333,9 +358,16 @@ function tokenErrorHint() {
 }
 
 // ── ورود از طریق Worker ──
+const NONCE_KEY = (SEALED_KEY.indexOf('t_') === 0 ? 't_' : '') + 'capital_app_g_nonce';
 function startWorkerLogin() {
   const app = location.origin + location.pathname;
-  const u = SYNC_WORKER + '/start?app=' + encodeURIComponent(app) + (gUser && gUser.email ? '&login_hint=' + encodeURIComponent(gUser.email) : '');
+  let n = '';
+  try {
+    const a = crypto.getRandomValues(new Uint8Array(12));
+    n = Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+    store.set(NONCE_KEY, n + ':' + Date.now());
+  } catch (e) {}
+  const u = SYNC_WORKER + '/start?app=' + encodeURIComponent(app) + '&n=' + n + (gUser && gUser.email ? '&login_hint=' + encodeURIComponent(gUser.email) : '');
   location.href = u;
 }
 // بعد از برگشت از گوگل: توکن‌ها در #fragment هستند
@@ -357,6 +389,15 @@ export function consumeWorkerCallback() {
   const h = new URLSearchParams(location.hash.slice(1));
   if (!h.get('access_token') && !h.get('gerr')) return false;
   history.replaceState(null, '', location.pathname + location.search);
+  // بازگشت باید جواب درخواستِ همین دستگاه باشد (login-CSRF)
+  const saved = String(store.get(NONCE_KEY) || '').split(':');
+  store.set(NONCE_KEY, '');
+  const fresh = saved[0] && Date.now() - Number(saved[1] || 0) < 20 * 60000;
+  if (!fresh || h.get('n') !== saved[0]) {
+    lastTokenError = 'bad_nonce';
+    toast(tr('ورود انجام نشد.') + ' ' + tokenErrorHint());
+    return true;
+  }
   const err = h.get('gerr');
   if (err && !h.get('access_token')) {
     lastTokenError = err;
@@ -482,8 +523,12 @@ export function googleRevokeAllDo() {
   };
   if (!sealed) return done();
   fetch(SYNC_WORKER + '/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) })
-    .catch(() => {})
-    .then(done);
+    .then((r) => r.json().catch(() => ({})))
+    .then((j) => {
+      if (j && j.ok) return done();
+      toast(tr('قطع دسترسی انجام نشد (گوگل در دسترس نیست)؛ دوباره امتحان کن یا در myaccount.google.com دسترسی «تراز» را حذف کن.'));
+    })
+    .catch(() => toast(tr('به سرور همگام‌سازی نرسیدم؛ اینترنت را چک کن.')));
 }
 if (typeof window !== 'undefined') {
   window.googleRevokeAll = googleRevokeAll;
@@ -493,6 +538,16 @@ if (typeof window !== 'undefined') {
 function driveFetch(url, opts) {
   opts = opts || {};
   opts.headers = opts.headers || {};
+  if (!gToken || !gToken.token) {
+    // توکن در همین لحظه پاک شده (درخواست همزمان)؛ اول تمدید، بعد درخواست
+    return new Promise(function (res) {
+      requestAccessToken(function (ok) {
+        if (!ok || !gToken) return res(new Response('', { status: 401 }));
+        opts.headers.Authorization = 'Bearer ' + gToken.token;
+        res(fetch(url, opts));
+      }, false);
+    });
+  }
   opts.headers.Authorization = 'Bearer ' + gToken.token;
   return fetch(url, opts).then(function (r) {
     if (r.status === 401) {
@@ -503,7 +558,7 @@ function driveFetch(url, opts) {
             res(r);
             return;
           }
-          opts.headers.Authorization = 'Bearer ' + gToken.token;
+          opts.headers.Authorization = 'Bearer ' + (gToken ? gToken.token : '');
           res(fetch(url, opts));
         }, false);
       });

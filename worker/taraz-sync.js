@@ -2,7 +2,7 @@
 // بی‌حافظه: هیچ‌چیز ذخیره نمی‌کند. refresh token با SEAL_KEY رمز می‌شود و روی گوشی کاربر می‌ماند.
 // Secrets لازم: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SEAL_KEY
 // مسیرها:
-//   GET  /start?app=<origin+path>        → هدایت به صفحهٔ رضایت گوگل
+//   GET  /start?app=<origin+path>&n=<nonce> → هدایت به صفحهٔ رضایت گوگل (nonce در بازگشت برمی‌گردد)
 //   GET  /callback?code=…&state=…        → مبادلهٔ code، مهر کردن refresh token، برگشت به اپ با #… در URL
 //   POST /refresh   {sealed}             → {access_token, expires_in}
 //   POST /revoke    {sealed}             → باطل‌کردن refresh token نزد گوگل
@@ -10,10 +10,14 @@
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.file openid email profile';
 const ALLOWED_APPS = ['https://aminchat.github.io', 'http://localhost', 'http://127.0.0.1'];
+// مسیرهای مجاز برای بازگشت روی دامنهٔ عمومی (روی localhost هر مسیری آزاد است)
+const ALLOWED_PATH = /^\/amin(\/|$)/;
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (!env.SEAL_KEY || env.SEAL_KEY.length < 16 || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET)
+      return json({ error: 'misconfigured' }, corsHeaders(req.headers.get('Origin') || ''), 500);
     const origin = req.headers.get('Origin') || '';
     const cors = corsHeaders(origin);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -46,7 +50,11 @@ function json(obj, headers, status) {
 function appAllowed(app) {
   try {
     const u = new URL(app);
-    return ALLOWED_APPS.some((a) => u.origin === a || u.origin.startsWith(a + ':'));
+    if (u.hash || u.search) return false;
+    const ok = ALLOWED_APPS.some((a) => u.origin === a || u.origin.startsWith(a + ':'));
+    if (!ok) return false;
+    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return true;
+    return ALLOWED_PATH.test(u.pathname);
   } catch (e) {
     return false;
   }
@@ -56,8 +64,8 @@ function appAllowed(app) {
 async function start(url, env) {
   const app = url.searchParams.get('app') || '';
   if (!appAllowed(app)) return new Response('bad app', { status: 400 });
-  const nonce = b64url(crypto.getRandomValues(new Uint8Array(16)));
-  const state = await seal(env, JSON.stringify({ app, nonce, t: Date.now() }));
+  const cn = (url.searchParams.get('n') || '').slice(0, 64); // nonce کلاینت برای جلوگیری از login-CSRF
+  const state = await seal(env, JSON.stringify({ app, cn, t: Date.now() }));
   const p = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID,
     redirect_uri: url.origin + '/callback',
@@ -85,20 +93,21 @@ async function callback(url, env) {
     return new Response('bad state', { status: 400 });
   }
   if (!appAllowed(st.app) || Date.now() - st.t > 15 * 60000) return new Response('state expired', { status: 400 });
-  const back = (frag) => Response.redirect(st.app + (st.app.includes('#') ? '&' : '#') + frag, 302);
+  const back = (frag) => Response.redirect(st.app + '#' + frag + (st.cn ? '&n=' + encodeURIComponent(st.cn) : ''), 302);
   if (err || !code) return back('gerr=' + encodeURIComponent(err || 'no_code'));
 
-  const tok = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
+  let tok;
+  try {
+    tok = await googleToken({
       code,
       client_id: env.GOOGLE_CLIENT_ID,
       client_secret: env.GOOGLE_CLIENT_SECRET,
       redirect_uri: url.origin + '/callback',
       grant_type: 'authorization_code',
-    }),
-  }).then((r) => r.json());
+    });
+  } catch (e) {
+    return back('gerr=google_down');
+  }
   if (!tok.access_token) return back('gerr=' + encodeURIComponent(tok.error || 'exchange_failed'));
 
   let email = '';
@@ -136,28 +145,64 @@ async function refresh(req, env, cors) {
   } catch (e) {
     return json({ error: 'bad_sealed' }, cors, 400);
   }
-  const tok = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
+  let tok;
+  try {
+    tok = await googleToken({
       refresh_token: data.rt,
       client_id: env.GOOGLE_CLIENT_ID,
       client_secret: env.GOOGLE_CLIENT_SECRET,
       grant_type: 'refresh_token',
-    }),
-  }).then((r) => r.json());
-  if (!tok.access_token) return json({ error: tok.error || 'refresh_failed' }, cors, 401);
-  return json({ access_token: tok.access_token, expires_in: tok.expires_in || 3600, email: data.email || '' }, cors);
+    });
+  } catch (e) {
+    return json({ error: 'google_down' }, cors, 502); // موقتی؛ کلاینت کلید را نگه می‌دارد
+  }
+  if (!tok.access_token) {
+    // فقط invalid_grant یعنی کلید واقعاً مرده؛ بقیه موقتی‌اند
+    const dead = tok.error === 'invalid_grant';
+    return json({ error: tok.error || 'refresh_failed' }, cors, dead ? 401 : 502);
+  }
+  const out = { access_token: tok.access_token, expires_in: tok.expires_in || 3600, email: data.email || '' };
+  // چرخش کلید (نادر): کلید تازه را مهر کن تا کلاینت جایگزین کند
+  if (tok.refresh_token && tok.refresh_token !== data.rt) out.sealed = await seal(env, JSON.stringify({ rt: tok.refresh_token, email: data.email || '', t: Date.now() }));
+  return json(out, cors);
+}
+
+async function googleToken(params) {
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params),
+  });
+  const txt = await r.text();
+  try {
+    return JSON.parse(txt);
+  } catch (e) {
+    if (r.status >= 500) throw new Error('google ' + r.status);
+    return { error: 'bad_response' };
+  }
 }
 
 // ── خروج: باطل‌کردن نزد گوگل ──
 async function revoke(req, env, cors) {
   const body = await req.json().catch(() => ({}));
+  let data;
   try {
-    const data = JSON.parse(await open(env, body.sealed || ''));
-    await fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(data.rt), { method: 'POST' });
-  } catch (e) {}
-  return json({ ok: true }, cors);
+    data = JSON.parse(await open(env, body.sealed || ''));
+  } catch (e) {
+    return json({ ok: true, note: 'bad_sealed' }, cors); // کلیدی که باز نمی‌شود، برای گوگل هم بی‌معنی است
+  }
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token: data.rt }),
+    });
+    // 200 = باطل شد؛ 400 = قبلاً باطل/منقضی بوده (نتیجه یکی است)
+    if (r.ok || r.status === 400) return json({ ok: true }, cors);
+    return json({ ok: false, error: 'google_' + r.status }, cors, 502);
+  } catch (e) {
+    return json({ ok: false, error: 'google_down' }, cors, 502);
+  }
 }
 
 // ── مهر و موم: AES-GCM با کلید مشتق از SEAL_KEY ──

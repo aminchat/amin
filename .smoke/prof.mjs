@@ -2,9 +2,11 @@ import { JSDOM } from '/home/user/tools/node_modules/jsdom/lib/api.js';
 import fs from 'fs'; import path from 'path';
 const dir = process.argv[2] || '/home/user/amin/test';
 let html = fs.readFileSync(path.join(dir,'index.html'),'utf8').replace(/<script type="module" src="js\/boot.js[^>]*><\/script>/,'').replace(/<script[^>]*gsi\/client[^>]*><\/script>/,'');
-const hash = '#access_token=AT1&expires_in=3600&email=a%40b.c&name=Ali%20Rezaei&picture=https%3A%2F%2Flh3.googleusercontent.com%2Fx&sealed=SEALED1';
+const hash = '#access_token=AT1&expires_in=3600&email=a%40b.c&name=Ali%20Rezaei&picture=https%3A%2F%2Flh3.googleusercontent.com%2Fx&sealed=SEALED1&n=abc123';
 const dom = new JSDOM(html,{url:'https://aminchat.github.io/amin/test/'+hash,runScripts:'outside-only',pretendToBeVisual:true});
 const w = dom.window; const errs=[];
+const pre=(process.argv[2]||'').endsWith('/test')?'t_':'';
+w.localStorage.setItem(pre+pre+'capital_app_g_nonce','abc123:'+Date.now());
 w.addEventListener('error',e=>errs.push(String(e.error||e.message)));
 for (const k of Object.getOwnPropertyNames(w).filter(k=>/^[A-Z]/.test(k)).concat(['window','document','navigator','localStorage','sessionStorage','location','history','HTMLElement','Node','Element','CustomEvent','Event','getComputedStyle','requestAnimationFrame','cancelAnimationFrame','matchMedia','MutationObserver','crypto','TextEncoder','TextDecoder','Blob','URL','FileReader','Image','atob','btoa','DOMParser','IntersectionObserver','ResizeObserver']))
   if (w[k]!==undefined && globalThis[k]===undefined) { try{ Object.defineProperty(globalThis,k,{value:w[k],configurable:true}); }catch{} }
