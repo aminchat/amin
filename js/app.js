@@ -530,6 +530,8 @@ const btnPrivacy = document.getElementById('btnPrivacy');
 const btnSettings = document.getElementById('btnSettings');
 if (btnPrivacy) btnPrivacy.onclick = togglePrivacy;
 if (btnSettings) btnSettings.onclick = openSettings;
+const btnProfile = document.getElementById('btnProfile');
+if (btnProfile) btnProfile.onclick = openProfileMenu;
 try {
   setupBackButton();
 } catch (e) {}

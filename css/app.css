@@ -718,3 +718,22 @@ input.jd-native{position:absolute;opacity:0;pointer-events:none;width:1px;height
 .hfix{margin-top:8px}
 .hft{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);font-weight:700;color:var(--muted);margin-bottom:6px}
 .hft .i{width:14px;height:14px}
+
+/* ─── پروفایل گوگل ─── */
+.av{display:inline-flex;position:relative;border-radius:50%;overflow:hidden;flex:none;background:var(--press)}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
+.av .av-ini{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.42em;letter-spacing:.02em}
+.av-btn.signed{padding:0}
+.av-btn.signed .av{box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--line)}
+.av-btn.signed .av .av-ini{font-size:12px}
+.av-btn.has-alert::after{top:4px;inset-inline-end:4px}
+.profile-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:12px 0 18px}
+.profile-card .av{margin-bottom:6px}
+.profile-card .av .av-ini{font-size:24px}
+.pc-name{font-weight:700;font-size:17px}
+.pc-mail{font-size:13px;color:var(--muted);direction:ltr;unicode-bidi:plaintext}
+.pc-status{margin-top:8px;font-size:12px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--press);color:var(--muted)}
+.pc-status .dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.pc-status.bad .dot{background:var(--red)}
+.pc-hint{font-size:12px;color:var(--muted);margin-top:6px}
+.srow .av{margin-inline-end:2px}

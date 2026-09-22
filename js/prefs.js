@@ -1,3 +1,4 @@
+import { avatarHTML, syncStatusText } from './sync.js';
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain } from './utils.js';
 import { fmtDate } from './jalali.js';
 import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
@@ -922,8 +923,8 @@ export function openSettingsGoogle() {
     body = `
     <div class="sgroup">
       <div class="srow" style="cursor:default">
-        <span class="sic" style="background:#3d8bfd">${icon('cloud')}</span>
-        <span class="smid"><span class="st1">${esc(u.name || tr('حساب گوگل'))}</span>${u.email ? `<span class="st2">${esc(u.email)}</span>` : ''}</span>
+        ${avatarHTML(u, 36)}
+        <span class="smid"><span class="st1">${esc(u.name || tr('حساب گوگل'))}</span><span class="st2">${u.email ? esc(u.email) + ' · ' : ''}${esc(syncStatusText())}</span></span>
       </div>
     </div>
     <div class="sgroup">

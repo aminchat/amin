@@ -1,5 +1,5 @@
 import { icon } from './icons.js';
-import { esc, store, toast } from './utils.js';
+import { esc, store, toast, toFa } from './utils.js';
 import { render } from './view.js';
 import {
   fingerprint,
@@ -24,6 +24,66 @@ const SYNC_WORKER = 'https://taraz-sync.taraz.workers.dev';
 const SEALED_KEY = 'capital_app_g_sealed';
 
 export let gUser = null;
+const LASTSYNC_KEY = (SEALED_KEY.indexOf('t_') === 0 ? 't_' : '') + 'capital_app_g_lastsync';
+
+function initials(name) {
+  const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return '?';
+  return (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase();
+}
+function avatarBg(email) {
+  let h = 0;
+  for (const ch of String(email || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return 'hsl(' + (h % 360) + ' 55% 45%)';
+}
+// آواتار: عکس گوگل، و اگر نیامد حرف اول اسم
+export function avatarHTML(u, size) {
+  size = size || 32;
+  const bg = avatarBg(u && u.email);
+  const ini = esc(initials(u && (u.name || u.email)));
+  const fb = '<span class="av-ini" style="background:' + bg + '">' + ini + '</span>';
+  if (u && u.picture) {
+    return (
+      '<span class="av" style="width:' + size + 'px;height:' + size + 'px"><img src="' + esc(u.picture) + '" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">' + fb + '</span>'
+    );
+  }
+  return '<span class="av" style="width:' + size + 'px;height:' + size + 'px">' + fb + '</span>';
+}
+function agoText(ms) {
+  const d = Math.max(0, Date.now() - ms);
+  const m = Math.round(d / 60000);
+  if (m < 1) return tr('همین الان');
+  if (m < 60) return toFa(m) + ' ' + tr('دقیقه پیش');
+  const h = Math.round(m / 60);
+  if (h < 24) return toFa(h) + ' ' + tr('ساعت پیش');
+  return toFa(Math.round(h / 24)) + ' ' + tr('روز پیش');
+}
+export function syncStatusText() {
+  if (!gUser) return tr('وارد نشده‌ای');
+  const ls = Number(store.get(LASTSYNC_KEY) || 0);
+  if (tokenRequesting) return tr('در حال تمدید اتصال…');
+  if (!tokenAlive() && !store.get(SEALED_KEY)) return tr('اتصال قطع است؛ ورود دوباره لازم است');
+  if (pendingLocalSave) return tr('تغییرات محلی هنوز ارسال نشده');
+  return ls ? tr('آخرین همگام‌سازی') + ': ' + agoText(ls) : tr('هنوز همگام نشده');
+}
+// دکمهٔ پروفایل در هدر
+export function updateAvatar() {
+  if (typeof document === 'undefined') return;
+  const b = document.getElementById('btnProfile');
+  if (!b) return;
+  if (gUser) {
+    b.innerHTML = avatarHTML(gUser, 30);
+    b.title = (gUser.email || gUser.name || '');
+    const bad = (!tokenAlive() && !store.get(SEALED_KEY)) || (!!lastTokenError && !tokenAlive());
+    b.classList.toggle('has-alert', bad);
+    b.classList.add('signed');
+  } else {
+    b.innerHTML = icon('user');
+    b.title = tr('ورود با گوگل');
+    b.classList.remove('has-alert', 'signed');
+  }
+}
+if (typeof window !== 'undefined') window.updateAvatar = updateAvatar;
 let gToken = null;
 let tokenClient = null;
 let tokenWaiters = [];
@@ -85,10 +145,13 @@ function setSignedIn(u) {
   gUser = u;
   store.set('g_user', JSON.stringify(u));
   store.set('g_signed', '1');
+  updateAvatar();
 }
 
 function clearSignedIn() {
   gUser = null;
+  store.set(LASTSYNC_KEY, '');
+  setTimeout(updateAvatar, 0);
   rememberToken(null);
   store.set('g_user', '');
   store.set('g_signed', '0');
@@ -310,13 +373,22 @@ function requestDriveSignIn() {
 }
 
 export function openProfileMenu() {
-  if (!gUser) return;
+  if (!gUser) {
+    googleSignIn();
+    return;
+  }
+  const ok = tokenAlive() || !!store.get(SEALED_KEY);
   openModalSafe(
-    ('<button class="x" onclick="closeModal()" aria-label="' + tr('بستن') + '">') + icon('x') + ('</button><h2>' + tr('حساب کاربری') + '</h2><div class="hint" style="margin:14px 0">') +
-      esc(gUser.name) +
-      '<br><span class="small muted">' +
-      esc(gUser.email) +
-      ('</span></div><button class="btn primary block" onclick="closeModal();pushToDrive(true)">' + tr('الان در گوگل ذخیره کن') + '</button><button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast(\'' + tr('دریافت از گوگل انجام شد') + ' ✓\');},true)">' + tr('دریافت از گوگل') + '</button><button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">' + tr('خروج از حساب گوگل') + '</button>')
+    ('<button class="x" onclick="closeModal()" aria-label="' + tr('بستن') + '">') + icon('x') + ('</button><h2>' + tr('حساب کاربری') + '</h2>') +
+      '<div class="profile-card">' + avatarHTML(gUser, 64) +
+      '<div class="pc-name">' + esc(gUser.name || tr('حساب گوگل')) + '</div>' +
+      (gUser.email ? '<div class="pc-mail">' + esc(gUser.email) + '</div>' : '') +
+      '<div class="pc-status ' + (ok ? 'ok' : 'bad') + '"><span class="dot"></span>' + esc(syncStatusText()) + '</div>' +
+      '<div class="pc-hint">' + tr('داده‌ها در Google Drive همین حساب ذخیره می‌شوند.') + '</div></div>' +
+      (ok
+        ? ('<button class="btn primary block" onclick="closeModal();pushToDrive(true)">' + tr('الان در گوگل ذخیره کن') + '</button><button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast(\'' + tr('دریافت از گوگل انجام شد') + ' ✓\');},true)">' + tr('دریافت از گوگل') + '</button>')
+        : ('<button class="btn primary block" onclick="closeModal();googleSignIn()">' + tr('اتصال دوباره') + '</button>')) +
+      '<button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">' + tr('خروج از حساب گوگل') + '</button>'
   );
 }
 
@@ -680,6 +752,8 @@ async function handleRemoteEnvelope(env, fileId) {
       } else {
         pendingLocalSave = false;
       }
+      store.set(LASTSYNC_KEY, String(Date.now()));
+      updateAvatar();
       toast((tr('داده‌های جدیدتر از گوگل دریافت شد') + ' ✓'));
     } catch (e) {
       pendingRemoteEnv = env;
@@ -901,6 +975,8 @@ export function pushToDrive(interactive, onDone) {
       .then(function () {
         pendingLocalSave = false;
         pushOk = true;
+        store.set(LASTSYNC_KEY, String(Date.now()));
+        updateAvatar();
         if (interactive) toast(tr('در Google Drive ذخیره شد') + ' ✓');
       })
       .catch(function () {
@@ -956,6 +1032,7 @@ let initDone = false;
 export function initGoogleOnLoad() {
   if (initDone) return;
   initDone = true;
+  setTimeout(updateAvatar, 0);
   const u = store.get('g_user');
   if (u) {
     try {
