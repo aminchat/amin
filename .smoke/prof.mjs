@@ -26,3 +26,9 @@ const m=d.querySelector('.profile-card'); console.log('profile card', !!m, m&&m.
 w.closeModal(); w.openSettingsGoogle(); await new Promise(r=>setTimeout(r,200));
 const sr=d.querySelector('.srow .av'); console.log('settings av',!!sr, d.querySelector('.srow .st2')?.textContent);
 console.log('errs',errs);
+w.closeModal(); w.editDisplayName(); await new Promise(r=>setTimeout(r,200));
+d.getElementById('nickInp').value='امین'; w.saveDisplayName(); await new Promise(r=>setTimeout(r,300));
+console.log('nick', d.querySelector('.pc-name')?.textContent.trim(), 'av', d.getElementById('btnProfile').querySelector('.av-ini')?.textContent, 'has push btn', /pushToDrive/.test(d.querySelector('.modal, #modal, body').innerHTML));
+w.closeModal(); console.log('typeof', typeof w.openSettingsAI); w.openSettingsAI(); await new Promise(r=>setTimeout(r,300)); console.log('ai page', d.body.innerHTML.includes('openSettingsScan()'), d.body.textContent.includes('هوش مصنوعی'));
+w.openSettingsBook && w.openSettingsBook(); await new Promise(r=>setTimeout(r,200)); console.log('book backup', d.body.textContent.includes('روی گوشی'));
+console.log('errs2',errs);

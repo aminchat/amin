@@ -1,4 +1,4 @@
-import { avatarHTML, syncStatusText } from './sync.js';
+import { avatarHTML, syncStatusText, displayName } from './sync.js';
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain } from './utils.js';
 import { fmtDate } from './jalali.js';
 import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
@@ -832,7 +832,11 @@ export function openSettings() {
     <div class="sgroup">
       ${settingsRow('target', '#16a34a', t('hl.title'), t('hl.set.fun'), 'openHealthSettings()')}
       ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
-      ${settingsRow('receipt', '#f97316', tr('خواندن فاکتور از عکس'), tr('کلید هوش مصنوعی گوگل'), 'openSettingsScan()', gemini ? tr('فعال') : tr('خاموش'))}
+    </div>
+    <div class="sgroup">
+      ${settingsRow('sparkle', '#f97316', tr('هوش مصنوعی'), gemini ? tr('خواندن فاکتور از عکس فعال است') : tr('خواندن فاکتور از عکس · تحلیل هوشمند'), 'openSettingsAI()', gemini ? tr('فعال') : tr('خاموش'))}
+    </div>
+    <div class="sgroup">
       ${settingsRow('info', '#64748b', tr('دربارهٔ برنامه'), (tr('نسخه') + ' ') + APP_VERSION + (window.__appUpdate === 'ready' ? ' · ' + tr('به‌روزرسانی آماده است') : ''), 'openSettingsAbout()')}
     </div>
   `);
@@ -924,12 +928,11 @@ export function openSettingsGoogle() {
     <div class="sgroup">
       <div class="srow" style="cursor:default">
         ${avatarHTML(u, 36)}
-        <span class="smid"><span class="st1">${esc(u.name || tr('حساب گوگل'))}</span><span class="st2">${u.email ? esc(u.email) + ' · ' : ''}${esc(syncStatusText())}</span></span>
+        <span class="smid"><span class="st1">${esc(displayName())}</span><span class="st2">${u.email ? esc(u.email) + ' · ' : ''}${esc(syncStatusText())}</span></span>
       </div>
     </div>
     <div class="sgroup">
-      ${settingsRow('cloudUp', '#22c55e', tr('الان در گوگل ذخیره کن'), tr('ارسال نسخهٔ این دستگاه'), 'closeModal();pushToDrive(true)')}
-      ${settingsRow('cloudDown', '#3d8bfd', tr('دریافت از گوگل'), tr('گرفتن آخرین نسخه'), ("closeModal();loadFromDrive(function(){render();toast('" + tr("دریافت از گوگل انجام شد") + " ✓');},true)"))}
+      ${settingsRow('edit', '#8b5cf6', tr('نام نمایشی'), esc(displayName()), 'editDisplayName()')}
     </div>
     <div class="sgroup">
       ${settingsRow('logout', '#ef4444', tr('خروج از حساب گوگل'), tr('همگام‌سازی متوقف می‌شود'), 'closeModal();googleSignOut()')}
@@ -972,10 +975,22 @@ export function openSettingsRates() {
   `);
 }
 
+export function openSettingsAI() {
+  const gemini = !!store.get('capital_gemini_key');
+  openModal(`
+    ${settingsHeader(('✨ ' + tr('هوش مصنوعی')), 'openSettings()')}
+    <div class="sgroup">
+      ${settingsRow('receipt', '#f97316', tr('خواندن فاکتور از عکس'), tr('عکس رسید را می‌گیری، اقلام خودکار ثبت می‌شوند'), 'openSettingsScan()', gemini ? tr('فعال') : tr('خاموش'))}
+      ${settingsRow('sparkle', '#8b5cf6', tr('تحلیل هوشمند خرج‌ها'), tr('به‌زودی · فقط درصدها فرستاده می‌شود، نه مبلغ‌ها'), '', tr('به‌زودی'))}
+    </div>
+    <p class="small muted" style="margin-top:12px">${tr('همهٔ قابلیت‌های هوش مصنوعی اختیاری‌اند و با کلید شخصی خودت کار می‌کنند.')}</p>
+  `);
+}
+
 export function openSettingsScan() {
   const has = !!store.get('capital_gemini_key');
   openModal(`
-    ${settingsHeader(('🧾 ' + tr('خواندن فاکتور از عکس')), 'openSettings()')}
+    ${settingsHeader(('🧾 ' + tr('خواندن فاکتور از عکس')), 'openSettingsAI()')}
     <p class="small muted">${tr('کلید')} Google AI Studio ${tr('را این‌جا بگذار. به کسی نشان نده. عکس برای خواندن به گوگل فرستاده می‌شود.')}</p>
     <p><a class="btn block" href="${geminiHelpHref()}" target="_blank" rel="noopener">${tr('چطور کلید بگیرم؟')}</a></p>
     ${
@@ -1044,11 +1059,11 @@ function legalUrl(kind) {
 // ─── پشتیبان‌گیری: خروجی / بازیابی JSON ───
 export function openSettingsBackup() {
   openModal(`
-    ${settingsHeader(tr('پشتیبان‌گیری'), 'openSettings()')}
+    ${settingsHeader(tr('نسخهٔ پشتیبان روی گوشی'), 'openSettings()')}
     <p class="small muted">${(sec.isEncrypted() ? tr('فایل پشتیبان با همان رمز عبور برنامه رمز می‌شود؛ بدون رمز قابل باز شدن نیست.') : tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.'))}</p>
     <div class="sgroup">
-      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), sec.isEncrypted() ? tr('فایل JSON رمزشده') : tr('فایل JSON'), 'exportBackup()')}
-      ${settingsRow('upload', '#f59e0b', tr('بازیابی از فایل'), tr('جایگزین همهٔ داده‌های فعلی می‌شود'), "document.getElementById('bkFile').click()")}
+      ${settingsRow('download', '#0d9488', tr('ذخیرهٔ یک نسخه از همهٔ داده‌ها روی گوشی'), sec.isEncrypted() ? tr('فایل رمزشده؛ برای روز مبادا یا انتقال به گوشی دیگر') : tr('فایل ساده؛ برای روز مبادا یا انتقال به گوشی دیگر'), 'exportBackup()')}
+      ${settingsRow('upload', '#f59e0b', tr('برگرداندن داده‌ها از فایل ذخیره‌شده'), tr('همهٔ داده‌های فعلی با محتوای فایل جایگزین می‌شود'), "document.getElementById('bkFile').click()")}
     </div>
     <input type="file" id="bkFile" accept="application/json,.json" style="display:none" onchange="importBackup(this.files[0])">
   `);
@@ -1329,10 +1344,10 @@ export function openSettingsBook() {
       ${settingsRow('calendar', '#0ea5e9', t('set.calendar'), tr('برای تغییر، دفتر جدید ساخته می‌شود'), 'openBookCalendar()', cal === 'gregorian' ? t('set.cal.greg') : t('set.cal.jalali'))}
       ${settingsRow('list', '#64748b', t('nav.tx'), first ? tr('از {d}', { d: fmtDate(first) }) : tr('هنوز تراکنشی ثبت نشده'), '', toFa(n))}
     </div>
-    <h3 class="muted" style="margin:14px 0 6px">${tr('پشتیبان‌گیری')}</h3>
+    <h3 class="muted" style="margin:14px 0 6px">${tr('نسخهٔ پشتیبان روی گوشی')}</h3>
     <div class="sgroup">
-      ${settingsRow('download', '#0d9488', tr('دانلود نسخهٔ پشتیبان'), sec.isEncrypted() ? tr('فایل JSON رمزشده') : tr('فایل JSON'), 'exportBackup()')}
-      ${settingsRow('upload', '#f59e0b', tr('بازیابی از فایل'), tr('جایگزین همهٔ داده‌های فعلی می‌شود'), "document.getElementById('bkFile').click()")}
+      ${settingsRow('download', '#0d9488', tr('ذخیرهٔ یک نسخه از همهٔ داده‌ها روی گوشی'), sec.isEncrypted() ? tr('فایل رمزشده؛ برای روز مبادا یا انتقال به گوشی دیگر') : tr('فایل ساده؛ برای روز مبادا یا انتقال به گوشی دیگر'), 'exportBackup()')}
+      ${settingsRow('upload', '#f59e0b', tr('برگرداندن داده‌ها از فایل ذخیره‌شده'), tr('همهٔ داده‌های فعلی با محتوای فایل جایگزین می‌شود'), "document.getElementById('bkFile').click()")}
     </div>
     <input type="file" id="bkFile" accept="application/json,.json" style="display:none" onchange="importBackup(this.files[0])">
     <p class="small muted" style="margin-top:12px">${(sec.isEncrypted() ? tr('فایل پشتیبان با همان رمز عبور برنامه رمز می‌شود؛ بدون رمز قابل باز شدن نیست.') : tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.'))}</p>

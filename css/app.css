@@ -743,3 +743,7 @@ input.jd-native{position:absolute;opacity:0;pointer-events:none;width:1px;height
 .upd.ok{color:var(--green)}
 .upd.ready{color:var(--text);background:color-mix(in srgb,var(--green) 14%,transparent)}
 .upd .btn.sm{min-height:30px;padding:0 10px;font-size:12px;border-radius:999px}
+
+.pc-name{background:none;border:0;color:var(--text);font:inherit;font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:6px;padding:2px 6px;border-radius:8px}
+.pc-name:active{background:var(--press)}
+.pc-edit .i{width:14px;height:14px;color:var(--muted)}

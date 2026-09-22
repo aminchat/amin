@@ -40,7 +40,7 @@ function avatarBg(email) {
 export function avatarHTML(u, size) {
   size = size || 32;
   const bg = avatarBg(u && u.email);
-  const ini = esc(initials(u && (u.name || u.email)));
+  const ini = esc(initials((u === gUser ? displayName() : (u && u.name)) || (u && u.email)));
   const fb = '<span class="av-ini" style="background:' + bg + '">' + ini + '</span>';
   if (u && u.picture) {
     return (
@@ -83,7 +83,7 @@ export function updateAvatar() {
   }
   if (gUser) {
     b.innerHTML = avatarHTML(gUser, 30);
-    b.title = (gUser.email || gUser.name || '');
+    b.title = (gUser.email || displayName());
     const bad = (!tokenAlive() && !store.get(SEALED_KEY)) || (!!lastTokenError && !tokenAlive());
     b.classList.toggle('has-alert', bad);
     b.classList.add('signed');
@@ -402,18 +402,53 @@ export function openProfileMenu() {
     return;
   }
   const ok = tokenAlive() || !!store.get(SEALED_KEY);
+  const shown = displayName();
   openModalSafe(
     ('<button class="x" onclick="closeModal()" aria-label="' + tr('بستن') + '">') + icon('x') + ('</button><h2>' + tr('حساب کاربری') + '</h2>') +
       '<div class="profile-card">' + avatarHTML(gUser, 64) +
-      '<div class="pc-name">' + esc(gUser.name || tr('حساب گوگل')) + '</div>' +
+      '<button type="button" class="pc-name" onclick="editDisplayName()" title="' + tr('ویرایش نام') + '">' + esc(shown) + ' <span class="pc-edit">' + icon('edit') + '</span></button>' +
       (gUser.email ? '<div class="pc-mail">' + esc(gUser.email) + '</div>' : '') +
       '<div class="pc-status ' + (ok ? 'ok' : 'bad') + '"><span class="dot"></span>' + esc(syncStatusText()) + '</div>' +
-      '<div class="pc-hint">' + tr('داده‌ها در Google Drive همین حساب ذخیره می‌شوند.') + '</div></div>' +
-      (ok
-        ? ('<button class="btn primary block" onclick="closeModal();pushToDrive(true)">' + tr('الان در گوگل ذخیره کن') + '</button><button class="btn block" style="margin-top:8px" onclick="closeModal();loadFromDrive(function(){render();toast(\'' + tr('دریافت از گوگل انجام شد') + ' ✓\');},true)">' + tr('دریافت از گوگل') + '</button>')
-        : ('<button class="btn primary block" onclick="closeModal();googleSignIn()">' + tr('اتصال دوباره') + '</button>')) +
+      '<div class="pc-hint">' + tr('داده‌ها خودکار در Google Drive همین حساب ذخیره می‌شوند.') + '</div></div>' +
+      (ok ? '' : ('<button class="btn primary block" onclick="closeModal();googleSignIn()">' + tr('اتصال دوباره') + '</button>')) +
       '<button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">' + tr('خروج از حساب گوگل') + '</button>'
   );
+}
+
+// نام نمایشی: کاربر می‌تواند نام گوگل را با نام دلخواه جایگزین کند (فقط روی همین دستگاه‌ها همگام می‌شود)
+const NICK_KEY = (SEALED_KEY.indexOf('t_') === 0 ? 't_' : '') + 'capital_app_nick';
+export function displayName() {
+  return store.get(NICK_KEY) || (gUser && gUser.name) || tr('حساب گوگل');
+}
+export function editDisplayName() {
+  const cur = displayName();
+  openModalSafe(
+    ('<button class="x" onclick="openProfileMenu()" aria-label="' + tr('بازگشت') + '">') + icon('x') + ('</button><h2>' + tr('نام نمایشی') + '</h2>') +
+      '<div class="field"><label>' + tr('این نام به‌جای نام گوگل نشان داده می‌شود') + '</label>' +
+      '<input class="input" id="nickInp" type="text" maxlength="40" value="' + esc(cur) + '" autocomplete="nickname"></div>' +
+      '<button class="btn primary block" style="margin-top:12px" onclick="saveDisplayName()">' + tr('ذخیره') + '</button>' +
+      (store.get(NICK_KEY) ? '<button class="btn block" style="margin-top:8px" onclick="saveDisplayName(true)">' + tr('برگشت به نام گوگل') + '</button>' : '')
+  );
+  setTimeout(function () {
+    const i = document.getElementById('nickInp');
+    if (i) {
+      i.focus();
+      i.select();
+    }
+  }, 60);
+}
+export function saveDisplayName(reset) {
+  const i = document.getElementById('nickInp');
+  const v = reset ? '' : String((i && i.value) || '').trim();
+  store.set(NICK_KEY, v);
+  updateAvatar();
+  render();
+  toast(tr('ذخیره شد') + ' ✓');
+  openProfileMenu();
+}
+if (typeof window !== 'undefined') {
+  window.editDisplayName = editDisplayName;
+  window.saveDisplayName = saveDisplayName;
 }
 
 function openModalSafe(html) {
