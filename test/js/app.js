@@ -548,19 +548,8 @@ try {
   if (home) home.innerHTML = ('<div class="card">' + tr('برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.') + '</div>');
 }
 
-if (typeof google !== 'undefined') {
-  initGoogleOnLoad();
-} else {
-  let gt = setInterval(function () {
-    if (typeof google !== 'undefined') {
-      clearInterval(gt);
-      initGoogleOnLoad();
-    }
-  }, 250);
-  setTimeout(function () {
-    clearInterval(gt);
-  }, 12000);
-}
+// ورود گوگل از طریق Worker است؛ به کتابخانهٔ GIS وابسته نیست
+initGoogleOnLoad();
 
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') {
