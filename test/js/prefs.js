@@ -935,7 +935,7 @@ export function openSettingsGoogle() {
       ${settingsRow('edit', '#8b5cf6', tr('نام نمایشی'), esc(displayName()), 'editDisplayName()')}
     </div>
     <div class="sgroup">
-      ${settingsRow('logout', '#ef4444', tr('خروج از حساب گوگل'), tr('همگام‌سازی متوقف می‌شود'), 'closeModal();googleSignOut()')}
+      ${settingsRow('logout', '#ef4444', tr('خروج از حساب گوگل'), tr('فقط روی این دستگاه؛ همگام‌سازی متوقف می‌شود'), 'closeModal();googleSignOut()')}
     </div>`;
   }
   openModal(`${settingsHeader(('☁️ ' + tr('گوگل درایو')), 'openSettings()')}${body}`);

@@ -325,7 +325,8 @@ function tokenErrorHint() {
       return tr('به سرور همگام‌سازی نرسیدم؛ اینترنت را چک کن.');
     case 'invalid_grant':
     case 'refresh_failed':
-      return tr('دسترسی قبلی باطل شده؛ دوباره وارد شو.');
+    case 'bad_sealed':
+      return tr('دسترسی این دستگاه از سمت گوگل باطل شده (قطع دسترسی یا تغییر رمز حساب)؛ یک بار دیگر وارد شو.');
     default:
       return '';
   }
@@ -411,7 +412,8 @@ export function openProfileMenu() {
       '<div class="pc-status ' + (ok ? 'ok' : 'bad') + '"><span class="dot"></span>' + esc(syncStatusText()) + '</div>' +
       '<div class="pc-hint">' + tr('داده‌ها خودکار در Google Drive همین حساب ذخیره می‌شوند.') + '</div></div>' +
       (ok ? '' : ('<button class="btn primary block" onclick="closeModal();googleSignIn()">' + tr('اتصال دوباره') + '</button>')) +
-      '<button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">' + tr('خروج از حساب گوگل') + '</button>'
+      '<button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOut()">' + tr('خروج از حساب گوگل') + '</button>' +
+      '<div class="small muted" style="text-align:center;margin-top:10px">' + tr('فقط این دستگاه خارج می‌شود.') + ' <a href="#" onclick="event.preventDefault();googleRevokeAll()">' + tr('قطع دسترسی از همهٔ دستگاه‌ها') + '</a></div>'
   );
 }
 
@@ -455,18 +457,37 @@ function openModalSafe(html) {
   import('./modal.js').then((m) => m.openModal(html));
 }
 
+// خروج فقط روی همین دستگاه؛ کلید نزد گوگل باطل نمی‌شود تا دستگاه‌های دیگر نیفتند
 export function googleSignOut() {
-  const sealed = store.get(SEALED_KEY);
-  if (sealed) {
-    fetch(SYNC_WORKER + '/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) }).catch(() => {});
-    store.set(SEALED_KEY, '');
-  }
+  store.set(SEALED_KEY, '');
   clearSignedIn();
-  if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-    google.accounts.id.disableAutoSelect();
-  }
   render();
   toast(tr('از حساب خارج شدی'));
+}
+
+// قطع دسترسی از همهٔ دستگاه‌ها (گوگل همهٔ کلیدهای این حساب را باطل می‌کند)
+export function googleRevokeAll() {
+  openModalSafe(
+    ('<button class="x" onclick="openProfileMenu()" aria-label="' + tr('بازگشت') + '">') + icon('x') + ('</button><h2>' + tr('قطع دسترسی از همهٔ دستگاه‌ها') + '</h2>') +
+      '<p class="hint">' + tr('دسترسی «تراز» به این حساب گوگل به‌طور کامل برداشته می‌شود. روی همهٔ دستگاه‌هایت باید دوباره وارد شوی. برای وقتی مناسب است که گوشی‌ای گم شده یا دست کسی دیگر است.') + '</p>' +
+      '<button class="btn danger block" onclick="closeModal();googleRevokeAllDo()">' + tr('بله، همه را قطع کن') + '</button>' +
+      '<button class="btn block" style="margin-top:8px" onclick="openProfileMenu()">' + tr('انصراف') + '</button>'
+  );
+}
+export function googleRevokeAllDo() {
+  const sealed = store.get(SEALED_KEY);
+  const done = function () {
+    googleSignOut();
+    toast(tr('دسترسی از همهٔ دستگاه‌ها قطع شد'));
+  };
+  if (!sealed) return done();
+  fetch(SYNC_WORKER + '/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) })
+    .catch(() => {})
+    .then(done);
+}
+if (typeof window !== 'undefined') {
+  window.googleRevokeAll = googleRevokeAll;
+  window.googleRevokeAllDo = googleRevokeAllDo;
 }
 
 function driveFetch(url, opts) {
@@ -1074,8 +1095,8 @@ export function renderSyncCard() {
     const hint = tokenErrorHint();
     return (
       '<div class="card"><h3>' + icon('cloud') + (' ' + tr('اتصال به گوگل') + '</h3>') +
-      ('<div class="small muted" style="margin-bottom:12px">' + tr('اعتبار اتصال به درایو تمام شده (هر ساعت تمدید می‌شود).') + ' ') +
-      (hint ? hint : tr('با یک ضربه دوباره وصل می‌شود.')) +
+      ('<div class="small muted" style="margin-bottom:12px">' + tr('اتصال به گوگل درایو برقرار نیست.') + ' ') +
+      (hint ? hint : tr('برای ادامهٔ همگام‌سازی یک بار دیگر وارد شو.')) +
       '</div>' +
       ('<button class="btn primary block" onclick="googleSignIn()">' + tr('اتصال دوباره') + '</button></div>')
     );
