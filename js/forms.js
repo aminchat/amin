@@ -109,6 +109,7 @@ function nearlyZero(n) {
 }
 
 export function openTxForm(tx, opts) {
+  txTouched = [];
   txReturnTo = (opts && opts.back) || '';
   if (tx && isTransfer(tx)) {
     openTransferForm(tx);
@@ -185,10 +186,10 @@ export function openTxForm(tx, opts) {
     <div id="txUnitWrap" style="${txMode === 'invoice' ? 'display:none' : ''}">
       <div class="row">
         <div class="col field"><label>${tr('قیمت واحد')}</label>
-          <input class="input" id="txUnitPrice" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 80000')}" value="${tx && tx.unitPrice ? tx.unitPrice : ''}" oninput="syncTxUnitTotal()">
+          <input class="input" id="txUnitPrice" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 80000')}" value="${tx && tx.unitPrice ? tx.unitPrice : ''}" oninput="syncTxUnitTotal('p')">
         </div>
         <div class="col field"><label>${tr('مقدار')}</label>
-          <input class="input" id="txQty" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً ۲.۵')}" value="${tx && tx.qty ? tx.qty : ''}" oninput="syncTxUnitTotal()">
+          <input class="input" id="txQty" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً ۲.۵')}" value="${tx && tx.qty ? tx.qty : ''}" oninput="syncTxUnitTotal('q')">
         </div>
       </div>
       <div class="field"><label>${tr('واحد (اختیاری)')}</label>
@@ -267,17 +268,66 @@ export function syncTxAmountLabel() {
   });
 }
 
-export function onTxAmountInput() {
-  if (txMode === 'invoice') updateInvoiceRemain();
+// حل سه‌گانهٔ قیمت واحد × مقدار = مبلغ: دو فیلدی که کاربر آخر بار تایپ کرده ثابت می‌مانند، سومی حساب می‌شود
+function roundN(x) {
+  return Math.round(x * 10000) / 10000;
+}
+function solveTriple(vals, touched) {
+  // vals = {p,q,a} اعداد؛ touched = ترتیب آخرین فیلدهای دست‌خورده (جدیدترین آخر)
+  const keys = ['p', 'q', 'a'];
+  const known = keys.filter((k) => vals[k] > 0);
+  let target = null;
+  if (known.length === 3) {
+    const recent = touched.slice(-2);
+    const cand = keys.filter((k) => recent.indexOf(k) < 0);
+    if (cand.length === 1) target = cand[0];
+    else if (touched.length) target = keys.filter((k) => k !== touched[touched.length - 1] && k !== 'a')[0];
+    else target = 'a';
+  } else if (known.length === 2) target = keys.filter((k) => !(vals[k] > 0))[0];
+  if (!target) return null;
+  let v = 0;
+  if (target === 'a') v = vals.p * vals.q;
+  else if (target === 'p') v = vals.a / vals.q;
+  else v = vals.a / vals.p;
+  if (!isFinite(v) || v <= 0) return null;
+  return { key: target, value: target === 'a' ? Math.round(v * 100) / 100 : roundN(v) };
+}
+let txTouched = [];
+function touch(list, k) {
+  const i = list.indexOf(k);
+  if (i >= 0) list.splice(i, 1);
+  list.push(k);
+  if (list.length > 3) list.shift();
+}
+function markCalc(ids, calcId) {
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('calc', id === calcId);
+  });
 }
 
-export function syncTxUnitTotal() {
+export function onTxAmountInput() {
+  if (txMode === 'invoice') {
+    updateInvoiceRemain();
+    return;
+  }
+  touch(txTouched, 'a');
+  syncTxUnitTotal('a');
+}
+
+export function syncTxUnitTotal(src) {
   if (txMode !== 'simple') return;
-  const p = parseFloat((document.getElementById('txUnitPrice') || {}).value);
-  const q = parseFloat((document.getElementById('txQty') || {}).value);
-  const amt = document.getElementById('txAmount');
-  if (!amt) return;
-  if (p > 0 && q > 0) amt.value = String(p * q);
+  if (src === 'p' || src === 'q') touch(txTouched, src);
+  const P = document.getElementById('txUnitPrice');
+  const Q = document.getElementById('txQty');
+  const A = document.getElementById('txAmount');
+  if (!P || !Q || !A) return;
+  const r = solveTriple({ p: parseFloat(P.value) || 0, q: parseFloat(Q.value) || 0, a: parseFloat(A.value) || 0 }, txTouched);
+  if (!r) return;
+  const el = r.key === 'a' ? A : r.key === 'p' ? P : Q;
+  if (String(el.value) !== String(r.value)) el.value = String(r.value);
+  markCalc(['txAmount', 'txUnitPrice', 'txQty'], el.id);
+  if (r.key === 'a') updateInvoiceRemain();
 }
 
 export function setTxMode(btn) {
@@ -408,9 +458,11 @@ function readDraftLinesFromDom() {
     if (unit) l.unit = unit.value;
     const rf = document.getElementById('lnReflect_' + l.id);
     if (rf) l.reflect = rf.value;
+    const amtIn = document.getElementById('lnAmt_' + l.id);
+    if (amtIn) l.amount = parseFloat(amtIn.value) || 0;
     const p = parseFloat(l.unitPrice) || 0;
     const q = parseFloat(l.qty) || 0;
-    l.amount = p > 0 && q > 0 ? p * q : 0;
+    if (p > 0 && q > 0 && !(l.amount > 0)) l.amount = Math.round(p * q * 100) / 100;
   });
 }
 
@@ -449,10 +501,7 @@ export function renderTxLines() {
   }
   box.innerHTML = draftLines
     .map((l) => {
-      const p = parseFloat(l.unitPrice) || 0;
-      const q = parseFloat(l.qty) || 0;
-      const amt = p > 0 && q > 0 ? p * q : Number(l.amount) || 0;
-      l.amount = amt;
+      const amt = Number(l.amount) || 0;
       const cat = l.cat || 'need';
       return `<div class="inv-line" data-id="${l.id}">
         <div class="field" style="margin-bottom:8px"><label>${tr('نام قلم')}</label>
@@ -460,10 +509,10 @@ export function renderTxLines() {
         </div>
         <div class="row">
           <div class="col field"><label>${tr('قیمت واحد')}</label>
-            <input class="input" id="lnPrice_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.unitPrice || ''}" oninput="syncTxLine('${l.id}')">
+            <input class="input${l._calc === 'p' ? ' calc' : ''}" id="lnPrice_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.unitPrice || ''}" oninput="syncTxLine('${l.id}','p')">
           </div>
           <div class="col field"><label>${tr('مقدار')}</label>
-            <input class="input" id="lnQty_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.qty || ''}" oninput="syncTxLine('${l.id}')">
+            <input class="input${l._calc === 'q' ? ' calc' : ''}" id="lnQty_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${l.qty || ''}" oninput="syncTxLine('${l.id}','q')">
           </div>
         </div>
         <div class="row">
@@ -471,7 +520,7 @@ export function renderTxLines() {
             <input class="input" id="lnUnit_${l.id}" placeholder="${tr('عدد / کیلو')}" value="${esc(l.unit || '')}" oninput="syncTxLine('${l.id}')">
           </div>
           <div class="col field"><label>${tr('مبلغ این قلم')}</label>
-            <div class="input" id="lnAmt_${l.id}" style="display:flex;align-items:center;font-weight:800">${fmt(amt)}</div>
+            <input class="input${l._calc === 'a' ? ' calc' : ''}" id="lnAmt_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${amt || ''}" oninput="syncTxLine('${l.id}','a')">
           </div>
         </div>
         <div class="field" style="margin-bottom:8px"><label>${tr('پاکت این قلم')}</label>
@@ -509,17 +558,21 @@ export function removeTxLine(id) {
   renderTxLines();
 }
 
-export function syncTxLine(id) {
+export function syncTxLine(id, src) {
   const l = draftLines.find((x) => x.id === id);
   if (!l) return;
   const name = document.getElementById('lnName_' + id);
   const price = document.getElementById('lnPrice_' + id);
   const qty = document.getElementById('lnQty_' + id);
   const unit = document.getElementById('lnUnit_' + id);
+  const amtIn = document.getElementById('lnAmt_' + id);
   if (name) l.name = name.value;
   if (price) l.unitPrice = price.value;
   if (qty) l.qty = qty.value;
   if (unit) l.unit = unit.value;
+  if (amtIn) l.amount = parseFloat(amtIn.value) || 0;
+  l._touched = l._touched || [];
+  if (src === 'p' || src === 'q' || src === 'a') touch(l._touched, src);
   const rf = document.getElementById('lnReflect_' + id);
   if (rf) l.reflect = rf.value;
   if (name && !l.sub) {
@@ -530,11 +583,16 @@ export function syncTxLine(id) {
       if (sw) sw.innerHTML = subChipsHtml(l.cat || 'need', l.sub, 'setLineSub', id);
     }
   }
-  const p = parseFloat(l.unitPrice) || 0;
-  const q = parseFloat(l.qty) || 0;
-  l.amount = p > 0 && q > 0 ? p * q : 0;
-  const amtEl = document.getElementById('lnAmt_' + id);
-  if (amtEl) amtEl.textContent = fmt(l.amount);
+  const r = solveTriple({ p: parseFloat(l.unitPrice) || 0, q: parseFloat(l.qty) || 0, a: Number(l.amount) || 0 }, l._touched);
+  if (r) {
+    if (r.key === 'a') l.amount = r.value;
+    else if (r.key === 'p') l.unitPrice = String(r.value);
+    else l.qty = String(r.value);
+    l._calc = r.key;
+    const el = document.getElementById((r.key === 'a' ? 'lnAmt_' : r.key === 'p' ? 'lnPrice_' : 'lnQty_') + id);
+    if (el && String(el.value) !== String(r.value)) el.value = String(r.value);
+    markCalc(['lnAmt_' + id, 'lnPrice_' + id, 'lnQty_' + id], el ? el.id : '');
+  }
   updateInvoiceRemain();
 }
 
@@ -925,8 +983,12 @@ export function saveTx() {
       return;
     }
     for (const l of draftLines) {
+      if (!(parseFloat(l.unitPrice) > 0) && Number(l.amount) > 0) {
+        l.qty = l.qty && parseFloat(l.qty) > 0 ? l.qty : '1';
+        l.unitPrice = String(Number(l.amount) / parseFloat(l.qty));
+      }
       if (!(parseFloat(l.unitPrice) > 0) || !(parseFloat(l.qty) > 0)) {
-        toast(tr('برای هر قلم، قیمت واحد و مقدار را بنویس'));
+        toast(tr('برای هر قلم، دست‌کم دو تا از قیمت واحد، مقدار و مبلغ را بنویس'));
         return;
       }
       if (!String(l.name || '').trim()) {
