@@ -272,11 +272,12 @@ export function syncTxAmountLabel() {
 function roundN(x) {
   return Math.round(x * 10000) / 10000;
 }
-function solveTriple(vals, touched) {
+function solveTriple(vals, touched, editing) {
   // vals = {p,q,a} اعداد؛ touched = ترتیب آخرین فیلدهای دست‌خورده (جدیدترین آخر)
   const keys = ['p', 'q', 'a'];
   const known = keys.filter((k) => vals[k] > 0);
   let target = null;
+  if (editing && known.length === 2 && !(vals[editing] > 0)) return null; // کاربر دارد همین فیلد را پاک می‌کند؛ بازنویسی نکن
   if (known.length === 3) {
     const recent = touched.slice(-2);
     const cand = keys.filter((k) => recent.indexOf(k) < 0);
@@ -284,7 +285,7 @@ function solveTriple(vals, touched) {
     else if (touched.length) target = keys.filter((k) => k !== touched[touched.length - 1] && k !== 'a')[0];
     else target = 'a';
   } else if (known.length === 2) target = keys.filter((k) => !(vals[k] > 0))[0];
-  if (!target) return null;
+  if (!target || target === editing) return null;
   let v = 0;
   if (target === 'a') v = vals.p * vals.q;
   else if (target === 'p') v = vals.a / vals.q;
@@ -322,7 +323,7 @@ export function syncTxUnitTotal(src) {
   const Q = document.getElementById('txQty');
   const A = document.getElementById('txAmount');
   if (!P || !Q || !A) return;
-  const r = solveTriple({ p: parseFloat(P.value) || 0, q: parseFloat(Q.value) || 0, a: parseFloat(A.value) || 0 }, txTouched);
+  const r = solveTriple({ p: parseFloat(P.value) || 0, q: parseFloat(Q.value) || 0, a: parseFloat(A.value) || 0 }, txTouched, src);
   if (!r) return;
   const el = r.key === 'a' ? A : r.key === 'p' ? P : Q;
   if (String(el.value) !== String(r.value)) el.value = String(r.value);
@@ -583,7 +584,7 @@ export function syncTxLine(id, src) {
       if (sw) sw.innerHTML = subChipsHtml(l.cat || 'need', l.sub, 'setLineSub', id);
     }
   }
-  const r = solveTriple({ p: parseFloat(l.unitPrice) || 0, q: parseFloat(l.qty) || 0, a: Number(l.amount) || 0 }, l._touched);
+  const r = solveTriple({ p: parseFloat(l.unitPrice) || 0, q: parseFloat(l.qty) || 0, a: Number(l.amount) || 0 }, l._touched, src);
   if (r) {
     if (r.key === 'a') l.amount = r.value;
     else if (r.key === 'p') l.unitPrice = String(r.value);
