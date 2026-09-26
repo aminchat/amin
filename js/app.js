@@ -1,4 +1,4 @@
-import { store, toast, showTip, hideTip } from './utils.js';
+import { store, toast, showTip, hideTip, APP_VERSION } from './utils.js';
 import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i18n.js';
 import { icon } from './icons.js';
 import * as inst from './installments.js';
@@ -17,7 +17,9 @@ import { openCatReport, openSubReport, openTitleItems,
   csDelete3, openQuickCategorize, qcPick } from './subsui.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
-import { setOnSave, state } from './state.js';
+import { setOnSave, state, curStats } from './state.js';
+import { guideAfterRender } from './guide.js';
+import { celebrateAfterRender } from './clarity.js';
 import { renderAll, fitNumbers, setTodayLabel, resetMonths, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
@@ -68,6 +70,7 @@ import {
   bcSync,
   applyBaseCurrency,
   openSettingsAbout,
+  resetGuidesUI,
   lockApp,
   recoveryFinish,
   recoveryStep2,
@@ -119,6 +122,11 @@ import {
   saveTx,
   cancelTxForm,
   setTxCat,
+  txCatsExpand,
+  txNext,
+  txBack,
+  lineCatsExpand,
+  syncLineReflect,
   setTxSub,
   pickTxTitle,
   onTxNoteInput,
@@ -132,11 +140,11 @@ import {
   setLineCat,
   setLineSub,
   addRemainderLine,
-  startInvoicePhoto,
-  onInvoicePhoto,
-  openPaperScan,
-  startPaperPhoto,
-  onPaperPhoto,
+  toggleScanPick,
+  openScanFromList,
+  startScan,
+  onScanPhoto,
+  rescanAs,
   setPaperType,
   setPaperCat,
   removePaperRow,
@@ -157,7 +165,11 @@ import {
   qaSave,
 } from './forms.js';
 
-setRender(renderAll);
+setRender(() => {
+  renderAll();
+  guideAfterRender(curTab);
+  setTimeout(celebrateAfterRender, 250);
+});
 setOnSave(scheduleSync);
 
 const TABS = [
@@ -319,6 +331,7 @@ function findInvest(id) {
 }
 
 Object.assign(window, {
+  curStats,
   openPlanForm: inst.openPlanForm,
   plPickSub: inst.plPickSub,
   plCatChanged: inst.plCatChanged,
@@ -355,6 +368,11 @@ Object.assign(window, {
   qaSave,
   setTxType,
   setTxCat,
+  txCatsExpand,
+  txNext,
+  txBack,
+  lineCatsExpand,
+  syncLineReflect,
   setTxSub,
   pickTxTitle,
   onTxNoteInput,
@@ -371,11 +389,11 @@ Object.assign(window, {
   setLineCat,
   setLineSub,
   addRemainderLine,
-  startInvoicePhoto,
-  onInvoicePhoto,
-  openPaperScan,
-  startPaperPhoto,
-  onPaperPhoto,
+  toggleScanPick,
+  openScanFromList,
+  startScan,
+  onScanPhoto,
+  rescanAs,
   setPaperType,
   setPaperCat,
   removePaperRow,
@@ -470,6 +488,7 @@ Object.assign(window, {
   bcSync,
   applyBaseCurrency,
   openSettingsAbout,
+  resetGuidesUI,
   lockApp,
   saveGeminiKey,
   clearGeminiKey,
@@ -569,6 +588,35 @@ const allowSW =
   swHost === '127.0.0.1' ||
   swHost.endsWith('.github.io') ||
   swHost.endsWith('.e2b.app');
+// نسخهٔ تست سرویس‌ورکر ندارد؛ به‌روزرسانی با مقایسهٔ نسخهٔ روی سرور انجام می‌شود (همان دکمهٔ «درباره»)
+if (!allowSW) {
+  const setUpd = (st) => {
+    window.__appUpdate = st;
+    document.dispatchEvent(new CustomEvent('appupdate', { detail: st }));
+  };
+  window.__checkUpdate = () =>
+    fetch('js/utils.js?u=' + Date.now(), { cache: 'no-store' })
+      .then((r) => r.text())
+      .then((txt) => {
+        const m = txt.match(/APP_VERSION\s*=\s*'([^']+)'/);
+        const remote = m && m[1];
+        setUpd(remote && remote !== APP_VERSION ? 'ready' : 'latest');
+        return window.__appUpdate;
+      })
+      .catch(() => {
+        setUpd('offline');
+        return 'offline';
+      });
+  window.__applyUpdate = () => {
+    const u = new URL(location.href);
+    u.searchParams.set('r', String(Date.now()));
+    location.replace(u.toString());
+  };
+  setTimeout(() => window.__checkUpdate(), 1500);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') window.__checkUpdate();
+  });
+}
 if ('serviceWorker' in navigator && store.persisted && allowSW) {
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {

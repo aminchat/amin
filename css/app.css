@@ -792,3 +792,99 @@ body.onboarding{overflow:hidden}
 .ob-dots i{width:8px;height:8px;border-radius:50%;background:var(--border)}
 .ob-dots i.on{background:var(--accent);width:22px;border-radius:4px}
 .ob-body .sgroup{text-align:start}
+
+/* ─── راهنمای پیش‌رونده (Spotlight) ─── */
+#guide{position:fixed;inset:0;z-index:1150}
+.g-hole{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(10,14,25,.58),0 0 0 3px var(--accent);pointer-events:none;transition:all .25s ease;animation:gPulse 1.8s ease-in-out infinite}
+@keyframes gPulse{0%,100%{box-shadow:0 0 0 9999px rgba(10,14,25,.58),0 0 0 3px var(--accent)}50%{box-shadow:0 0 0 9999px rgba(10,14,25,.58),0 0 0 7px color-mix(in srgb,var(--accent) 45%,transparent)}}
+.g-bubble{position:absolute;left:16px;right:16px;max-width:400px;margin:0 auto;background:var(--card);color:var(--text);border-radius:var(--r-lg);padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.28);animation:gIn .25s ease}
+@keyframes gIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.g-bubble::before{content:"";position:absolute;top:-7px;inset-inline-start:28px;width:14px;height:14px;background:var(--card);transform:rotate(45deg);border-radius:3px}
+.g-bubble.up::before{top:auto;bottom:-7px}
+.g-t{font-weight:800;font-size:var(--fs-md);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.g-t .i{width:18px;height:18px;color:var(--accent)}
+.g-x{font-size:var(--fs-sm);color:var(--muted);line-height:1.8}
+.g-act{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.g-act .link-btn{margin:0;color:var(--muted)}
+
+/* حالت خالی با اقدام */
+.empty .btn{margin:var(--sp-4) auto 0;display:inline-flex}
+
+/* کاروسل خوش‌آمد */
+.ob-car{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 calc(-1 * var(--sp-4)) var(--sp-3);-webkit-overflow-scrolling:touch}
+.ob-car::-webkit-scrollbar{display:none}
+.ob-slide{flex:0 0 100%;scroll-snap-align:center;padding:0 var(--sp-4);text-align:center}
+.ob-slide svg{width:min(240px,62vw);height:auto;display:block;margin:0 auto var(--sp-4);color:var(--accent)}
+.ob-slide .ob-h{font-size:var(--fs-lg)}
+.ob-car-dots{display:flex;gap:6px;justify-content:center;margin:0 0 var(--sp-4)}
+.ob-car-dots i{width:7px;height:7px;border-radius:50%;background:var(--border);transition:.2s}
+.ob-car-dots i.on{background:var(--accent);width:20px;border-radius:4px}
+
+/* فرم تراکنش: دسته‌بندی دومرحله‌ای */
+.catbox{background:var(--card2);border-radius:var(--r-md);padding:var(--sp-3)}
+.catbox>label{display:flex;align-items:center;gap:6px}
+.subbox{margin-top:var(--sp-3);padding-inline-start:var(--sp-3);border-inline-start:2px solid var(--border)}
+.sublbl{display:block;font-size:var(--fs-xs);font-weight:700;color:var(--muted);margin-bottom:6px}
+.sublbl .muted{font-weight:500}
+.cat-sum{display:flex;align-items:center;gap:6px;margin-top:var(--sp-3);font-size:var(--fs-sm);font-weight:700}
+.cat-sum .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.cat-sum .sep{color:var(--muted);font-weight:500}
+.cat-sum .sugg{margin-inline-start:auto;display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-xs);font-weight:600;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);padding:2px 8px;border-radius:999px}
+.cat-sum .sugg .i{width:12px;height:12px}
+.scan-verdict{display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:8px 12px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--green) 12%,transparent);font-size:var(--fs-xs);font-weight:700}
+.scan-verdict .i{width:16px;height:16px;color:var(--green);flex:none}
+.scan-verdict .link-btn{margin:0 0 0 auto;margin-inline-start:auto;min-height:28px;font-size:var(--fs-xs)}
+
+/* ─── وضوح / قفل گزارش / جشن ─── */
+.mring{flex:none}
+.schip .mring{margin-inline-end:2px}
+.clar-hero{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-3) 0 var(--sp-2)}
+.clar-hero .big{font-size:var(--fs-2xl);font-weight:800;line-height:1.1}
+.clar-hero.clear .big{color:var(--green)}
+.clar-pct{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm)}
+.cat-line{display:flex;align-items:center;gap:6px}
+.cat-line .q{display:inline-flex;width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--muted);color:var(--muted);align-items:center;justify-content:center;font-size:11px;font-weight:800;animation:qBlink 2.4s ease-in-out infinite}
+@keyframes qBlink{0%,100%{opacity:.45}50%{opacity:1}}
+.cat-live{margin-top:6px;font-size:var(--fs-xs);color:var(--muted);font-weight:600}
+.cat-live b{color:var(--text)}
+.rep-lock{position:relative;padding:var(--sp-3);border:1.5px dashed var(--border);border-radius:var(--r-md);text-align:center;cursor:pointer;margin-top:4px}
+.stack.ghost{opacity:.35;filter:grayscale(1)}
+.stack.ghost span{background:var(--muted)}
+.rl-txt{display:flex;align-items:flex-start;gap:8px;text-align:start;font-size:var(--fs-sm);color:var(--muted);line-height:1.7;margin:10px 0}
+.rl-txt .i{width:18px;height:18px;flex:none;margin-top:3px}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:1300;overflow:hidden}
+.confetti i{position:absolute;top:55%;width:8px;height:12px;border-radius:2px;animation:cfly 1.2s cubic-bezier(.2,.7,.3,1) forwards;opacity:0}
+@keyframes cfly{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
+
+/* پاکت: بعد از انتخاب، بقیه جمع می‌شوند */
+#txCats .chip.change{display:none;border-style:dashed;color:var(--muted)}
+#txCats.picked .chip:not(.on):not(.change){display:none}
+#txCats.picked .chip.change{display:inline-flex}
+#txCats.picked .chip.on{animation:pickIn .2s ease}
+@keyframes pickIn{from{transform:scale(.94);opacity:.6}to{transform:none;opacity:1}}
+.subbox{animation:subIn .22s ease}
+@keyframes subIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.catbox.shake{animation:shake .5s ease}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.tx-recap{background:var(--card2);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);margin:8px 0 var(--sp-4)}
+.tx-recap .t1{font-weight:800;font-size:var(--fs-md)}
+.tx-recap .t2{color:var(--muted);font-size:var(--fs-sm);margin-top:2px}
+#txStep2 .catbox{background:transparent;padding:0}
+#txStep2 .catbox>label{font-size:var(--fs-md);font-weight:800;color:var(--text)}
+#txStep2 .chip{min-height:44px;font-size:var(--fs-md)}
+#txStep2 .chip.sub{min-height:34px;font-size:var(--fs-sm)}
+.line-card{background:var(--card2);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
+.lc-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.lc-name{font-weight:800;font-size:var(--fs-md)}
+.lc-amt{color:var(--muted);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
+.line-card .chip.change{display:none;border-style:dashed;color:var(--muted)}
+.line-card .chips.picked .chip:not(.on):not(.change){display:none}
+.line-card .chips.picked .chip.change{display:inline-flex}
+.line-card.shake{animation:shake .5s ease}
+
+.clar-strip{display:flex;align-items:center;gap:10px;width:100%;margin-top:var(--sp-3);padding:10px 12px;border-radius:var(--r-md);background:var(--card2);border:0;color:var(--text);text-align:start;font:inherit;cursor:pointer}
+.clar-strip.clear{background:color-mix(in srgb,var(--green) 10%,transparent)}
+.clar-strip .cs-mid{flex:1;display:flex;flex-direction:column;min-width:0}
+.clar-strip b{font-size:var(--fs-sm)}
+.clar-strip small{color:var(--muted);font-size:var(--fs-xs)}
+.clar-strip>.i{width:16px;height:16px;color:var(--muted)}

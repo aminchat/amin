@@ -259,6 +259,36 @@ async function readWithGemini(file, prompt, opts) {
   throw new Error(shortErr(lastErr || new Error('خواندن عکس نشد')));
 }
 
+// خواندن یکپارچه: مدل اول نوع عکس را تشخیص می‌دهد (فاکتور فروشگاهی یا لیست چند تراکنش) و بعد همان را می‌خواند
+function anyPrompt(accountNames) {
+  return `اول تشخیص بده این عکس چیست:
+- "invoice": فاکتور/رسید یک فروشگاه با اقلام و جمع کل (چاپی یا دست‌نویس، یک خرید).
+- "list": لیستی از چند تراکنش جدا (کاغذ دست‌نویس، دفترچه، یا اسکرین‌شات بانک/پیامک با چند ردیف).
+فقط یک JSON معتبر برگردان به این شکل و فقط بخش مربوط به kind را پر کن:
+{"kind":"invoice"|"list","invoice":<JSON_INVOICE|null>,"list":<JSON_LIST|null>}
+
+JSON_INVOICE — ${INVOICE_PROMPT.replace(/^این یک عکس فاکتور یا رسید خرید است\.\n/, '').replace(/فقط یک JSON معتبر برگردان، بدون متن اضافه\.\n/, '')}
+
+JSON_LIST — ${paperPrompt(accountNames).replace(/^این عکس لیست تراکنش است[^\n]*\n/, '').replace(/فقط JSON معتبر برگردان\.\n/, '')}`;
+}
+export async function readAnyImage(file, accountNames) {
+  const raw = await readWithGemini(file, anyPrompt(accountNames), { max: 2048, quality: 0.9, jsonMode: true });
+  if (!raw) throw new Error('خواندن عکس نشد');
+  const kind = raw.kind === 'invoice' ? 'invoice' : raw.kind === 'list' ? 'list' : raw.lines ? 'invoice' : raw.transactions ? 'list' : '';
+  if (kind === 'invoice') {
+    const data = normalizeScan(raw.invoice || raw);
+    if (data && data.lines.length) return { kind: 'invoice', invoice: data };
+    const list = normalizePaper(raw.list);
+    if (list.length) return { kind: 'list', list };
+    throw new Error('در عکس فاکتوری پیدا نشد');
+  }
+  const list = normalizePaper(raw.list || raw);
+  if (list.length) return { kind: 'list', list };
+  const data = normalizeScan(raw.invoice || raw);
+  if (data && data.lines.length) return { kind: 'invoice', invoice: data };
+  throw new Error('در عکس تراکنش یا فاکتوری پیدا نشد');
+}
+
 export async function readInvoiceImage(file) {
   const raw = await readWithGemini(file, INVOICE_PROMPT, { max: 1280, quality: 0.72 });
   const data = normalizeScan(raw);

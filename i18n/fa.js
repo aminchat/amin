@@ -31,7 +31,7 @@ export default {
   'act.budget': 'بودجه',
   'act.prevMonth': 'ماه قبل',
   'act.nextMonth': 'ماه بعد',
-  'act.scanPaper': 'ثبت چند تراکنش از عکس کاغذ',
+  'act.scanPaper': 'خواندن از عکس (فاکتور یا لیست)',
   'act.updatePrice': 'به‌روزرسانی قیمت امروز',
   'act.setRate': 'ثبت نرخ',
 

@@ -2,6 +2,7 @@ import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign } from './utils
 import { lightsHtml } from './health.js';
 import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
+import { clarityStrip } from './clarity.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS, bookNow, daysInMonthKey } from './jalali.js';
 import { renderSyncCard } from './sync.js';
@@ -142,7 +143,7 @@ function homeStatusChips() {
   const inv = investTotal();
   if (inv > 0) chips.push({ cls: '', ic: 'trend', t: tr('home.chip.invest', { amt: fmtShort(inv) }), on: "switchTab('invest')" });
   return `<div class="status-row">${chips
-    .map((c) => `<button type="button" class="schip ${c.cls}" onclick="${c.on}">${icon(c.ic)}<span>${c.t}</span></button>`)
+    .map((c) => `<button type="button" class="schip ${c.cls}" onclick="${c.on}">${c.html || icon(c.ic) + '<span>' + c.t + '</span>'}</button>`)
     .join('')}</div>`;
 }
 
@@ -284,7 +285,7 @@ export function renderTx() {
   </div>`;
 
   if (txs.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}${state.accounts.length ? `<button type="button" class="btn sm primary" onclick="openQuickTx()">${icon('plus')} ${tr('ثبت تراکنش')}</button>` : `<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button>`}</div>`;
   } else {
     const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
     const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
@@ -304,7 +305,7 @@ export function renderTx() {
     }
     html += `<div class="small muted" style="text-align:center;padding:var(--sp-3)">${tr('tx.swipeHelp')}</div>`;
   }
-  html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openPaperScan()">${icon('scan')} ${tr('act.scanPaper')}</button>`;
+  html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openScanFromList()">${icon('scan')} ${tr('act.scanPaper')}</button>`;
   document.getElementById('txContent').innerHTML = html;
   attachSwipe(document.getElementById('txContent'));
 }
@@ -491,6 +492,7 @@ export function renderReport() {
     </div>
     <div style="height:8px"></div>
     <div class="bullets">${bulletRows(mk, budget, totalSpent)}</div>
+    ${clarityStrip(mk)}
   </div>`;
 
   if (f.out || f.in) {
@@ -524,7 +526,7 @@ export function renderInvest() {
 `;
 
   if (state.investments.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>${tr('inv.empty')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>${tr('inv.empty')}<button type="button" class="btn sm primary" onclick="openInvestForm()">${icon('plus')} ${tr('افزودن دارایی')}</button></div>`;
   } else {
     html += state.investments
       .map((i) => {
@@ -582,7 +584,7 @@ export function renderAccounts() {
   let html = '';
 
   if (state.accounts.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('acc.empty')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('acc.empty')}<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button></div>`;
   } else {
     // گروه‌بندی بر اساس مؤسسه
     const groups = new Map();

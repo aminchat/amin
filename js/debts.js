@@ -468,7 +468,7 @@ export function renderDebts() {
     ${missingHint}`;
 
   if (!list.length) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('handshake')}</span>${tr('هنوز طلب یا بدهی ثبت نکرده‌ای.')}<br>${tr('مثلاً پولی که به دوستت دادی یا از کسی قرض گرفتی.')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('handshake')}</span>${tr('هنوز طلب یا بدهی ثبت نکرده‌ای.')}<br>${tr('مثلاً پولی که به دوستت دادی یا از کسی قرض گرفتی.')}<button type="button" class="btn sm primary" onclick="openDebtForm()">${icon('plus')} ${tr('ثبت طلب / بدهی')}</button></div>`;
   } else {
     if (open.length) html += open.map(debtRow).join('');
     if (done.length) {
