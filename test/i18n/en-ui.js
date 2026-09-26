@@ -831,4 +831,5 @@ export default {
   'تغییر': 'Change',
   'پاکت این خرج را انتخاب کن': 'Pick a pocket for this expense',
 
+  'پاکت «{n}» را انتخاب کن': 'Pick a pocket for “{n}”',
 };

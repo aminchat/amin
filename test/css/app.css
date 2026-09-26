@@ -873,3 +873,11 @@ body.onboarding{overflow:hidden}
 #txStep2 .catbox>label{font-size:var(--fs-md);font-weight:800;color:var(--text)}
 #txStep2 .chip{min-height:44px;font-size:var(--fs-md)}
 #txStep2 .chip.sub{min-height:34px;font-size:var(--fs-sm)}
+.line-card{background:var(--card2);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
+.lc-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.lc-name{font-weight:800;font-size:var(--fs-md)}
+.lc-amt{color:var(--muted);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
+.line-card .chip.change{display:none;border-style:dashed;color:var(--muted)}
+.line-card .chips.picked .chip:not(.on):not(.change){display:none}
+.line-card .chips.picked .chip.change{display:inline-flex}
+.line-card.shake{animation:shake .5s ease}

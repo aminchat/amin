@@ -239,7 +239,6 @@ export function openTxForm(tx, opts) {
       <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
     </div>
     <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
-      <div class="hint" style="margin:0 0 8px">${tr('پاکت هر قلم را در خود ردیف انتخاب کن.')}</div>
       <div id="txLines"></div>
       <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
       <div class="row" style="margin-bottom:12px">
@@ -247,12 +246,13 @@ export function openTxForm(tx, opts) {
         <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">${tr('مانده را «سایر» کن')}</button>
       </div>
     </div>
-    <button type="button" class="btn primary block" id="txNextBtn" onclick="txNext()">${type === 'in' || txMode === 'invoice' ? (isEdit ? tr('ذخیره تغییرات') : tr('ثبت')) : tr('ادامه') + ' ←'}</button>
+    <button type="button" class="btn primary block" id="txNextBtn" onclick="txNext()">${type === 'in' ? (isEdit ? tr('ذخیره تغییرات') : tr('ثبت')) : tr('ادامه') + ' ←'}</button>
     ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? tr('حذف این فاکتور') : tr('حذف این تراکنش')}</button>` : ''}
     </div>
     <div id="txStep2" style="display:none">
       <button type="button" class="sback" onclick="txBack()">${icon('chevR')} ${tr('act.back')}</button>
       <div class="tx-recap" id="txRecap"></div>
+      <div id="txLineCats"></div>
     <div class="field catbox" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
       <label>${tr('پاکت')} ${infoTip(tr('ضروریات: اجاره، خوراک، قبض. آزادی مالی: پس‌انداز و سرمایه‌گذاری. تفریح: هر چیزی که فقط برای لذت است. نیکوکاری: کمک و هدیه. هدررفت: خرجی که بعدش پشیمان شدی.'))}</label>
       <div class="chips ${pickedCat ? 'picked' : ''}" id="txCats">${catChipsHtml(pickedCat, 'setTxCat')}<button type="button" class="chip change" onclick="txCatsExpand()">${icon('edit')} ${tr('تغییر')}</button></div>
@@ -392,8 +392,8 @@ function applyTxModeUi() {
   const tc = document.getElementById('txTitleChips');
   if (tc) tc.style.display = !isOut || inv ? 'none' : '';
   const nb = document.getElementById('txNextBtn');
-  if (nb) nb.textContent = !isOut || inv ? (editingTxId ? tr('ذخیره تغییرات') : tr('ثبت')) : tr('ادامه') + ' ←';
-  if (!isOut || inv) txBack();
+  if (nb) nb.textContent = !isOut ? (editingTxId ? tr('ذخیره تغییرات') : tr('ثبت')) : tr('ادامه') + ' ←';
+  if (!isOut) txBack();
   const unitWrap = document.getElementById('txUnitWrap');
   const catWrap = document.getElementById('txCatWrap');
   const invWrap = document.getElementById('txInvoiceWrap');
@@ -435,23 +435,56 @@ export function setTxType(btn) {
 export function txNext() {
   const typeBtn = document.querySelector('#txTypeSeg button.on');
   const isOut = typeBtn && typeBtn.dataset.t === 'out';
-  if (!isOut || txMode === 'invoice') { saveTx(); return; }
-  const p = parseFloat((document.getElementById('txUnitPrice') || {}).value) || 0;
-  const q = parseFloat((document.getElementById('txQty') || {}).value) || 0;
-  const amount = p > 0 && q > 0 ? p * q : parseFloat((document.getElementById('txAmount') || {}).value);
-  if (!amount || amount <= 0) {
-    toast(tr('مبلغ را درست وارد کن'));
-    const a = document.getElementById('txAmount'); if (a) a.focus();
-    return;
-  }
+  if (!isOut) { saveTx(); return; }
   const note = ((document.getElementById('txNote') || {}).value || '').trim();
   const acc = accountById((document.getElementById('txAccount') || {}).value);
+  const dateTxt = fmtDate((document.getElementById('txDate') || {}).value || todayISO());
   const recap = document.getElementById('txRecap');
-  if (recap) recap.innerHTML = `<div class="t1">${esc(note || tr('خرج'))}</div><div class="t2">${fmt(amount)} ${esc(curName(acc ? acc.currency : baseCur()))}${acc ? ' · ' + esc(acc.name) : ''} · ${fmtDate((document.getElementById('txDate') || {}).value || todayISO())}</div>`;
+  const lineBox = document.getElementById('txLineCats');
+  const catWrap = document.getElementById('txCatWrap');
+  let amount;
+  if (txMode === 'invoice') {
+    if (!validateInvoiceLines()) return;
+    amount = parseFloat(document.getElementById('txAmount').value);
+    if (recap) recap.innerHTML = `<div class="t1">${esc(note || tr('فاکتور'))}</div><div class="t2">${toFa(draftLines.length)} ${tr('قلم')} · ${fmt(amount)} ${esc(curName(acc ? acc.currency : baseCur()))}${acc ? ' · ' + esc(acc.name) : ''} · ${dateTxt}</div>`;
+    renderLineCats();
+    if (lineBox) lineBox.style.display = '';
+    if (catWrap) catWrap.style.display = 'none';
+  } else {
+    const p = parseFloat((document.getElementById('txUnitPrice') || {}).value) || 0;
+    const q = parseFloat((document.getElementById('txQty') || {}).value) || 0;
+    amount = p > 0 && q > 0 ? p * q : parseFloat((document.getElementById('txAmount') || {}).value);
+    if (!amount || amount <= 0) {
+      toast(tr('مبلغ را درست وارد کن'));
+      const a = document.getElementById('txAmount'); if (a) a.focus();
+      return;
+    }
+    if (recap) recap.innerHTML = `<div class="t1">${esc(note || tr('خرج'))}</div><div class="t2">${fmt(amount)} ${esc(curName(acc ? acc.currency : baseCur()))}${acc ? ' · ' + esc(acc.name) : ''} · ${dateTxt}</div>`;
+    if (lineBox) lineBox.style.display = 'none';
+    if (catWrap) catWrap.style.display = '';
+  }
   const s1 = document.getElementById('txStep1'), s2 = document.getElementById('txStep2');
   if (s1) s1.style.display = 'none';
   if (s2) s2.style.display = '';
   const sheet = document.getElementById('sheet'); if (sheet) sheet.scrollTop = 0;
+}
+// اعتبارسنجی اقلام فاکتور (مشترک بین «ادامه» و «ثبت»)
+function validateInvoiceLines() {
+  readDraftLinesFromDom();
+  const amount = parseFloat(document.getElementById('txAmount').value);
+  if (!amount || amount <= 0) { toast(tr('مبلغ کل فاکتور را بنویس')); return false; }
+  if (!draftLines.length) { toast(tr('حداقل یک قلم اضافه کن')); return false; }
+  for (const l of draftLines) {
+    if (!(parseFloat(l.unitPrice) > 0) && Number(l.amount) > 0) {
+      l.qty = l.qty && parseFloat(l.qty) > 0 ? l.qty : '1';
+      l.unitPrice = String(Number(l.amount) / parseFloat(l.qty));
+    }
+    if (!(parseFloat(l.unitPrice) > 0) || !(parseFloat(l.qty) > 0)) { toast(tr('برای هر قلم، دست‌کم دو تا از قیمت واحد، مقدار و مبلغ را بنویس')); return false; }
+    if (!String(l.name || '').trim()) { toast(tr('نام هر قلم را بنویس')); return false; }
+  }
+  const sum = lineSum();
+  if (!nearlyZero(amount - sum)) { toast(tr('جمع اقلام باید با مبلغ کل یکی باشد')); return false; }
+  return true;
 }
 export function txBack() {
   const s1 = document.getElementById('txStep1'), s2 = document.getElementById('txStep2');
@@ -607,13 +640,7 @@ export function renderTxLines() {
             <input class="input${l._calc === 'a' ? ' calc' : ''}" id="lnAmt_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${amt || ''}" oninput="syncTxLine('${l.id}','a')">
           </div>
         </div>
-        <div class="field" style="margin-bottom:8px"><label>${tr('پاکت این قلم')}</label>
-          <div class="chips">${catChipsHtml(cat, 'setLineCat', l.id)}</div>
-          <div id="lnSub_${l.id}" style="margin-top:8px">${subChipsHtml(cat, l.sub || '', 'setLineSub', l.id)}</div>
-          <div id="lnTitles_${l.id}" style="margin-top:8px">${l.name ? '' : titleChipsHtml(cat, 'pickLineTitle_' + l.id)}</div>
-        </div>
-        ${cat === 'waste' ? `<div class="field" style="margin-bottom:8px"><label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
-          <input class="input" id="lnReflect_${l.id}" value="${esc(l.reflect || '')}" oninput="syncTxLine('${l.id}')"></div>` : ''}
+        <div id="lnTitles_${l.id}" style="margin-top:-2px;margin-bottom:8px">${l.name ? '' : titleChipsHtml(cat, 'pickLineTitle_' + l.id)}</div>
         <button type="button" class="btn sm danger block" onclick="removeTxLine('${l.id}')">${tr('حذف این قلم')}</button>
       </div>`;
     })
@@ -631,7 +658,7 @@ export function addTxLine(catId) {
     qty: '',
     unit: '',
     amount: 0,
-    cat: typeof catId === 'string' ? catId : 'need',
+    cat: typeof catId === 'string' ? catId : '',
   });
   renderTxLines();
 }
@@ -659,12 +686,12 @@ export function syncTxLine(id, src) {
   if (src === 'p' || src === 'q' || src === 'a') touch(l._touched, src);
   const rf = document.getElementById('lnReflect_' + id);
   if (rf) l.reflect = rf.value;
-  if (name && !l.sub) {
+  if (name && !l._catTouched) {
     const m = lookupTitle(l.name);
-    if (m && m.sub && m.cat === (l.cat || 'need')) {
-      l.sub = m.sub;
-      const sw = document.getElementById('lnSub_' + id);
-      if (sw) sw.innerHTML = subChipsHtml(l.cat || 'need', l.sub, 'setLineSub', id);
+    if (m && m.cat) {
+      l.cat = m.cat;
+      l.sub = m.sub || '';
+      l._suggested = true;
     }
   }
   const r = solveTriple({ p: parseFloat(l.unitPrice) || 0, q: parseFloat(l.qty) || 0, a: Number(l.amount) || 0 }, l._touched, src);
@@ -683,7 +710,7 @@ export function syncTxLine(id, src) {
 export function setLineSub(btn, lineId) {
   const l = draftLines.find((x) => x.id === lineId);
   if (!l) return;
-  pickSub(btn, l.cat || 'need', (sub) => { l.sub = sub; });
+  pickSub(btn, l.cat || 'need', (sub) => { l.sub = sub; l._suggested = false; paintLineCard(lineId); });
 }
 // pickLineTitle_<id> به‌صورت پویا روی window ست می‌شود (renderTxLines)
 export function pickLineTitle(lineId, btn) {
@@ -692,6 +719,7 @@ export function pickLineTitle(lineId, btn) {
   readDraftLinesFromDom();
   l.name = btn.dataset.title || '';
   l.sub = btn.dataset.sub || l.sub || '';
+  { const m = lookupTitle(l.name); if (m && m.cat && !l._catTouched) { l.cat = m.cat; l._suggested = true; } }
   const amt = Number(btn.dataset.amt) || 0;
   if (amt && !(parseFloat(l.unitPrice) > 0)) {
     l.unitPrice = String(amt);
@@ -705,19 +733,41 @@ export function setLineCat(btn, lineId) {
   const l = draftLines.find((x) => x.id === lineId);
   if (!l) return;
   l.cat = btn.dataset.cat;
-  const wrap = btn.parentElement;
-  if (wrap) {
-    wrap.querySelectorAll('.chip').forEach((c) => {
-      c.classList.remove('on');
-      c.style.background = '';
-    });
-  }
-  btn.classList.add('on');
-  const found = CATS.find((c) => c.id === l.cat);
-  if (found) btn.style.background = found.color;
+  l._catTouched = true;
+  l._suggested = false;
   if (!subsFor(l.cat).some((x) => x.id === l.sub)) l.sub = '';
-  readDraftLinesFromDom();
-  renderTxLines();
+  paintLineCard(lineId);
+}
+export function lineCatsExpand(lineId) {
+  const w = document.getElementById('lnCats_' + lineId);
+  if (w) w.classList.remove('picked');
+}
+// صفحهٔ ۲ فاکتور: هر قلم فقط با نامش؛ اول پاکت، بعد زیرشاخه
+function lineCardHtml(l) {
+  const c = l.cat ? CATS.find((x) => x.id === l.cat) : null;
+  const amt = (parseFloat(l.unitPrice) || 0) * (parseFloat(l.qty) || 0) || Number(l.amount) || 0;
+  return `<div class="line-card" id="lnCard_${l.id}">
+    <div class="lc-head"><span class="lc-name">${esc(l.name || tr('قلم'))}</span><span class="lc-amt">${fmt(amt)}</span></div>
+    <div class="chips ${l.cat ? 'picked' : ''}" id="lnCats_${l.id}">${catChipsHtml(l.cat || null, 'setLineCat', l.id)}<button type="button" class="chip change" onclick="lineCatsExpand('${l.id}')">${icon('edit')} ${tr('تغییر')}</button></div>
+    ${l.cat ? `<div class="subbox" id="lnSub_${l.id}">${subChipsHtml(l.cat, l.sub || '', 'setLineSub', l.id)}</div>
+    <div class="cat-sum"><div class="cat-line"><span class="dot" style="background:${c.color}"></span>${esc(c.label)} <span class="sep">›</span> ${l.sub ? esc(subLabel(l.sub)) : '<span class="q">?</span>'}${l._suggested ? `<span class="sugg">${icon('sparkle')} ${tr('پیشنهاد از قبل')}</span>` : ''}</div></div>` : ''}
+    ${l.cat === 'waste' ? `<div class="field" style="margin:10px 0 0"><label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
+      <input class="input" id="lnReflect_${l.id}" value="${esc(l.reflect || '')}" oninput="syncLineReflect('${l.id}')"></div>` : ''}
+  </div>`;
+}
+function paintLineCard(lineId) {
+  const l = draftLines.find((x) => x.id === lineId);
+  const el = document.getElementById('lnCard_' + lineId);
+  if (l && el) el.outerHTML = lineCardHtml(l);
+}
+export function renderLineCats() {
+  const box = document.getElementById('txLineCats');
+  if (box) box.innerHTML = draftLines.map(lineCardHtml).join('');
+}
+export function syncLineReflect(id) {
+  const l = draftLines.find((x) => x.id === id);
+  const rf = document.getElementById('lnReflect_' + id);
+  if (l && rf) l.reflect = rf.value;
 }
 
 let lastScanFile = null;
@@ -1057,33 +1107,15 @@ export function saveTx() {
   let kind = '';
 
   if (invoice) {
-    readDraftLinesFromDom();
+    if (!validateInvoiceLines()) return;
     amount = parseFloat(document.getElementById('txAmount').value);
-    if (!amount || amount <= 0) {
-      toast(tr('مبلغ کل فاکتور را بنویس'));
-      return;
-    }
-    if (!draftLines.length) {
-      toast(tr('حداقل یک قلم اضافه کن'));
-      return;
-    }
-    for (const l of draftLines) {
-      if (!(parseFloat(l.unitPrice) > 0) && Number(l.amount) > 0) {
-        l.qty = l.qty && parseFloat(l.qty) > 0 ? l.qty : '1';
-        l.unitPrice = String(Number(l.amount) / parseFloat(l.qty));
-      }
-      if (!(parseFloat(l.unitPrice) > 0) || !(parseFloat(l.qty) > 0)) {
-        toast(tr('برای هر قلم، دست‌کم دو تا از قیمت واحد، مقدار و مبلغ را بنویس'));
-        return;
-      }
-      if (!String(l.name || '').trim()) {
-        toast(tr('نام هر قلم را بنویس'));
-        return;
-      }
-    }
-    const sum = lineSum();
-    if (!nearlyZero(amount - sum)) {
-      toast(tr('جمع اقلام باید با مبلغ کل یکی باشد'));
+    // در صفحهٔ ۲: هر قلم باید پاکت داشته باشد
+    if (document.getElementById('txStep2') && document.getElementById('txStep2').style.display === 'none') { txNext(); return; }
+    const missing = draftLines.find((l) => !l.cat);
+    if (missing) {
+      toast(tr('پاکت «{n}» را انتخاب کن', { n: missing.name || tr('قلم') }));
+      const card = document.getElementById('lnCard_' + missing.id);
+      if (card) { card.classList.add('shake'); card.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(() => card.classList.remove('shake'), 600); }
       return;
     }
     kind = 'invoice';
