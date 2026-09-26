@@ -750,3 +750,19 @@ input.jd-native{position:absolute;opacity:0;pointer-events:none;width:1px;height
 
 /* فیلد حساب‌شده در سه‌گانهٔ قیمت/مقدار/مبلغ */
 .input.calc{color:var(--muted);background:color-mix(in srgb,var(--press) 60%,transparent)}
+
+/* ─── برنامهٔ ماه‌به‌ماه اقساط ─── */
+.sched-m{border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px;background:var(--card);overflow:hidden}
+.sched-m summary{list-style:none;cursor:pointer;padding:12px 14px 10px}
+.sched-m summary::-webkit-details-marker{display:none}
+.sched-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sched-t{display:flex;align-items:center;gap:8px;min-width:0}
+.sched-t .badge{font-size:11px;padding:1px 8px;border-radius:999px;background:var(--accent-soft,var(--press));color:var(--accent)}
+.sched-sum{font-weight:800;font-variant-numeric:tabular-nums}
+.sched-sum.red{color:var(--red)}
+.sched-bar{position:relative;height:6px;border-radius:999px;background:var(--press);margin-top:8px;overflow:hidden}
+.sched-bar i{position:absolute;inset-inline-start:0;top:0;bottom:0;border-radius:999px;background:var(--accent)}
+.sched-bar i.late{background:var(--red)}
+.sched-m[open] summary{border-bottom:1px solid var(--line)}
+.sched-m .entry{margin:0;border-radius:0;border:0;border-bottom:1px solid var(--line);cursor:pointer}
+.sched-m .entry:last-child{border-bottom:0}

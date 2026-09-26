@@ -323,6 +323,7 @@ Object.assign(window, {
   plPickSub: inst.plPickSub,
   plCatChanged: inst.plCatChanged,
   openPlanDetail: inst.openPlanDetail,
+  openInstSchedule: inst.openInstSchedule,
   findPlan: inst.findPlan,
   savePlan: inst.savePlan,
   delPlan: inst.delPlan,

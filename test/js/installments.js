@@ -8,7 +8,7 @@
 //   • ویرایش/حذف ردیف پرداخت‌شده → تراکنشش هماهنگ می‌شود
 import { icon } from './icons.js';
 import { esc, fmt, fmtShort, toFa, toast, uid, todayISO, haptic, infoTip } from './utils.js';
-import { fmtDate, monthOfISO, toJalali, toGregorian } from './jalali.js';
+import { fmtDate, monthOfISO, toJalali, toGregorian, monthLabel, curMonthKey } from './jalali.js';
 import { addBookMonths } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -703,6 +703,74 @@ function planCard(p) {
     ${soon ? ('<div class="small" style="color:var(--orange);margin:-4px 0 10px 52px">' + tr('سررسید') + ' ') + when + '</div>' : ''}`;
 }
 
+// ── برنامهٔ ماه‌به‌ماه اقساط پیش رو ──
+export function upcomingByMonth() {
+  const cur = curMonthKey();
+  const map = new Map();
+  for (const p of allPlans()) {
+    for (const r of p.rows || []) {
+      if (r.paidISO) continue;
+      let mk = monthOfISO(r.dueISO);
+      const late = mk < cur || (mk === cur && daysUntil(r.dueISO) < 0);
+      if (mk < cur) mk = cur; // عقب‌افتاده‌ها در ماه جاری جمع می‌شوند
+      if (!map.has(mk)) map.set(mk, { mk, sum: 0, items: [], late: 0 });
+      const m = map.get(mk);
+      const amt = rowTotal(r);
+      m.sum += amt;
+      if (late) m.late += amt;
+      m.items.push({ plan: p, row: r, amt, late });
+    }
+  }
+  const months = [...map.values()].sort((a, b) => a.mk.localeCompare(b.mk));
+  months.forEach((m) => m.items.sort((a, b) => a.row.dueISO.localeCompare(b.row.dueISO)));
+  return months;
+}
+
+export function openInstSchedule() {
+  const months = upcomingByMonth();
+  const remain = totalRemaining();
+  const cur = curMonthKey();
+  const max = Math.max(1, ...months.map((m) => m.sum));
+  const body = months.length
+    ? months
+        .map((m, i) => {
+          const w = Math.round((m.sum / max) * 100);
+          const isCur = m.mk === cur;
+          return `<details class="sched-m" ${i < 2 ? 'open' : ''}>
+            <summary>
+              <div class="sched-head">
+                <div class="sched-t"><b>${monthLabel(m.mk)}</b>${isCur ? ` <span class="badge">${tr('این ماه')}</span>` : ''}<span class="small muted">${toFa(m.items.length)} ${tr('قسط')}</span></div>
+                <div class="sched-sum ${m.late ? 'red' : ''}">${fmtShort(m.sum)}</div>
+              </div>
+              <div class="sched-bar"><i style="width:${w}%"></i>${m.late ? `<i class="late" style="width:${Math.round((m.late / max) * 100)}%"></i>` : ''}</div>
+            </summary>
+            ${m.items
+              .map(
+                (it) => `<div class="entry" onclick="closeModal();openPlanDetail('${it.plan.id}')">
+                <span class="ib sm ${it.late ? 'red' : ''}">${icon(it.plan.kind === 'loan' ? 'bank' : 'receipt')}</span>
+                <div style="flex:1;min-width:0"><div class="t1">${esc(rowLabel(it.plan, it.row))}</div>
+                <div class="t2">${fmtDate(it.row.dueISO)}${it.late ? ` · <span style="color:var(--red)">${tr('عقب‌افتاده')}</span>` : ''}</div></div>
+                <div class="amt">${fmt(it.amt)}</div>
+              </div>`
+              )
+              .join('')}
+          </details>`;
+        })
+        .join('')
+    : `<div class="empty">${tr('قسط پرداخت‌نشده‌ای نداری.')}</div>`;
+  const next3 = months.slice(0, 3).reduce((s, m) => s + m.sum, 0);
+  openModal(`
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('اقساط پیش رو')}</h2>
+    <div class="grid3" style="margin:8px 0 12px">
+      <div class="stat"><div class="lbl">${tr('ماندهٔ کل')}</div><div class="val">${fmtShort(remain)}</div></div>
+      <div class="stat"><div class="lbl">${tr('۳ ماه آینده')}</div><div class="val">${fmtShort(next3)}</div></div>
+      <div class="stat"><div class="lbl">${tr('تا پایان')}</div><div class="val">${months.length ? toFa(months.length) + ' ' + tr('ماه') : '—'}</div></div>
+    </div>
+    ${body}
+  `);
+}
+
 export function renderInstallments() {
   const box = document.getElementById('installmentsContent');
   if (!box) return;
@@ -715,10 +783,10 @@ export function renderInstallments() {
   const paidAll = allPlans().reduce((s, p) => s + planStats(p).paidSum, 0);
   let html = '';
   if (plans.length) {
-    html += `<div class="hero">
+    html += `<div class="hero" role="button" tabindex="0" style="cursor:pointer" onclick="openInstSchedule()">
       <div style="min-width:0"><div class="lbl">${icon('calendar')} ${tr('ماندهٔ اقساط')}</div>
       <div class="hero-num">${fmtShort(remain)}</div>
-      <div class="sub">${tr('پرداختی')} ${fmtShort(paidAll)}</div></div>
+      <div class="sub">${tr('پرداختی')} ${fmtShort(paidAll)} · <span style="text-decoration:underline dotted">${tr('ماه‌به‌ماه')}</span></div></div>
       <span class="ib lg ${overdueInstallments() ? 'red' : ''}">${icon('calendar')}</span>
     </div>`;
     html += plans.map(planCard).join('');
@@ -736,7 +804,7 @@ export function installmentsSection() {
   });
   const remain = totalRemaining();
   return `<div class="divider"></div>
-    <div class="card-head"><h3>${icon('calendar')} ${tr('اقساط')}</h3>${plans.length ? `<span class="small muted">${tr('ماندهٔ کل')} ${fmtShort(remain)}</span>` : ''}</div>
+    <div class="card-head"><h3>${icon('calendar')} ${tr('اقساط')}</h3>${plans.length ? `<button type="button" class="small muted" style="background:none;border:0;font:inherit;color:inherit;text-decoration:underline dotted" onclick="openInstSchedule()">${tr('ماندهٔ کل')} ${fmtShort(remain)}</button>` : ''}</div>
     ${plans.length ? plans.map(planCard).join('') : `<div class="empty" style="padding:var(--sp-4)">${tr('وام یا خرید قسطی نداری.')}</div>`}
     <button class="btn block" style="margin-bottom:12px" onclick="openPlanForm()">${icon('plus')} ${tr('وام / خرید قسطی جدید')}</button>`;
 }
