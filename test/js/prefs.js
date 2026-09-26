@@ -1006,10 +1006,10 @@ export function openSettingsScan() {
   `);
 }
 
-// وضعیت به‌روزرسانی (فقط وقتی سرویس‌ورکر فعال است؛ نسخهٔ تست ندارد)
+// وضعیت به‌روزرسانی (ریل: سرویس‌ورکر؛ تست: مقایسهٔ نسخه با سرور)
 function updateStateHTML() {
   const st = window.__appUpdate;
-  if (!('serviceWorker' in navigator) || !window.__checkUpdate) return '';
+  if (!window.__checkUpdate) return '';
   if (st === 'ready')
     return `<div class="upd ready"><span>${tr('نسخهٔ جدید آماده است')}</span><button class="btn primary sm" onclick="window.__applyUpdate()">${tr('اعمال و بازنشانی')}</button></div>`;
   if (st === 'installing' || st === 'checking') return `<div class="upd busy">${tr('در حال بررسی به‌روزرسانی…')}</div>`;

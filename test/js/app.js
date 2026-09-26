@@ -1,4 +1,4 @@
-import { store, toast, showTip, hideTip } from './utils.js';
+import { store, toast, showTip, hideTip, APP_VERSION } from './utils.js';
 import { t, t as tr, setLang, langPref, LANGS, calPref, setCalendar } from './i18n.js';
 import { icon } from './icons.js';
 import * as inst from './installments.js';
@@ -574,6 +574,35 @@ document.addEventListener('visibilitychange', function () {
 
 const swHost = location.hostname;
 const allowSW = false;
+// نسخهٔ تست سرویس‌ورکر ندارد؛ به‌روزرسانی با مقایسهٔ نسخهٔ روی سرور انجام می‌شود (همان دکمهٔ «درباره»)
+if (!allowSW) {
+  const setUpd = (st) => {
+    window.__appUpdate = st;
+    document.dispatchEvent(new CustomEvent('appupdate', { detail: st }));
+  };
+  window.__checkUpdate = () =>
+    fetch('js/utils.js?u=' + Date.now(), { cache: 'no-store' })
+      .then((r) => r.text())
+      .then((txt) => {
+        const m = txt.match(/APP_VERSION\s*=\s*'([^']+)'/);
+        const remote = m && m[1];
+        setUpd(remote && remote !== APP_VERSION ? 'ready' : 'latest');
+        return window.__appUpdate;
+      })
+      .catch(() => {
+        setUpd('offline');
+        return 'offline';
+      });
+  window.__applyUpdate = () => {
+    const u = new URL(location.href);
+    u.searchParams.set('r', String(Date.now()));
+    location.replace(u.toString());
+  };
+  setTimeout(() => window.__checkUpdate(), 1500);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') window.__checkUpdate();
+  });
+}
 if ('serviceWorker' in navigator && store.persisted && allowSW) {
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
