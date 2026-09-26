@@ -830,4 +830,5 @@ export default {
   '{t} دوباره سبز شد': '{t} is green again',
   'تغییر': 'Change',
   'پاکت این خرج را انتخاب کن': 'Pick a pocket for this expense',
+
 };

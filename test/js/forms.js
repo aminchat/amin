@@ -191,6 +191,7 @@ export function openTxForm(tx, opts) {
   openModal(`
     <button class="x" onclick="cancelTxForm()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${isEdit ? (txMode === 'invoice' ? tr('ویرایش فاکتور') : tr('ویرایش تراکنش')) : tr('تراکنش جدید')}</h2>
+    <div id="txStep1">
     <div class="seg" id="txTypeSeg" style="margin-bottom:10px">
       <button class="${type === 'out' ? 'on out' : ''}" data-t="out" onclick="setTxType(this)">${tr('خرج')} −</button>
       <button class="${type === 'in' ? 'on' : ''}" data-t="in" onclick="setTxType(this)">${tr('درآمد +')}</button>
@@ -237,6 +238,21 @@ export function openTxForm(tx, opts) {
     <div class="field"><label>${tr('تاریخ')}</label>
       <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
     </div>
+    <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
+      <div class="hint" style="margin:0 0 8px">${tr('پاکت هر قلم را در خود ردیف انتخاب کن.')}</div>
+      <div id="txLines"></div>
+      <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
+      <div class="row" style="margin-bottom:12px">
+        <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">${icon('plus')} ${tr('قلم')}</button>
+        <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">${tr('مانده را «سایر» کن')}</button>
+      </div>
+    </div>
+    <button type="button" class="btn primary block" id="txNextBtn" onclick="txNext()">${type === 'in' || txMode === 'invoice' ? (isEdit ? tr('ذخیره تغییرات') : tr('ثبت')) : tr('ادامه') + ' ←'}</button>
+    ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? tr('حذف این فاکتور') : tr('حذف این تراکنش')}</button>` : ''}
+    </div>
+    <div id="txStep2" style="display:none">
+      <button type="button" class="sback" onclick="txBack()">${icon('chevR')} ${tr('act.back')}</button>
+      <div class="tx-recap" id="txRecap"></div>
     <div class="field catbox" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
       <label>${tr('پاکت')} ${infoTip(tr('ضروریات: اجاره، خوراک، قبض. آزادی مالی: پس‌انداز و سرمایه‌گذاری. تفریح: هر چیزی که فقط برای لذت است. نیکوکاری: کمک و هدیه. هدررفت: خرجی که بعدش پشیمان شدی.'))}</label>
       <div class="chips ${pickedCat ? 'picked' : ''}" id="txCats">${catChipsHtml(pickedCat, 'setTxCat')}<button type="button" class="chip change" onclick="txCatsExpand()">${icon('edit')} ${tr('تغییر')}</button></div>
@@ -247,17 +263,8 @@ export function openTxForm(tx, opts) {
       <label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
       <textarea class="input" id="txReflect" placeholder="${tr('مثلاً: می‌توانستم همان پول را پس‌انداز کنم...')}">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
     </div>
-    <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
-      <div class="hint" style="margin:0 0 8px">${tr('پاکت هر قلم را در خود ردیف انتخاب کن.')}</div>
-      <div id="txLines"></div>
-      <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
-      <div class="row" style="margin-bottom:12px">
-        <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">${icon('plus')} ${tr('قلم')}</button>
-        <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">${tr('مانده را «سایر» کن')}</button>
-      </div>
+      <button class="btn primary block" onclick="saveTx()">${isEdit ? tr('ذخیره تغییرات') : tr('ثبت')}</button>
     </div>
-    <button class="btn primary block" onclick="saveTx()">${isEdit ? tr('ذخیره تغییرات') : tr('ثبت')}</button>
-    ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? tr('حذف این فاکتور') : tr('حذف این تراکنش')}</button>` : ''}
   `);
   { const ai = document.getElementById('txAmount'); if (ai) ai.dataset.cur = amountCur; } // ارزِ مبدأ برای تبدیل هنگام تغییر حساب
   if (txMode === 'invoice') {
@@ -384,6 +391,9 @@ function applyTxModeUi() {
   if (invScan) invScan.style.display = isOut ? '' : 'none';
   const tc = document.getElementById('txTitleChips');
   if (tc) tc.style.display = !isOut || inv ? 'none' : '';
+  const nb = document.getElementById('txNextBtn');
+  if (nb) nb.textContent = !isOut || inv ? (editingTxId ? tr('ذخیره تغییرات') : tr('ثبت')) : tr('ادامه') + ' ←';
+  if (!isOut || inv) txBack();
   const unitWrap = document.getElementById('txUnitWrap');
   const catWrap = document.getElementById('txCatWrap');
   const invWrap = document.getElementById('txInvoiceWrap');
@@ -421,6 +431,33 @@ export function setTxType(btn) {
   }
 }
 
+// دو صفحه‌ای: ۱) مشخصات اصلی  ۲) پاکت و زیرشاخه
+export function txNext() {
+  const typeBtn = document.querySelector('#txTypeSeg button.on');
+  const isOut = typeBtn && typeBtn.dataset.t === 'out';
+  if (!isOut || txMode === 'invoice') { saveTx(); return; }
+  const p = parseFloat((document.getElementById('txUnitPrice') || {}).value) || 0;
+  const q = parseFloat((document.getElementById('txQty') || {}).value) || 0;
+  const amount = p > 0 && q > 0 ? p * q : parseFloat((document.getElementById('txAmount') || {}).value);
+  if (!amount || amount <= 0) {
+    toast(tr('مبلغ را درست وارد کن'));
+    const a = document.getElementById('txAmount'); if (a) a.focus();
+    return;
+  }
+  const note = ((document.getElementById('txNote') || {}).value || '').trim();
+  const acc = accountById((document.getElementById('txAccount') || {}).value);
+  const recap = document.getElementById('txRecap');
+  if (recap) recap.innerHTML = `<div class="t1">${esc(note || tr('خرج'))}</div><div class="t2">${fmt(amount)} ${esc(curName(acc ? acc.currency : baseCur()))}${acc ? ' · ' + esc(acc.name) : ''} · ${fmtDate((document.getElementById('txDate') || {}).value || todayISO())}</div>`;
+  const s1 = document.getElementById('txStep1'), s2 = document.getElementById('txStep2');
+  if (s1) s1.style.display = 'none';
+  if (s2) s2.style.display = '';
+  const sheet = document.getElementById('sheet'); if (sheet) sheet.scrollTop = 0;
+}
+export function txBack() {
+  const s1 = document.getElementById('txStep1'), s2 = document.getElementById('txStep2');
+  if (s2) s2.style.display = 'none';
+  if (s1) s1.style.display = '';
+}
 export function txCatsExpand() {
   const w = document.getElementById('txCats');
   if (w) w.classList.remove('picked');

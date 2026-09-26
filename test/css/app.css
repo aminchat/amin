@@ -866,3 +866,10 @@ body.onboarding{overflow:hidden}
 @keyframes subIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .catbox.shake{animation:shake .5s ease}
 @keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.tx-recap{background:var(--card2);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);margin:8px 0 var(--sp-4)}
+.tx-recap .t1{font-weight:800;font-size:var(--fs-md)}
+.tx-recap .t2{color:var(--muted);font-size:var(--fs-sm);margin-top:2px}
+#txStep2 .catbox{background:transparent;padding:0}
+#txStep2 .catbox>label{font-size:var(--fs-md);font-weight:800;color:var(--text)}
+#txStep2 .chip{min-height:44px;font-size:var(--fs-md)}
+#txStep2 .chip.sub{min-height:34px;font-size:var(--fs-sm)}
