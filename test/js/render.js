@@ -2,6 +2,7 @@ import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign } from './utils
 import { lightsHtml } from './health.js';
 import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
+import { clarityChip } from './clarity.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS, bookNow, daysInMonthKey } from './jalali.js';
 import { renderSyncCard } from './sync.js';
@@ -141,8 +142,10 @@ function homeStatusChips() {
   if (oblig > 0) chips.push({ cls: '', ic: 'calendar', t: tr('home.chip.oblig', { amt: fmtShort(oblig) }), on: "switchTab('debts')" });
   const inv = investTotal();
   if (inv > 0) chips.push({ cls: '', ic: 'trend', t: tr('home.chip.invest', { amt: fmtShort(inv) }), on: "switchTab('invest')" });
+  const cc = clarityChip(curMonthKey());
+  if (cc) chips.splice(1, 0, cc);
   return `<div class="status-row">${chips
-    .map((c) => `<button type="button" class="schip ${c.cls}" onclick="${c.on}">${icon(c.ic)}<span>${c.t}</span></button>`)
+    .map((c) => `<button type="button" class="schip ${c.cls}" onclick="${c.on}">${c.html || icon(c.ic) + '<span>' + c.t + '</span>'}</button>`)
     .join('')}</div>`;
 }
 

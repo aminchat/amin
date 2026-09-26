@@ -1,7 +1,7 @@
 import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage } from './scan.js';
-import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, bookNow, bookCalendar } from './jalali.js';
+import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, shiftMonth, bookNow, bookCalendar } from './jalali.js';
 import { jalaliMonths, gregMonths } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
@@ -31,7 +31,7 @@ import {
   accountOptGroups,
   institutionOf, baseCur, rateOf } from './state.js';
 import { t as tr } from './i18n.js';
-import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor, subLabel } from './subs.js';
+import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor, subLabel, subTotals } from './subs.js';
 import { pickSub } from './subsui.js';
 
 const LAST_ACCT_KEY = 'capital_last_account';
@@ -93,14 +93,21 @@ let paperDraft = [];
 
 // بلوک زیرشاخه (مرحلهٔ ۲) + خط خلاصهٔ «پاکت › زیرشاخه»
 function txSubBlockHtml(cat, sub) {
-  const lbl = cat === 'waste' ? tr('۲. دلیلش چه بود؟') : tr('۲. چه نوعی؟');
-  return `<label class="sublbl">${lbl} <span class="muted">(${tr('اختیاری')})</span></label>${subChipsHtml(cat, sub, 'setTxSub')}`;
+  const lbl = cat === 'waste' ? tr('۲. دلیلش چه بود؟') : tr('۲. دقیق‌تر: روی چه؟');
+  return `<label class="sublbl">${lbl} ${infoTip(tr('با زیرشاخه، ماه بعد می‌بینی پولت دقیقاً کجا رفته — نه فقط «ضروریات»، بلکه «خواربار ۴۰٪، قبض ۲۵٪…». بدون آن، گزارش فقط پنج عدد کلی است.'))}</label>${subChipsHtml(cat, sub, 'setTxSub')}`;
 }
 let txSubSuggested = false;
 function catSummaryHtml(cat, sub) {
   const c = CATS.find((x) => x.id === cat);
   if (!c) return '';
-  return `<span class="dot" style="background:${c.color}"></span>${esc(c.label)}${sub ? ' <span class="sep">›</span> ' + esc(subLabel(sub)) : ''}${txSubSuggested ? `<span class="sugg">${icon('sparkle')} ${tr('پیشنهاد از قبل')}</span>` : ''}`;
+  let live = '';
+  if (sub) {
+    const mk = curMonthKey();
+    const cur = (subTotals(mk, cat).rows.find((r) => r.sub === sub) || {}).amount || 0;
+    const prev = (subTotals(shiftMonth(mk, -1), cat).rows.find((r) => r.sub === sub) || {}).amount || 0;
+    if (cur || prev) live = `<div class="cat-live">${tr('این ماه')} <b>${fmtShort(cur)}</b>${prev ? ` · ${tr('ماه قبل')} ${fmtShort(prev)} ${cur > prev * 1.1 ? '<span class="val red">↑</span>' : cur < prev * 0.9 ? '<span class="val green">↓</span>' : ''}` : ''}</div>`;
+  }
+  return `<div class="cat-line"><span class="dot" style="background:${c.color}"></span>${esc(c.label)} <span class="sep">›</span> ${sub ? esc(subLabel(sub)) : '<span class="q">?</span>'}${txSubSuggested ? `<span class="sugg">${icon('sparkle')} ${tr('پیشنهاد از قبل')}</span>` : ''}</div>${live}`;
 }
 function paintTxSub(cat) {
   const sw = document.getElementById('txSubWrap');

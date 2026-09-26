@@ -618,6 +618,7 @@ export function mergeStates(local, remote) {
     installments: mergeById(local.installments, remote.installments),
     budgets: Object.assign({}, remote.budgets || {}, local.budgets || {}),
     rates: Object.assign({}, remote.rates || {}, local.rates || {}),
+    cheers: Object.assign({}, remote.cheers || {}, local.cheers || {}),
     titleMap: mergeTitleMap(local.titleMap, remote.titleMap),
     ...((local.titleGroupsAt || 0) >= (remote.titleGroupsAt || 0) ? { titleGroups: local.titleGroups || {}, titleNo: local.titleNo || [], titleGroupsAt: local.titleGroupsAt || 0 } : { titleGroups: remote.titleGroups || {}, titleNo: remote.titleNo || [], titleGroupsAt: remote.titleGroupsAt || 0 }),
     customSubs: mergeById(local.customSubs, remote.customSubs),

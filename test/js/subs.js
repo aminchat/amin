@@ -7,6 +7,7 @@ import { state, CATS, catById, isTransfer, isInvoice, isLoanTx, txAmountToman, c
 import { toFa, fmt, fmtShort, esc, pctSign } from './utils.js';
 import { curMonthKey, shiftMonth, monthLabel } from './jalali.js';
 import { icon } from './icons.js';
+import { lockedReportHtml } from './clarity.js';
 
 // ── فهرست زیرشاخه‌ها (کلید ثابت؛ برچسب از دیکشنری) ──
 export const SUBS = [
@@ -492,9 +493,8 @@ export function subReportHtml(mk, catId) {
       <div class="val ${share && total > share ? 'red' : ''}">${fmtShort(total)}</div>
       <div class="sub">${share ? (tr('سقف') + ' ' + fmtShort(share) + ' · ' + (total > share ? tr('{amt} بیشتر', { amt: fmtShort(total - share) }) : tr('{amt} مانده', { amt: fmtShort(share - total) }))) : tr('بودجه این ماه ثبت نشده')}</div>
     </div>
-    ${stackedBar(rows, total)}
-    <div class="stack-legend">${rows.slice(0, 6).map((r, i) => `<span><i style="background:${r.sub ? colorFor(i) : 'var(--faint)'}"></i>${esc(subLabel(r.sub))} ${toFa(Math.round((r.amount / (total || 1)) * 100))}${pctSign()}</span>`).join('')}</div>
-    ${ins.length ? `<div class="insights">${ins.map((x) => `<div class="ins ${x.cls}" ${x.quick ? `onclick="openQuickCategorize('${catId}','${mk}')"` : x.sub ? `onclick="openSubReport('${catId}','${x.sub}','${mk}')"` : ''}>${icon(x.cls === 'good' ? 'check' : x.cls === 'warn' ? 'alert' : 'info')}<span>${x.txt}</span></div>`).join('')}</div>` : ''}`;
+    ${(() => { const lk = lockedReportHtml(mk, catId); if (lk) return lk; return stackedBar(rows, total) + `<div class="stack-legend">${rows.slice(0, 6).map((r, i) => `<span><i style="background:${r.sub ? colorFor(i) : 'var(--faint)'}"></i>${esc(subLabel(r.sub))} ${toFa(Math.round((r.amount / (total || 1)) * 100))}${pctSign()}</span>`).join('')}</div>`; })()}
+    ${ins.length && !lockedReportHtml(mk, catId) ? `<div class="insights">${ins.map((x) => `<div class="ins ${x.cls}" ${x.quick ? `onclick="openQuickCategorize('${catId}','${mk}')"` : x.sub ? `onclick="openSubReport('${catId}','${x.sub}','${mk}')"` : ''}>${icon(x.cls === 'good' ? 'check' : x.cls === 'warn' ? 'alert' : 'info')}<span>${x.txt}</span></div>`).join('')}</div>` : ''}`;
   const list = rows.length
     ? rows
         .map((r, i) => {

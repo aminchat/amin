@@ -19,6 +19,7 @@ import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state, curStats } from './state.js';
 import { guideAfterRender } from './guide.js';
+import { celebrateAfterRender } from './clarity.js';
 import { renderAll, fitNumbers, setTodayLabel, resetMonths, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
@@ -162,6 +163,7 @@ import {
 setRender(() => {
   renderAll();
   guideAfterRender(curTab);
+  setTimeout(celebrateAfterRender, 250);
 });
 setOnSave(scheduleSync);
 
