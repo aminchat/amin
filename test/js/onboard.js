@@ -48,6 +48,45 @@ export function openOnboarding() {
   paint();
 }
 
+
+// ── تصویرسازی خطی (SVG) برای کاروسل خوش‌آمد ──
+const P = (n) => (lang() === 'fa' ? String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]) + '٪' : n + '%');
+const ART = () => ({
+  pockets: `<svg viewBox="0 0 240 170" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <g opacity=".95"><rect x="18" y="58" width="92" height="64" rx="8"/><path d="M18 66l46 30 46-30"/><text x="64" y="112" text-anchor="middle" font-size="14" font-weight="800" fill="currentColor" stroke="none">${P(60)}</text></g>
+    <g opacity=".75"><rect x="130" y="58" width="92" height="64" rx="8"/><path d="M130 66l46 30 46-30"/><text x="176" y="112" text-anchor="middle" font-size="14" font-weight="800" fill="currentColor" stroke="none">${P(20)}</text></g>
+    <g opacity=".6"><rect x="46" y="18" width="70" height="34" rx="6"/><path d="M46 24l35 20 35-20"/><text x="81" y="47" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" stroke="none">${P(15)}</text></g>
+    <g opacity=".6"><rect x="126" y="18" width="70" height="34" rx="6"/><path d="M126 24l35 20 35-20"/><text x="161" y="47" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" stroke="none">${P(5)}</text></g>
+    <path d="M40 150h160" opacity=".35"/><circle cx="120" cy="150" r="9" fill="var(--bg)"/><path d="M116 150h8M120 146v8"/>
+  </svg>`,
+  balance: `<svg viewBox="0 0 240 170" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 40h180" opacity=".35"/>
+    <g opacity=".9"><rect x="30" y="58" width="180" height="12" rx="6" opacity=".25"/><rect x="30" y="58" width="112" height="12" rx="6" fill="currentColor" stroke="none" opacity=".9"/><path d="M150 52v24" stroke-width="3"/></g>
+    <g opacity=".9"><rect x="30" y="88" width="180" height="12" rx="6" opacity=".25"/><rect x="30" y="88" width="168" height="12" rx="6" fill="#f59e0b" stroke="none"/><path d="M150 82v24" stroke-width="3"/></g>
+    <g opacity=".9"><rect x="30" y="118" width="180" height="12" rx="6" opacity=".25"/><rect x="30" y="118" width="70" height="12" rx="6" fill="#22c55e" stroke="none"/><path d="M110 112v24" stroke-width="3"/></g>
+    <circle cx="60" cy="150" r="5" fill="#22c55e" stroke="none"/><circle cx="120" cy="150" r="5" fill="#f59e0b" stroke="none"/><circle cx="180" cy="150" r="5" fill="#ef4444" stroke="none"/>
+  </svg>`,
+  lock: `<svg viewBox="0 0 240 170" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M62 128a26 26 0 0 1-4-52 40 40 0 0 1 76-10 30 30 0 0 1 32 62" opacity=".55"/>
+    <rect x="86" y="86" width="68" height="56" rx="10" fill="var(--bg)"/><path d="M100 86V72a20 20 0 0 1 40 0v14"/><circle cx="120" cy="112" r="6" fill="currentColor" stroke="none"/><path d="M120 118v10"/>
+    <rect x="176" y="102" width="40" height="58" rx="8" opacity=".55"/><path d="M190 152h12" opacity=".55"/>
+    <path d="M28 40l8-8 8 8M36 32v22" opacity=".45"/>
+  </svg>`,
+});
+function carousel() {
+  const slides = [
+    { art: 'pockets', h: 'هر تومان از قبل جای خودش را دارد', p: 'درآمد ماه به چهار پاکت تقسیم می‌شود: ۶۰٪ ضروریات، ۲۰٪ آزادی مالی، ۱۵٪ تفریح، ۵٪ نیکوکاری.' },
+    { art: 'balance', h: 'هدف در برابر واقعی', p: 'هر پاکت یک خط هدف دارد. سبز یعنی روی خط، زرد احتیاط، قرمز توقف — بی‌آنکه لازم باشد چیزی حساب کنی.' },
+    { art: 'lock', h: 'داده روی گوشی خودت', p: 'همه‌چیز روی همین دستگاه می‌ماند. اگر بخواهی با رمزِ خودت قفلش می‌کنی و در گوگل درایو پشتیبان می‌گیری.' },
+  ];
+  return `<div class="ob-car" id="obCar" onscroll="obCarScroll(this)">${slides.map((s) => `<div class="ob-slide">${ART()[s.art]}<h1 class="ob-h">${tr(s.h)}</h1><p class="ob-p">${tr(s.p)}</p></div>`).join('')}</div>
+  <div class="ob-car-dots" id="obCarDots">${slides.map((_, i) => `<i class="${i === 0 ? 'on' : ''}"></i>`).join('')}</div>`;
+}
+function obCarScroll(el) {
+  const i = Math.round(Math.abs(el.scrollLeft) / el.clientWidth);
+  document.querySelectorAll('#obCarDots i').forEach((d, k) => d.classList.toggle('on', k === i));
+}
+
 // ── صفحات ──
 function dots(n) {
   return `<div class="ob-dots">${[1, 2, 3, 4].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div>`;
@@ -64,8 +103,8 @@ function shell(inner, opts) {
 function pageWelcome() {
   return shell(`
     <div class="logo ob-logo">${icon('wallet')}</div>
-    <h1 class="ob-h">${tr('به تراز خوش آمدی')}</h1>
-    <p class="ob-p">${tr('خرج و درآمدت را با روش چهار پاکت مرتب کن؛ داده‌ها روی همین دستگاه می‌مانند.')}</p>
+    <div class="small muted" style="font-weight:800;margin-bottom:var(--sp-3)">${tr('به تراز خوش آمدی')}</div>
+    ${carousel()}
     <div class="ob-actions">
       <button type="button" class="btn primary block lg" onclick="obNext()">${tr('شروع تازه')}</button>
       <button type="button" class="btn block lg" onclick="obRestore()">${icon('cloud')} ${tr('قبلاً حساب داشته‌ام')}</button>
@@ -252,5 +291,5 @@ document.addEventListener('cap:stateReplaced', () => {
 });
 
 if (typeof window !== 'undefined') {
-  Object.assign(window, { obNext, obSkip, obBack, obRestore, obSetLang, obSetCal, obIrregular, obFinish, obGoogle, obImport, openOnboarding });
+  Object.assign(window, { obCarScroll, obNext, obSkip, obBack, obRestore, obSetLang, obSetCal, obIrregular, obFinish, obGoogle, obImport, openOnboarding });
 }

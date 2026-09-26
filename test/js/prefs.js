@@ -1033,6 +1033,11 @@ if (typeof document !== 'undefined')
   });
 if (typeof window !== 'undefined') window.checkAppUpdate = checkAppUpdate;
 
+export function resetGuidesUI() {
+  window.resetGuides();
+  closeModal();
+  toast(tr('راهنماها دوباره فعال شد') + ' ✓');
+}
 export function openSettingsAbout() {
   openModal(`
     ${settingsHeader(('ℹ️ ' + tr('دربارهٔ برنامه')), 'openSettings()')}
@@ -1048,6 +1053,9 @@ export function openSettingsAbout() {
     <div class="sgroup" style="margin-top:12px">
       ${settingsRow('shield', '#64748b', tr('سیاست حریم خصوصی'), '', "window.open('" + legalUrl('privacy') + "','_blank')")}
       ${settingsRow('doc', '#64748b', tr('شرایط استفاده'), '', "window.open('" + legalUrl('terms') + "','_blank')")}
+    </div>
+    <div class="sgroup" style="margin-top:12px">
+      ${settingsRow('sparkle', '#f59e0b', tr('راهنماها را دوباره نشان بده'), tr('نکته‌های کوتاه روی صفحه، هر جا لازم شد'), "resetGuidesUI()")}
     </div>
   `);
 }

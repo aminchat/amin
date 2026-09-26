@@ -284,7 +284,7 @@ export function renderTx() {
   </div>`;
 
   if (txs.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}${state.accounts.length ? `<button type="button" class="btn sm primary" onclick="openQuickTx()">${icon('plus')} ${tr('ثبت تراکنش')}</button>` : `<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button>`}</div>`;
   } else {
     const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
     const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
@@ -524,7 +524,7 @@ export function renderInvest() {
 `;
 
   if (state.investments.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>${tr('inv.empty')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('trend')}</span>${tr('inv.empty')}<button type="button" class="btn sm primary" onclick="openInvestForm()">${icon('plus')} ${tr('افزودن دارایی')}</button></div>`;
   } else {
     html += state.investments
       .map((i) => {
@@ -582,7 +582,7 @@ export function renderAccounts() {
   let html = '';
 
   if (state.accounts.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('acc.empty')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('acc.empty')}<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button></div>`;
   } else {
     // گروه‌بندی بر اساس مؤسسه
     const groups = new Map();

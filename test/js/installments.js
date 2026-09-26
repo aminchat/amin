@@ -824,7 +824,7 @@ export function renderInstallments() {
     </div>`;
     html += plans.map(planCard).join('');
   } else {
-    html += `<div class="empty"><span class="ib lg muted">${icon('calendar')}</span>${tr('وام یا خرید قسطی ثبت نکرده‌ای.')}<br>${tr('با دکمهٔ + بالا یا پایین صفحه شروع کن.')}</div>`;
+    html += `<div class="empty"><span class="ib lg muted">${icon('calendar')}</span>${tr('وام یا خرید قسطی ثبت نکرده‌ای.')}<br>${tr('با دکمهٔ + بالا یا پایین صفحه شروع کن.')}<button type="button" class="btn sm primary" onclick="openPlanForm()">${icon('plus')} ${tr('ثبت وام / خرید قسطی')}</button></div>`;
   }
   box.innerHTML = html;
 }

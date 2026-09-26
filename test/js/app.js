@@ -17,7 +17,8 @@ import { openCatReport, openSubReport, openTitleItems,
   csDelete3, openQuickCategorize, qcPick } from './subsui.js';
 import { closeModal, openModal } from './modal.js';
 import { render, setRender } from './view.js';
-import { setOnSave, state } from './state.js';
+import { setOnSave, state, curStats } from './state.js';
+import { guideAfterRender } from './guide.js';
 import { renderAll, fitNumbers, setTodayLabel, resetMonths, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import {
   delDebt,
@@ -68,6 +69,7 @@ import {
   bcSync,
   applyBaseCurrency,
   openSettingsAbout,
+  resetGuidesUI,
   lockApp,
   recoveryFinish,
   recoveryStep2,
@@ -157,7 +159,10 @@ import {
   qaSave,
 } from './forms.js';
 
-setRender(renderAll);
+setRender(() => {
+  renderAll();
+  guideAfterRender(curTab);
+});
 setOnSave(scheduleSync);
 
 const TABS = [
@@ -319,6 +324,7 @@ function findInvest(id) {
 }
 
 Object.assign(window, {
+  curStats,
   openPlanForm: inst.openPlanForm,
   plPickSub: inst.plPickSub,
   plCatChanged: inst.plCatChanged,
@@ -470,6 +476,7 @@ Object.assign(window, {
   bcSync,
   applyBaseCurrency,
   openSettingsAbout,
+  resetGuidesUI,
   lockApp,
   saveGeminiKey,
   clearGeminiKey,
