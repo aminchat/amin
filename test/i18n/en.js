@@ -33,7 +33,7 @@ export default {
   'act.budget': 'Budget',
   'act.prevMonth': 'Previous month',
   'act.nextMonth': 'Next month',
-  'act.scanPaper': 'Add several transactions from a photo',
+  'act.scanPaper': 'Read from photo (invoice or list)',
   'act.updatePrice': 'Update today’s price',
   'act.setRate': 'Set rate',
 

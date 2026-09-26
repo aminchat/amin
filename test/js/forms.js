@@ -1,6 +1,6 @@
 import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep } from './utils.js';
 import { icon } from './icons.js';
-import { hasGeminiKey, readInvoiceImage, readPaperTxImage } from './scan.js';
+import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage } from './scan.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, bookNow, bookCalendar } from './jalali.js';
 import { jalaliMonths, gregMonths } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
@@ -31,7 +31,7 @@ import {
   accountOptGroups,
   institutionOf, baseCur, rateOf } from './state.js';
 import { t as tr } from './i18n.js';
-import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor } from './subs.js';
+import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor, subLabel } from './subs.js';
 import { pickSub } from './subsui.js';
 
 const LAST_ACCT_KEY = 'capital_last_account';
@@ -91,6 +91,27 @@ let draftLines = [];
 let txSub = '';
 let paperDraft = [];
 
+// بلوک زیرشاخه (مرحلهٔ ۲) + خط خلاصهٔ «پاکت › زیرشاخه»
+function txSubBlockHtml(cat, sub) {
+  const lbl = cat === 'waste' ? tr('۲. دلیلش چه بود؟') : tr('۲. چه نوعی؟');
+  return `<label class="sublbl">${lbl} <span class="muted">(${tr('اختیاری')})</span></label>${subChipsHtml(cat, sub, 'setTxSub')}`;
+}
+let txSubSuggested = false;
+function catSummaryHtml(cat, sub) {
+  const c = CATS.find((x) => x.id === cat);
+  if (!c) return '';
+  return `<span class="dot" style="background:${c.color}"></span>${esc(c.label)}${sub ? ' <span class="sep">›</span> ' + esc(subLabel(sub)) : ''}${txSubSuggested ? `<span class="sugg">${icon('sparkle')} ${tr('پیشنهاد از قبل')}</span>` : ''}`;
+}
+function paintTxSub(cat) {
+  const sw = document.getElementById('txSubWrap');
+  if (sw) sw.innerHTML = txSubBlockHtml(cat, txSub);
+  paintCatSummary();
+}
+function paintCatSummary() {
+  const active = document.querySelector('#txCats .chip.on');
+  const el = document.getElementById('txCatSummary');
+  if (el) el.innerHTML = catSummaryHtml(active ? active.dataset.cat : 'need', txSub);
+}
 function catChipsHtml(selected, onclickName, extraArg) {
   // پاکت قرض/امانت فقط از بخش «طلب و بدهی» پر می‌شود؛ در فرم تراکنش نمایش داده نمی‌شود
   return CATS.filter((c) => !c.loan).map((c) => {
@@ -172,13 +193,20 @@ export function openTxForm(tx, opts) {
       <button class="${txMode === 'invoice' ? 'on' : ''}" data-m="invoice" onclick="setTxMode(this)">${tr('فاکتور')}</button>
     </div>
     <div id="txScanWrap" style="${isEdit ? 'display:none' : ''}">
-      <input id="invPhotoCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onInvoicePhoto(this)">
-      <input id="invPhotoGal" type="file" accept="image/*" style="display:none" onchange="onInvoicePhoto(this)">
-      <div class="row" id="txInvScanRow" style="margin-bottom:8px;${type === 'in' ? 'display:none' : ''}">
-        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('cam')">${icon('camera')} ${tr('عکس فاکتور')}</button>
-        <button type="button" class="btn sm" style="flex:1" onclick="startInvoicePhoto('gal')">${icon('folder')} ${tr('فاکتور از گالری')}</button>
+      <input id="scanCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onScanPhoto(this)">
+      <input id="scanGal" type="file" accept="image/*" style="display:none" onchange="onScanPhoto(this)">
+      <div id="txScanRow" style="margin-bottom:12px;${type === 'in' ? 'display:none' : ''}">
+        <button type="button" class="btn block" onclick="toggleScanPick()">${icon('scan')} ${tr('خواندن از عکس')} <span class="small muted">· ${tr('فاکتور یا لیست دست‌نویس')}</span></button>
+        <div class="row scan-pick" id="scanPick" style="display:none;margin-top:8px">
+          <button type="button" class="btn sm" style="flex:1" onclick="startScan('cam')">${icon('camera')} ${tr('دوربین')}</button>
+          <button type="button" class="btn sm" style="flex:1" onclick="startScan('gal')">${icon('folder')} ${tr('گالری')}</button>
+        </div>
+        <div id="scanVerdict"></div>
       </div>
-      <button type="button" class="btn block" style="margin-bottom:12px" onclick="openPaperScan()">${icon('scan')} ${tr('لیست چند تراکنش از عکس کاغذ')}</button>
+    </div>
+    <div class="field"><label>${tr('عنوان')}</label>
+      <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? tr('مثلاً: فروشگاه رفاه') : tr('مثلاً: خرید هفتگی')}" value="${tx ? esc(tx.note || '') : esc(pre.note || '')}" oninput="onTxNoteInput(this)">
+      <div id="txTitleChips" style="margin-top:8px;${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">${titleChipsHtml(defaultCat, 'pickTxTitle')}</div>
     </div>
     <div class="field"><label id="txAmountLbl">${txMode === 'invoice' ? tr('مبلغ کل فاکتور') : tr('مبلغ')} (${esc(curName(amountCur))})</label>
       <input class="input" id="txAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 250000')}" value="${tx ? tx.amount : pre.amount || ''}" oninput="onTxAmountInput()">
@@ -196,20 +224,18 @@ export function openTxForm(tx, opts) {
         <input class="input" id="txUnit" placeholder="${tr('عدد / کیلو / گرم')}" value="${tx && tx.unit ? esc(tx.unit) : ''}">
       </div>
     </div>
-    <div class="field"><label>${tr('از کدام حساب؟')}</label>
-      <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
-    </div>
-    <div class="field" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
-      <label>${tr('دسته‌بندی خرج')}</label>
+    <div class="field catbox" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
+      <label>${tr('۱. کدام پاکت؟')} ${infoTip(tr('ضروریات: اجاره، خوراک، قبض. آزادی مالی: پس‌انداز و سرمایه‌گذاری. تفریح: هر چیزی که فقط برای لذت است. نیکوکاری: کمک و هدیه. هدررفت: خرجی که بعدش پشیمان شدی.'))}</label>
       <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
-      <div id="txSubWrap" style="margin-top:8px">${subChipsHtml(defaultCat, txSub, 'setTxSub')}</div>
-      <div id="txTitleChips" style="margin-top:8px">${titleChipsHtml(defaultCat, 'pickTxTitle')}</div>
+      <div id="txSubWrap" class="subbox">${txSubBlockHtml(defaultCat, txSub)}</div>
+      <div id="txCatSummary" class="cat-sum">${catSummaryHtml(defaultCat, txSub)}</div>
     </div>
     <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
       <label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
       <textarea class="input" id="txReflect" placeholder="${tr('مثلاً: می‌توانستم همان پول را پس‌انداز کنم...')}">${tx && tx.reflect ? esc(tx.reflect) : ''}</textarea>
     </div>
     <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
+      <div class="hint" style="margin:0 0 8px">${tr('پاکت هر قلم را در خود ردیف انتخاب کن.')}</div>
       <div id="txLines"></div>
       <div id="txRemain" class="hint" style="margin:8px 0 10px"></div>
       <div class="row" style="margin-bottom:12px">
@@ -217,8 +243,8 @@ export function openTxForm(tx, opts) {
         <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">${tr('مانده را «سایر» کن')}</button>
       </div>
     </div>
-    <div class="field"><label>${tr('توضیح (اختیاری)')}</label>
-      <input class="input" id="txNote" placeholder="${txMode === 'invoice' ? tr('مثلاً: فروشگاه رفاه') : tr('مثلاً: خرید هفتگی')}" value="${tx ? esc(tx.note || '') : esc(pre.note || '')}" oninput="onTxNoteInput(this)">
+    <div class="field"><label>${tr('از کدام حساب؟')}</label>
+      <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
     </div>
     <div class="field"><label>${tr('تاریخ')}</label>
       <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
@@ -347,8 +373,10 @@ function applyTxModeUi() {
   if (modeSeg) modeSeg.style.display = isOut ? '' : 'none';
   const scanWrap = document.getElementById('txScanWrap');
   if (scanWrap && !editingTxId) scanWrap.style.display = '';
-  const invScan = document.getElementById('txInvScanRow');
+  const invScan = document.getElementById('txScanRow');
   if (invScan) invScan.style.display = isOut ? '' : 'none';
+  const tc = document.getElementById('txTitleChips');
+  if (tc) tc.style.display = !isOut || inv ? 'none' : '';
   const unitWrap = document.getElementById('txUnitWrap');
   const catWrap = document.getElementById('txCatWrap');
   const invWrap = document.getElementById('txInvoiceWrap');
@@ -397,14 +425,15 @@ export function setTxCat(btn) {
   if (rw) rw.style.display = btn.dataset.cat === 'waste' && txMode === 'simple' ? '' : 'none';
   const cat = btn.dataset.cat;
   if (!subsFor(cat).some((x) => x.id === txSub)) txSub = '';
-  const sw = document.getElementById('txSubWrap');
-  if (sw) sw.innerHTML = subChipsHtml(cat, txSub, 'setTxSub');
+  if (!txSubKeep) txSubSuggested = false;
+  paintTxSub(cat);
   const tc = document.getElementById('txTitleChips');
   if (tc) tc.innerHTML = titleChipsHtml(cat, 'pickTxTitle');
 }
+let txSubKeep = false;
 export function setTxSub(btn) {
   const active = document.querySelector('#txCats .chip.on');
-  pickSub(btn, active ? active.dataset.cat : 'need', (sub) => { txSub = sub; });
+  pickSub(btn, active ? active.dataset.cat : 'need', (sub) => { txSub = sub; txSubSuggested = false; paintCatSummary(); });
 }
 // چیپ عنوان: عنوان + زیرشاخه + آخرین مبلغ (قابل اصلاح) پر می‌شود
 export function pickTxTitle(btn) {
@@ -418,9 +447,9 @@ export function pickTxTitle(btn) {
     if (chip && !chip.classList.contains('on')) setTxCat(chip);
   }
   txSub = sub;
+  txSubSuggested = !!sub;
   const active = document.querySelector('#txCats .chip.on');
-  const sw = document.getElementById('txSubWrap');
-  if (sw) sw.innerHTML = subChipsHtml(active ? active.dataset.cat : 'need', txSub, 'setTxSub');
+  paintTxSub(active ? active.dataset.cat : 'need');
   const amt = Number(btn.dataset.amt) || (m && m.amt) || 0;
   const a = document.getElementById('txAmount');
   if (a && !a.value && amt) {
@@ -437,13 +466,15 @@ export function onTxNoteInput(el) {
   if (!m) return;
   if (m.sub && !txSub) {
     txSub = m.sub;
+    txSubSuggested = true;
+    txSubKeep = true;
     const active = document.querySelector('#txCats .chip.on');
     if (active && active.dataset.cat !== m.cat) {
       const chip = document.querySelector('#txCats .chip[data-cat="' + m.cat + '"]');
       if (chip) setTxCat(chip);
     }
-    const sw = document.getElementById('txSubWrap');
-    if (sw) sw.innerHTML = subChipsHtml(m.cat, txSub, 'setTxSub');
+    txSubKeep = false;
+    paintTxSub(m.cat);
   }
 }
 
@@ -637,14 +668,93 @@ export function setLineCat(btn, lineId) {
   renderTxLines();
 }
 
-export function startInvoicePhoto(kind) {
+let lastScanFile = null;
+// از تب تراکنش‌ها: فرم کامل باز شود و مستقیم انتخاب دوربین/گالری نشان داده شود
+export function openScanFromList() {
+  if (state.accounts.length === 0) {
+    toast(tr('اول یک حساب بساز'));
+    return;
+  }
+  openTxForm(null, { full: true });
+  setTimeout(() => toggleScanPick(), 30);
+}
+export function toggleScanPick() {
   if (!hasGeminiKey()) {
     toast(tr('اول در تنظیمات کلید عکس را بگذار'));
     return;
   }
-  const id = kind === 'gal' ? 'invPhotoGal' : 'invPhotoCam';
-  const inp = document.getElementById(id);
+  const p = document.getElementById('scanPick');
+  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+export function startScan(kind) {
+  const inp = document.getElementById(kind === 'gal' ? 'scanGal' : 'scanCam');
   if (inp) inp.click();
+}
+function scanVerdict(kind) {
+  const el = document.getElementById('scanVerdict');
+  if (!el) return;
+  const p = document.getElementById('scanPick');
+  if (p) p.style.display = 'none';
+  el.innerHTML = kind
+    ? `<div class="scan-verdict">${icon('check')} <span>${kind === 'invoice' ? tr('به‌عنوان فاکتور خوانده شد') : tr('به‌عنوان لیست تراکنش خوانده شد')}</span><button type="button" class="link-btn" onclick="rescanAs('${kind === 'invoice' ? 'list' : 'invoice'}')">${kind === 'invoice' ? tr('نه، لیست تراکنش است') : tr('نه، فاکتور است')}</button></div>`
+    : '';
+}
+export async function onScanPhoto(inp) {
+  const file = inp && inp.files && inp.files[0];
+  if (inp) inp.value = '';
+  if (!file) return;
+  lastScanFile = file;
+  toast(tr('در حال خواندن عکس…'));
+  try {
+    const res = await readAnyImage(file, state.accounts.map((a) => a.name));
+    if (res.kind === 'invoice') {
+      applyInvoiceScan(res.invoice);
+      scanVerdict('invoice');
+      toast(tr('خوانده شد — قبل از ثبت چک کن'));
+    } else {
+      applyPaperRows(res.list);
+      openPaperReview('invoice');
+    }
+  } catch (e) {
+    if (e && e.message === 'NO_KEY') toast(tr('اول در تنظیمات کلید عکس را بگذار'));
+    else toast((e && e.message) || tr('خواندن عکس نشد'));
+  }
+}
+// خواندن دوباره با تفسیر مقابل (کاربر گفت تشخیص اشتباه بود)
+export async function rescanAs(kind) {
+  if (!lastScanFile) return;
+  toast(tr('در حال خواندن عکس…'));
+  try {
+    if (kind === 'invoice') {
+      const data = await readInvoiceImage(lastScanFile);
+      paperDraft = [];
+      if (!document.getElementById('txAmount')) openTxForm(null, { full: true });
+      applyInvoiceScan(data);
+      scanVerdict('invoice');
+    } else {
+      const rows = await readPaperTxImage(lastScanFile, state.accounts.map((a) => a.name));
+      applyPaperRows(rows);
+      openPaperReview('invoice');
+    }
+  } catch (e) {
+    toast((e && e.message) || tr('خواندن عکس نشد'));
+  }
+}
+function applyPaperRows(rows) {
+  paperDraft = rows.map((r) => ({
+    id: uid(),
+    type: r.type === 'in' ? 'in' : 'out',
+    amount: r.amount,
+    cat: r.type === 'in' || r.kind === 'invoice' ? null : r.cat || 'need',
+    note: r.note || '',
+    accountId: matchAccountId(r.account) || lastAccountId(),
+    dateISO: r.date || todayISO(),
+    kind: r.kind === 'invoice' ? 'invoice' : '',
+    qty: r.qty || 0,
+    unit: r.unit || '',
+    unitPrice: r.unitPrice || 0,
+    lines: r.kind === 'invoice' ? r.lines || [] : [],
+  }));
 }
 
 function matchAccountId(name) {
@@ -661,75 +771,11 @@ function matchAccountId(name) {
   return lastAccountId();
 }
 
-export function openPaperScan() {
-  if (state.accounts.length === 0) {
-    toast(tr('اول یک حساب بساز'));
-    return;
-  }
-  if (!hasGeminiKey()) {
-    toast(tr('اول در تنظیمات کلید عکس را بگذار'));
-    return;
-  }
-  openModal(`
-    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
-    <h2>${tr('ثبت از عکس کاغذ')}</h2>
-    <p class="small muted" style="margin-top:-6px">${tr('عکس کاغذ یا فیش بانک با دست‌نویس را بده. مستقیم ذخیره می‌شود؛ بعداً از لیست می‌توانی ویرایش کنی. اگر تومان نوشتی همان تومان است؛ مبلغ ریالِ فیش تقسیم بر ۱۰ می‌شود. هر جا «فاکتور» بنویسی یک فاکتور ثبت می‌شود.')}</p>
-    <input id="paperCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="onPaperPhoto(this)">
-    <input id="paperGal" type="file" accept="image/*" style="display:none" onchange="onPaperPhoto(this)">
-    <button type="button" class="btn primary block" onclick="startPaperPhoto('cam')">${icon('camera')} ${tr('عکس بگیر')}</button>
-    <button type="button" class="btn block" style="margin-top:8px" onclick="startPaperPhoto('gal')">${icon('folder')} ${tr('از گالری انتخاب کن')}</button>
-  `);
-}
-
-export function startPaperPhoto(kind) {
-  if (!hasGeminiKey()) {
-    toast(tr('اول در تنظیمات کلید عکس را بگذار'));
-    return;
-  }
-  const id = kind === 'gal' ? 'paperGal' : 'paperCam';
-  const inp = document.getElementById(id);
-  if (inp) inp.click();
-}
-
-export async function onPaperPhoto(inp) {
-  const file = inp && inp.files && inp.files[0];
-  if (inp) inp.value = '';
-  if (!file) return;
-  toast(tr('در حال خواندن عکس…'));
-  try {
-    const names = state.accounts.map((a) => a.name);
-    const rows = await readPaperTxImage(file, names);
-    paperDraft = rows.map((r) => ({
-      id: uid(),
-      type: r.type === 'in' ? 'in' : 'out',
-      amount: r.amount,
-      cat: r.type === 'in' || r.kind === 'invoice' ? null : r.cat || 'need',
-      note: r.note || '',
-      accountId: matchAccountId(r.account) || lastAccountId(),
-      dateISO: r.date || todayISO(),
-      kind: r.kind === 'invoice' ? 'invoice' : '',
-      qty: r.qty || 0,
-      unit: r.unit || '',
-      unitPrice: r.unitPrice || 0,
-      lines: r.kind === 'invoice' ? r.lines || [] : [],
-    }));
-    if (!paperDraft.length) {
-      toast(tr('در عکس تراکنشی پیدا نشد'));
-      return;
-    }
-    savePaperTxs();
-  } catch (e) {
-    closeModal();
-    if (e && e.message === 'NO_KEY') toast(tr('اول در تنظیمات کلید عکس را بگذار'));
-    else toast((e && e.message) || tr('خواندن عکس نشد'));
-  }
-}
-
 function paperAcctOpts(selected) {
   return accountOptGroups(selected);
 }
 
-export function openPaperReview() {
+export function openPaperReview(altKind) {
   if (!paperDraft.length) {
     toast(tr('چیزی برای ثبت نیست'));
     return;
@@ -765,6 +811,7 @@ export function openPaperReview() {
     <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${tr('چک کن، بعد ثبت کن')}</h2>
     <p class="small muted" style="margin-top:-6px">${paperDraft.length} ${tr('مورد خوانده شد. اگر چیزی غلط است همین‌جا درستش کن. بعد از ثبت هم در لیست قابل ویرایش است.')}</p>
+    ${altKind ? `<div class="scan-verdict">${icon('check')} <span>${tr('به‌عنوان لیست تراکنش خوانده شد')}</span><button type="button" class="link-btn" onclick="rescanAs('invoice')">${tr('نه، فاکتور است')}</button></div>` : ''}
     ${rows}
     <button class="btn primary block" onclick="savePaperTxs()">${tr('ثبت همه')}</button>
   `);
@@ -883,21 +930,6 @@ export function savePaperTxs() {
   closeModal();
   render();
   toast(n + (' ' + tr('مورد ذخیره شد')));
-}
-
-export async function onInvoicePhoto(inp) {
-  const file = inp && inp.files && inp.files[0];
-  if (inp) inp.value = '';
-  if (!file) return;
-  toast(tr('در حال خواندن عکس…'));
-  try {
-    const data = await readInvoiceImage(file);
-    applyInvoiceScan(data);
-    toast(tr('خوانده شد — قبل از ثبت چک کن'));
-  } catch (e) {
-    if (e && e.message === 'NO_KEY') toast(tr('اول در تنظیمات کلید عکس را بگذار'));
-    else toast((e && e.message) || tr('خواندن عکس نشد'));
-  }
 }
 
 export function applyInvoiceScan(data) {

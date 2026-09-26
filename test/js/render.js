@@ -304,7 +304,7 @@ export function renderTx() {
     }
     html += `<div class="small muted" style="text-align:center;padding:var(--sp-3)">${tr('tx.swipeHelp')}</div>`;
   }
-  html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openPaperScan()">${icon('scan')} ${tr('act.scanPaper')}</button>`;
+  html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openScanFromList()">${icon('scan')} ${tr('act.scanPaper')}</button>`;
   document.getElementById('txContent').innerHTML = html;
   attachSwipe(document.getElementById('txContent'));
 }

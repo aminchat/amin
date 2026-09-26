@@ -819,3 +819,18 @@ body.onboarding{overflow:hidden}
 .ob-car-dots{display:flex;gap:6px;justify-content:center;margin:0 0 var(--sp-4)}
 .ob-car-dots i{width:7px;height:7px;border-radius:50%;background:var(--border);transition:.2s}
 .ob-car-dots i.on{background:var(--accent);width:20px;border-radius:4px}
+
+/* فرم تراکنش: دسته‌بندی دومرحله‌ای */
+.catbox{background:var(--card2);border-radius:var(--r-md);padding:var(--sp-3)}
+.catbox>label{display:flex;align-items:center;gap:6px}
+.subbox{margin-top:var(--sp-3);padding-inline-start:var(--sp-3);border-inline-start:2px solid var(--border)}
+.sublbl{display:block;font-size:var(--fs-xs);font-weight:700;color:var(--muted);margin-bottom:6px}
+.sublbl .muted{font-weight:500}
+.cat-sum{display:flex;align-items:center;gap:6px;margin-top:var(--sp-3);font-size:var(--fs-sm);font-weight:700}
+.cat-sum .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.cat-sum .sep{color:var(--muted);font-weight:500}
+.cat-sum .sugg{margin-inline-start:auto;display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-xs);font-weight:600;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);padding:2px 8px;border-radius:999px}
+.cat-sum .sugg .i{width:12px;height:12px}
+.scan-verdict{display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:8px 12px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--green) 12%,transparent);font-size:var(--fs-xs);font-weight:700}
+.scan-verdict .i{width:16px;height:16px;color:var(--green);flex:none}
+.scan-verdict .link-btn{margin:0 0 0 auto;margin-inline-start:auto;min-height:28px;font-size:var(--fs-xs)}
