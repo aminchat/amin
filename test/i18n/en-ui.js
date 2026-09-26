@@ -832,4 +832,6 @@ export default {
   'پاکت این خرج را انتخاب کن': 'Pick a pocket for this expense',
 
   'پاکت «{n}» را انتخاب کن': 'Pick a pocket for “{n}”',
+  'همهٔ نمودارها با جزئیات کامل': 'All charts at full detail',
+  '{n} خرج دیگر را زیرشاخه بزن تا گزارش کامل شود': 'Tag {n} more expenses to complete the report',
 };

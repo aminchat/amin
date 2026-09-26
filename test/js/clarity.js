@@ -44,6 +44,19 @@ export function clarityChip(mk) {
   return { cls: clear ? 'ok' : '', html: `${miniRing(c.pct, 16, clear ? 'var(--green)' : 'var(--accent)')}<span>${clear ? tr('ماه شفاف') : tr('وضوح') + ' ' + toFa(c.pct) + pctSign()}</span>`, on: `openClarity('${mk}')` };
 }
 
+// نوار باریک زیر نمودار پاکت‌ها در گزارش
+export function clarityStrip(mk) {
+  const c = clarity(mk);
+  if (!c.n) return '';
+  const clear = c.pct >= CLEAR_PCT;
+  const need = c.needFor(CLEAR_PCT);
+  return `<button type="button" class="clar-strip ${clear ? 'clear' : ''}" onclick="openClarity('${mk}')">
+    ${miniRing(c.pct, 26, clear ? 'var(--green)' : 'var(--accent)')}
+    <span class="cs-mid"><b>${clear ? tr('ماه شفاف') : tr('وضوح') + ' ' + toFa(c.pct) + pctSign()}</b><small>${clear ? tr('همهٔ نمودارها با جزئیات کامل') : tr('{n} خرج دیگر را زیرشاخه بزن تا گزارش کامل شود', { n: toFa(need) })}</small></span>
+    ${icon('chevL')}
+  </button>`;
+}
+
 // ── صفحهٔ وضوح: توضیح + هر پاکت ──
 export function openClarity(mk) {
   mk = mk || curMonthKey();

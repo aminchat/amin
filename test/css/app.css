@@ -881,3 +881,10 @@ body.onboarding{overflow:hidden}
 .line-card .chips.picked .chip:not(.on):not(.change){display:none}
 .line-card .chips.picked .chip.change{display:inline-flex}
 .line-card.shake{animation:shake .5s ease}
+
+.clar-strip{display:flex;align-items:center;gap:10px;width:100%;margin-top:var(--sp-3);padding:10px 12px;border-radius:var(--r-md);background:var(--card2);border:0;color:var(--text);text-align:start;font:inherit;cursor:pointer}
+.clar-strip.clear{background:color-mix(in srgb,var(--green) 10%,transparent)}
+.clar-strip .cs-mid{flex:1;display:flex;flex-direction:column;min-width:0}
+.clar-strip b{font-size:var(--fs-sm)}
+.clar-strip small{color:var(--muted);font-size:var(--fs-xs)}
+.clar-strip>.i{width:16px;height:16px;color:var(--muted)}
