@@ -194,7 +194,7 @@ function txRow(t, opts = {}) {
     (inv ? '<span class="badge" style="color:var(--orange)">' + tr('tx.items', { n: toFa((t.lines || []).length) }) + '</span>' : '') +
     (!opts.compact && t.type === 'out' && cat ? '<span class="badge" style="color:' + cat.color + '">' + cat.label + '</span>' : '') +
     (t.debtId ? '<span class="badge">' + tr('tx.badge.debt') + '</span>' : '') +
-    (t.planId ? '<span class="badge">' + tr('tx.badge.plan') + '</span>' : '') +
+    (t.planId ? '<span class="badge">' + esc(t.planTag || tr('tx.badge.plan')) + '</span>' : '') +
     (t.cat === 'waste' && t.reflect ? '<span class="badge" style="color:var(--red)">' + tr('tx.badge.reflect') + '</span>' : '') +
     (a && a.currency && a.currency !== baseCur() ? '<span class="badge">' + esc(curName(a.currency)) + '</span>' : '');
   const item = `<div class="item" data-tx="${t.id}" onclick="openTxForm(findTx('${t.id}'))">

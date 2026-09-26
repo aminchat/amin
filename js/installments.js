@@ -18,8 +18,31 @@ import { subChipsHtml } from './subs.js';
 import { pickSub } from './subsui.js';
 
 export function allPlans() {
-  if (!state.installments) state.installments = [];
-  return state.installments;
+  const plans = state.installments || [];
+  migrateTitles(plans);
+  return plans;
+}
+// یک‌بار: عنوان تراکنش اقساط قدیمی («قسط ۳ وام بانک») → نام طرح + نشان
+let migrated = false;
+function migrateTitles(plans) {
+  if (migrated || !plans.length || state.instTitlesV2) return;
+  migrated = true;
+  let changed = false;
+  for (const p of plans) {
+    for (const r of p.rows || []) {
+      if (!r.txId) continue;
+      const t = state.transactions.find((x) => x.id === r.txId);
+      if (!t) continue;
+      const tag = rowTag(p, r);
+      if (t.note !== p.title || t.planTag !== tag) {
+        t.note = p.title;
+        t.planTag = tag;
+        changed = true;
+      }
+    }
+  }
+  state.instTitlesV2 = true;
+  if (changed) save();
 }
 export function findPlan(id) {
   return allPlans().find((p) => p.id === id);
@@ -92,6 +115,14 @@ function upsertTx(existingId, payload) {
   }
   return t.id;
 }
+// برچسب کوتاه برای نشانِ تراکنش: «قسط ۳/۱۲»، «پیش‌پرداخت»، «سود»
+export function rowTag(p, r) {
+  if (r.kind === 'down') return tr('پیش‌پرداخت');
+  if (r.kind === 'interest') return tr('سود');
+  const inst = (p.rows || []).filter((x) => x.kind !== 'down' && x.kind !== 'interest');
+  const n = inst.indexOf(r) + 1;
+  return tr('قسط') + ' ' + toFa(n) + '/' + toFa(inst.length) + (r.penalty ? ' · ' + tr('با جریمه') : '');
+}
 function rowLabel(p, r) {
   if (r.kind === 'down') return (tr('پیش‌پرداخت') + ' ') + p.title;
   if (r.kind === 'interest') return (tr('سود') + ' ') + p.title;
@@ -105,7 +136,7 @@ function syncRowTx(p, r) {
     r.txId = null;
     return;
   }
-  const note = rowLabel(p, r) + (r.penalty ? (' ' + tr('(با جریمه)')) : '');
+  const note = p.title; // عنوان یکسان برای همهٔ اقساط یک طرح؛ شمارهٔ قسط در نشان (badge) نمایش داده می‌شود
   r.txId = upsertTx(r.txId, {
     amount: rowTotal(r),
     accountId: acc.id,
@@ -121,6 +152,7 @@ function syncRowTx(p, r) {
     updatedAt: Date.now(),
     planId: p.id,
     planRowId: r.id,
+    planTag: rowTag(p, r),
   });
 }
 function syncDisburseTx(p) {
@@ -592,7 +624,7 @@ export function saveRow(planId, rowId) {
   r.accountId = document.getElementById('rwAcc').value;
   if (r.paidISO) r.noTx = false;
   p.rows.sort((a, b) => a.dueISO.localeCompare(b.dueISO));
-  syncRowTx(p, r);
+  for (const x of p.rows) syncRowTx(p, x); // شماره‌گذاری نشان‌ها بعد از مرتب‌سازی درست بماند
   p.updatedAt = Date.now();
   save();
   render();
@@ -605,6 +637,7 @@ export function delRow(planId, rowId) {
   const r = p.rows.find((x) => x.id === rowId);
   if (r) removeTx(r.txId);
   p.rows = p.rows.filter((x) => x.id !== rowId);
+  for (const x of p.rows) syncRowTx(p, x); // شماره‌ها بعد از حذف به‌روز شوند
   p.updatedAt = Date.now();
   save();
   render();
