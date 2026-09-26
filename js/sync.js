@@ -393,7 +393,9 @@ export function consumeWorkerCallback() {
   const saved = String(store.get(NONCE_KEY) || '').split(':');
   store.set(NONCE_KEY, '');
   const fresh = saved[0] && Date.now() - Number(saved[1] || 0) < 20 * 60000;
-  if (!fresh || h.get('n') !== saved[0]) {
+  // Worker قدیمی n برنمی‌گرداند؛ فقط وقتی n آمده و نمی‌خواند (یا nonce محلی نداریم) رد کن
+  const n = h.get('n');
+  if ((n && (!fresh || n !== saved[0])) || (!n && !saved[0] && !h.get('gerr'))) {
     lastTokenError = 'bad_nonce';
     toast(tr('ورود انجام نشد.') + ' ' + tokenErrorHint());
     return true;
