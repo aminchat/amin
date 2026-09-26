@@ -93,8 +93,7 @@ let paperDraft = [];
 
 // بلوک زیرشاخه (مرحلهٔ ۲) + خط خلاصهٔ «پاکت › زیرشاخه»
 function txSubBlockHtml(cat, sub) {
-  const lbl = cat === 'waste' ? tr('۲. دلیلش چه بود؟') : tr('۲. دقیق‌تر: روی چه؟');
-  return `<label class="sublbl">${lbl} ${infoTip(tr('با زیرشاخه، ماه بعد می‌بینی پولت دقیقاً کجا رفته — نه فقط «ضروریات»، بلکه «خواربار ۴۰٪، قبض ۲۵٪…». بدون آن، گزارش فقط پنج عدد کلی است.'))}</label>${subChipsHtml(cat, sub, 'setTxSub')}`;
+  return subChipsHtml(cat, sub, 'setTxSub');
 }
 let txSubSuggested = false;
 function catSummaryHtml(cat, sub) {
@@ -111,7 +110,7 @@ function catSummaryHtml(cat, sub) {
 }
 function paintTxSub(cat) {
   const sw = document.getElementById('txSubWrap');
-  if (sw) sw.innerHTML = txSubBlockHtml(cat, txSub);
+  if (sw) { sw.innerHTML = txSubBlockHtml(cat, txSub); sw.style.display = ''; }
   paintCatSummary();
 }
 function paintCatSummary() {
@@ -186,7 +185,8 @@ export function openTxForm(tx, opts) {
   const amountCur = selectedAccount ? selectedAccount.currency : baseCur();
   const acctOpts = accountOptGroups(selectedAccountId);
   const defaultCat = tx && !isInvoice(tx) ? (tx.cat === 'loan' ? 'need' : tx.cat) : presetCat || 'need';
-  const showReflect = !!(defaultCat === 'waste' && type === 'out' && txMode === 'simple');
+  const pickedCat = tx || presetCat || pre.cat ? defaultCat : null; // تراکنش تازه: پاکت هنوز انتخاب نشده
+  const showReflect = !!(pickedCat === 'waste' && type === 'out' && txMode === 'simple');
 
   openModal(`
     <button class="x" onclick="cancelTxForm()" aria-label="${tr('بستن')}">${icon('x')}</button>
@@ -231,11 +231,17 @@ export function openTxForm(tx, opts) {
         <input class="input" id="txUnit" placeholder="${tr('عدد / کیلو / گرم')}" value="${tx && tx.unit ? esc(tx.unit) : ''}">
       </div>
     </div>
+    <div class="field"><label>${tr('از کدام حساب؟')}</label>
+      <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
+    </div>
+    <div class="field"><label>${tr('تاریخ')}</label>
+      <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
+    </div>
     <div class="field catbox" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
-      <label>${tr('۱. کدام پاکت؟')} ${infoTip(tr('ضروریات: اجاره، خوراک، قبض. آزادی مالی: پس‌انداز و سرمایه‌گذاری. تفریح: هر چیزی که فقط برای لذت است. نیکوکاری: کمک و هدیه. هدررفت: خرجی که بعدش پشیمان شدی.'))}</label>
-      <div class="chips" id="txCats">${catChipsHtml(defaultCat, 'setTxCat')}</div>
-      <div id="txSubWrap" class="subbox">${txSubBlockHtml(defaultCat, txSub)}</div>
-      <div id="txCatSummary" class="cat-sum">${catSummaryHtml(defaultCat, txSub)}</div>
+      <label>${tr('پاکت')} ${infoTip(tr('ضروریات: اجاره، خوراک، قبض. آزادی مالی: پس‌انداز و سرمایه‌گذاری. تفریح: هر چیزی که فقط برای لذت است. نیکوکاری: کمک و هدیه. هدررفت: خرجی که بعدش پشیمان شدی.'))}</label>
+      <div class="chips ${pickedCat ? 'picked' : ''}" id="txCats">${catChipsHtml(pickedCat, 'setTxCat')}<button type="button" class="chip change" onclick="txCatsExpand()">${icon('edit')} ${tr('تغییر')}</button></div>
+      <div id="txSubWrap" class="subbox" style="${pickedCat ? '' : 'display:none'}">${pickedCat ? txSubBlockHtml(pickedCat, txSub) : ''}</div>
+      <div id="txCatSummary" class="cat-sum">${pickedCat ? catSummaryHtml(pickedCat, txSub) : ''}</div>
     </div>
     <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
       <label>${tr('اگر این خرج را نمی‌کردی، چه می‌شد؟')}</label>
@@ -249,12 +255,6 @@ export function openTxForm(tx, opts) {
         <button type="button" class="btn sm" style="flex:1" onclick="addTxLine()">${icon('plus')} ${tr('قلم')}</button>
         <button type="button" class="btn sm" style="flex:1" onclick="addRemainderLine()">${tr('مانده را «سایر» کن')}</button>
       </div>
-    </div>
-    <div class="field"><label>${tr('از کدام حساب؟')}</label>
-      <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
-    </div>
-    <div class="field"><label>${tr('تاریخ')}</label>
-      <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
     </div>
     <button class="btn primary block" onclick="saveTx()">${isEdit ? tr('ذخیره تغییرات') : tr('ثبت')}</button>
     ${isEdit ? `<button class="btn danger block" style="margin-top:8px" onclick="delTx('${tx.id}')">${txMode === 'invoice' ? tr('حذف این فاکتور') : tr('حذف این تراکنش')}</button>` : ''}
@@ -421,12 +421,20 @@ export function setTxType(btn) {
   }
 }
 
+export function txCatsExpand() {
+  const w = document.getElementById('txCats');
+  if (w) w.classList.remove('picked');
+}
 export function setTxCat(btn) {
   document.querySelectorAll('#txCats .chip').forEach((c) => {
     c.classList.remove('on');
     c.style.background = '';
   });
   btn.classList.add('on');
+  const wrap = document.getElementById('txCats');
+  if (wrap) wrap.classList.add('picked');
+  const sw0 = document.getElementById('txSubWrap');
+  if (sw0) sw0.style.display = '';
   btn.style.background = CATS.find((c) => c.id === btn.dataset.cat).color;
   const rw = document.getElementById('txReflectWrap');
   if (rw) rw.style.display = btn.dataset.cat === 'waste' && txMode === 'simple' ? '' : 'none';
@@ -1075,7 +1083,13 @@ export function saveTx() {
       return;
     }
     const activeCat = document.querySelector('#txCats .chip.on');
-    cat = type === 'out' ? (activeCat ? activeCat.dataset.cat : 'need') : null;
+    if (type === 'out' && !activeCat) {
+      toast(tr('پاکت این خرج را انتخاب کن'));
+      const cw = document.getElementById('txCatWrap');
+      if (cw) { cw.classList.add('shake'); cw.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(() => cw.classList.remove('shake'), 600); }
+      return;
+    }
+    cat = type === 'out' ? activeCat.dataset.cat : null;
     const rf = document.getElementById('txReflect');
     reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
     if (type === 'out' && note) learnTitle(note, cat, txSub, amount);

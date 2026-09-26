@@ -855,3 +855,14 @@ body.onboarding{overflow:hidden}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:1300;overflow:hidden}
 .confetti i{position:absolute;top:55%;width:8px;height:12px;border-radius:2px;animation:cfly 1.2s cubic-bezier(.2,.7,.3,1) forwards;opacity:0}
 @keyframes cfly{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
+
+/* پاکت: بعد از انتخاب، بقیه جمع می‌شوند */
+#txCats .chip.change{display:none;border-style:dashed;color:var(--muted)}
+#txCats.picked .chip:not(.on):not(.change){display:none}
+#txCats.picked .chip.change{display:inline-flex}
+#txCats.picked .chip.on{animation:pickIn .2s ease}
+@keyframes pickIn{from{transform:scale(.94);opacity:.6}to{transform:none;opacity:1}}
+.subbox{animation:subIn .22s ease}
+@keyframes subIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.catbox.shake{animation:shake .5s ease}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}

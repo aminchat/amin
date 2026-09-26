@@ -828,4 +828,6 @@ export default {
   'حدود {s} ثانیه': 'about {s} seconds',
   'ماه شفاف! {p}٪ خرج‌ها زیرشاخه دارند': 'Clear month! {p}% of spending has sub-categories',
   '{t} دوباره سبز شد': '{t} is green again',
+  'تغییر': 'Change',
+  'پاکت این خرج را انتخاب کن': 'Pick a pocket for this expense',
 };
