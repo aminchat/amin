@@ -218,7 +218,7 @@ export function requestAccessToken(cb, interactive) {
       return;
     }
     lastRefreshTry = Date.now();
-    fetch(SYNC_WORKER + '/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) })
+    fetch(SYNC_WORKER + '/refresh', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ sealed }) })
       .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })))
       .then(({ status, j }) => {
         if (j && j.access_token) {
@@ -524,7 +524,7 @@ export function googleRevokeAllDo() {
     toast(tr('دسترسی از همهٔ دستگاه‌ها قطع شد'));
   };
   if (!sealed) return done();
-  fetch(SYNC_WORKER + '/revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sealed }) })
+  fetch(SYNC_WORKER + '/revoke', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ sealed }) })
     .then((r) => r.json().catch(() => ({})))
     .then((j) => {
       if (j && j.ok) return done();

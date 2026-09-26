@@ -40,6 +40,7 @@ function corsHeaders(origin) {
     'Access-Control-Allow-Origin': ok ? origin : ALLOWED_APPS[0],
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
     'Cache-Control': 'no-store',
     Vary: 'Origin',
   };
@@ -138,7 +139,7 @@ async function callback(url, env) {
 
 // ── تمدید ──
 async function refresh(req, env, cors) {
-  const body = await req.json().catch(() => ({}));
+  const body = await readBody(req);
   let data;
   try {
     data = JSON.parse(await open(env, body.sealed || ''));
@@ -167,6 +168,15 @@ async function refresh(req, env, cors) {
   return json(out, cors);
 }
 
+// بدنه به‌صورت text/plain می‌آید (درخواست «ساده»؛ مرورگر OPTIONS نمی‌زند)
+async function readBody(req) {
+  try {
+    return JSON.parse(await req.text());
+  } catch (e) {
+    return {};
+  }
+}
+
 async function googleToken(params) {
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -184,7 +194,7 @@ async function googleToken(params) {
 
 // ── خروج: باطل‌کردن نزد گوگل ──
 async function revoke(req, env, cors) {
-  const body = await req.json().catch(() => ({}));
+  const body = await readBody(req);
   let data;
   try {
     data = JSON.parse(await open(env, body.sealed || ''));
