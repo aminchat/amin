@@ -1,4 +1,5 @@
 import { avatarHTML, syncStatusText, displayName } from './sync.js';
+import { needsOnboarding, openOnboarding } from './onboard.js';
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain } from './utils.js';
 import { fmtDate } from './jalali.js';
 import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
@@ -148,11 +149,11 @@ export async function enableBiometric() {
     // (residentKey/discoverable باعث می‌شد کروم بخواهد passkey در Google Password Manager بسازد)
     const publicKey = {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: tr('مدیریت سرمایه'), id: location.hostname },
+      rp: { name: tr('تراز'), id: location.hostname },
       user: {
         id: crypto.getRandomValues(new Uint8Array(16)),
         name: 'capital-app',
-        displayName: tr('مدیریت سرمایه'),
+        displayName: tr('تراز'),
       },
       pubKeyCredParams: [
         { type: 'public-key', alg: -7 },
@@ -1037,7 +1038,7 @@ export function openSettingsAbout() {
     ${settingsHeader(('ℹ️ ' + tr('دربارهٔ برنامه')), 'openSettings()')}
     <div style="text-align:center;padding:10px 0 4px">
       <div class="logo" style="margin:0 auto 10px">${icon('wallet')}</div>
-      <div style="font-weight:800;font-size:16px">${tr('مدیریت سرمایه')}</div>
+      <div style="font-weight:800;font-size:16px">${tr('تراز')}</div>
       <div class="small muted" style="margin-top:4px">${tr('نسخه')} ${APP_VERSION}</div>
       <div id="updState" class="upd-state" style="margin-top:10px">${updateStateHTML()}</div>
     </div>
@@ -1230,6 +1231,7 @@ export function initPrefs() {
     lockApp();
   } else {
     unlockApp();
+    if (needsOnboarding()) openOnboarding();
   }
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {

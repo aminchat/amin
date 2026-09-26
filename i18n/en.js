@@ -1,6 +1,6 @@
 // English — reference strings. Keys are stable; other languages fall back to these.
 export default {
-  'app.name': 'Capital',
+  'app.name': 'Taraz',
   'app.test': 'Test',
   'unit': 'Unit',
   'months.jalali': 'Farvardin|Ordibehesht|Khordad|Tir|Mordad|Shahrivar|Mehr|Aban|Azar|Dey|Bahman|Esfand',

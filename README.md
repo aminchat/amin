@@ -1,8 +1,8 @@
-# Capital — Personal Finance PWA
+# Taraz (تراز) — Personal Finance PWA
 
 [فارسی](./README.fa.md) · Live: <https://aminchat.github.io/amin/> · Test build: <https://aminchat.github.io/amin/test/>
 
-Capital is an offline‑first personal budgeting app built as a static Progressive Web App. No backend, no accounts, no tracking: your data lives on your device (optionally end‑to‑end encrypted) and can be synced through your own Google Drive.
+Taraz is an offline‑first personal budgeting app built as a static Progressive Web App. No backend, no accounts, no tracking: your data lives on your device (optionally end‑to‑end encrypted) and can be synced through your own Google Drive.
 
 It is designed around the **envelope (“pocket”) method** — every month’s budget is split into a few pockets and the app tells you, at a glance, whether you are still on plan.
 
@@ -108,7 +108,7 @@ All amounts are stored in the account’s own currency; the base currency is use
 
 ## Version
 
-Current: `2.19.1` (root) / `2.19.1-test` (test build). The version string is in `js/utils.js` (`APP_VERSION`) and shown in Settings → About.
+Current: `2.20.0` (root) / `2.20.0-test` (test build). The version string is in `js/utils.js` (`APP_VERSION`) and shown in Settings → About.
 
 ## License
 

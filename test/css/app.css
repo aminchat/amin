@@ -766,3 +766,29 @@ input.jd-native{position:absolute;opacity:0;pointer-events:none;width:1px;height
 .sched-m[open] summary{border-bottom:1px solid var(--line)}
 .sched-m .entry{margin:0;border-radius:0;border:0;border-bottom:1px solid var(--line);cursor:pointer}
 .sched-m .entry:last-child{border-bottom:0}
+
+/* ─── راه‌اندازی اول (onboarding) ─── */
+body.onboarding{overflow:hidden}
+#onboard{position:fixed;inset:0;z-index:1200;background:var(--bg);overflow:auto;-webkit-overflow-scrolling:touch}
+.ob-wrap{max-width:440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + var(--sp-3)) var(--sp-4) calc(env(safe-area-inset-bottom) + var(--sp-5))}
+.ob-top{display:flex;justify-content:space-between;align-items:center;min-height:40px}
+.ob-top .link-btn{margin:0}
+.ob-body{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:var(--sp-4) 0}
+.ob-logo{width:76px;height:76px;margin:0 auto var(--sp-4);border-radius:22px}
+.ob-logo .i{width:38px;height:38px}
+.ob-body .ib{margin:0 auto var(--sp-3)}
+.ob-h{font-size:var(--fs-xl);font-weight:800;margin:0 0 var(--sp-2)}
+.ob-p{color:var(--muted);font-size:var(--fs-sm);line-height:1.8;margin:0 0 var(--sp-4)}
+.ob-lbl{display:block;text-align:start;font-size:var(--fs-xs);color:var(--muted);font-weight:700;margin:0 0 6px}
+.ob-seg button{min-height:44px}
+.ob-body .field{text-align:start}
+.ob-check{display:flex;gap:var(--sp-3);align-items:flex-start;text-align:start;padding:var(--sp-3);background:var(--card2);border-radius:var(--r-md);cursor:pointer;margin-top:var(--sp-2)}
+.ob-check input{margin-top:4px;width:18px;height:18px;flex:none;accent-color:var(--accent)}
+.ob-check span{font-size:var(--fs-sm);font-weight:700;line-height:1.5}
+.ob-check small{display:block;color:var(--muted);font-weight:500;font-size:var(--fs-xs)}
+.ob-actions{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-5)}
+.ob-actions .btn.lg{min-height:50px;font-size:var(--fs-md)}
+.ob-dots{display:flex;gap:6px;justify-content:center;margin-bottom:var(--sp-4)}
+.ob-dots i{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.ob-dots i.on{background:var(--accent);width:22px;border-radius:4px}
+.ob-body .sgroup{text-align:start}

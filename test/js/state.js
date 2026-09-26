@@ -224,6 +224,7 @@ export function replaceState(next, { markDirty } = {}) {
   syncBase();
   if (markDirty) touchMeta();
   persistLocal();
+  if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('cap:stateReplaced'));
 }
 
 export function accountById(id) {
