@@ -854,4 +854,5 @@ export default {
   'داده‌های روی این گوشی چه شوند؟ اگر می‌خواهی با حساب دیگری وارد شوی، پاک‌کردن لازم است.': 'What should happen to the data on this phone? To sign in with a different account, it must be cleared.',
   'فقط خروج؛ داده‌ها بمانند': 'Just sign out; keep data',
   'خروج و پاک‌کردن داده‌های این گوشی': 'Sign out and clear data on this phone',
+  'یادآوری: پشتیبان‌های رمزشدهٔ قبلی فقط با رمز عبور همان زمان باز می‌شوند؛ اگر ممکن است آن را فراموش کنی، بعد از خاموش‌کردن یک پشتیبان ساده هم بگیر.': 'Reminder: earlier encrypted backups open only with the password from that time; if you might forget it, take a plain backup after turning encryption off.',
 };

@@ -734,6 +734,7 @@ export function disableEncPrompt() {
     <button class="x" onclick="openSettingsSecurity()" aria-label="${tr('بازگشت')}">${icon('x')}</button>
     <h2>${tr('خاموش کردن رمزنگاری')}</h2>
     <p class="hint">${tr('بعد از این، داده‌ها روی این گوشی و در Google Drive بدون رمز ذخیره می‌شوند و دستگاه‌های دیگرت هم در همگام‌سازی بعدی از حالت رمز خارج می‌شوند. اثر انگشت و قفل ورود هم برداشته می‌شود.')}</p>
+    <div class="hint" style="margin:0 0 12px">${tr('یادآوری: پشتیبان‌های رمزشدهٔ قبلی فقط با رمز عبور همان زمان باز می‌شوند؛ اگر ممکن است آن را فراموش کنی، بعد از خاموش‌کردن یک پشتیبان ساده هم بگیر.')}</div>
     <div class="field"><label>${tr('رمز عبور فعلی')}</label>
       <input class="input" id="deOld" type="password" autocomplete="off" dir="ltr"></div>
     <button class="btn danger block" style="margin-top:12px" onclick="disableEncDo()">${tr('بله، رمزنگاری را خاموش کن')}</button>
