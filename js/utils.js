@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.26.1';
+export const APP_VERSION = '2.26.2';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -191,6 +191,30 @@ export function fmtShort(n, cur) {
 }
 
 // دکمهٔ ⓘ که توضیح را فقط در صورت درخواست کاربر نشان می‌دهد (چند ثانیه یا تا ضربهٔ بعدی)
+// ذخیرهٔ فایل روی گوشی: در موبایل/PWA دانلود مستقیم اغلب کار نمی‌کند → اول share sheet (ذخیره در Files/Drive)، بعد دانلود
+export async function saveFile(name, text, mime) {
+  mime = mime || 'application/json';
+  try {
+    if (typeof File !== 'undefined' && navigator.share && navigator.canShare) {
+      const f = new File([text], name, { type: mime });
+      if (navigator.canShare({ files: [f] })) {
+        await navigator.share({ files: [f], title: name });
+        return 'shared';
+      }
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return 'cancel';
+  }
+  const blob = new Blob([text], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  return 'download';
+}
 export function infoTip(text, cls) {
   return `<button type="button" class="info-btn ${cls || ''}" data-tip="${esc(text)}" onclick="event.stopPropagation();showTip(this)" aria-label="راهنما">i</button>`;
 }
@@ -236,6 +260,58 @@ document.addEventListener('scroll', () => hideTip(), true);
 const PLAIN_IDS = /^(txQty|lnQty_|iQty|plCount|plRate|plEvery|plPrepaid)/;
 const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
 const AR = '٠١٢٣٤٥٦٧٨٩';
+// ماشین‌حساب کوچک: + − × ÷ با اولویت، ارقام فارسی/عربی، درصد ساده (a+b% = a*(1+b/100))
+export function calcEval(str) {
+  let t = String(str || '')
+    .replace(/[۰-۹]/g, (d) => FA.indexOf(d))
+    .replace(/[٠-٩]/g, (d) => AR.indexOf(d))
+    .replace(/[٫]/g, '.')
+    .replace(/[،٬,'\s]/g, '')
+    .replace(/[×xX*]/g, '*')
+    .replace(/[÷]/g, '/')
+    .replace(/[−–]/g, '-');
+  if (!/^[\d.+\-*/%()]+$/.test(t)) return NaN;
+  let i = 0;
+  const peek = () => t[i];
+  const num = () => {
+    let m = t.slice(i).match(/^\d*\.?\d+|^\d+\.?/);
+    if (!m) return NaN;
+    i += m[0].length;
+    return parseFloat(m[0]);
+  };
+  const factor = () => {
+    if (peek() === '(') { i++; const v = expr(); if (peek() === ')') i++; return v; }
+    if (peek() === '-') { i++; return -factor(); }
+    return num();
+  };
+  const term = () => {
+    let v = factor();
+    while (peek() === '*' || peek() === '/') {
+      const op = t[i++];
+      let r = factor();
+      if (peek() === '%') { i++; r = r / 100; }
+      v = op === '*' ? v * r : r === 0 ? NaN : v / r;
+    }
+    return v;
+  };
+  const expr = () => {
+    let v = term();
+    while (peek() === '+' || peek() === '-') {
+      const op = t[i++];
+      let r = term();
+      if (peek() === '%') { i++; r = (v * r) / 100; }
+      v = op === '+' ? v + r : v - r;
+    }
+    return v;
+  };
+  const v = expr();
+  if (i !== t.length || !isFinite(v)) return NaN;
+  return Math.round(v * 1e8) / 1e8;
+}
+export function hasCalcOps(str) {
+  return /[+\-*/×÷−]/.test(String(str || '').replace(/^\s*-/, ''));
+}
+
 export function normNum(str) {
   str = String(str == null ? '' : str)
     .replace(/[۰-۹]/g, (d) => FA.indexOf(d))
@@ -317,8 +393,41 @@ function moneyize(el) {
     },
   });
   paint(raw0);
+  // حالت ماشین‌حساب: اگر عملگر تایپ شد، عبارت خام می‌ماند و نتیجه زیرش نمایش داده می‌شود؛ با Enter/خروج از فیلد جایگزین می‌شود
+  let calcMode = false;
+  const calcPreview = () => {
+    const raw = nativeValue.get.call(el);
+    const v = calcEval(raw);
+    if (!words || !words.isConnected) {
+      words = document.createElement('div');
+      words.className = 'money-words';
+      el.insertAdjacentElement('afterend', words);
+    }
+    words.textContent = isNaN(v) ? '…' : '= ' + groupNum(String(v)) + (v >= 1000 ? ' · ' + amountWords(v, el.dataset.cur) : '');
+    words.classList.add('calc');
+  };
+  const calcCommit = () => {
+    if (!calcMode) return;
+    const v = calcEval(nativeValue.get.call(el));
+    calcMode = false;
+    el.classList.remove('calc');
+    if (words) words.classList.remove('calc');
+    paint(isNaN(v) ? '' : String(v));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === '=') { if (calcMode) { e.preventDefault(); calcCommit(); } }
+  });
+  el.addEventListener('blur', calcCommit);
   el.addEventListener('input', () => {
     const cur = nativeValue.get.call(el);
+    if (hasCalcOps(cur)) {
+      calcMode = true;
+      el.classList.add('calc');
+      calcPreview();
+      return;
+    }
+    if (calcMode) { calcMode = false; el.classList.remove('calc'); if (words) words.classList.remove('calc'); }
     const caret = el.selectionStart || cur.length;
     const digitsBefore = cur.slice(0, caret).replace(/[^\d.-]/g, '').length;
     paint(normNum(cur));

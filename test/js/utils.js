@@ -1,4 +1,3 @@
-import { t as trI18n } from './i18n.js';
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
 export const APP_VERSION = '2.26.4';
 
