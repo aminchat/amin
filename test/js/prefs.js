@@ -1080,6 +1080,14 @@ export function openSettingsBackup() {
 }
 
 export async function exportBackup() {
+  try {
+    await exportBackupInner();
+  } catch (e) {
+    console.error('exportBackup', e);
+    toast(tr('ذخیره نشد') + ': ' + ((e && (e.message || e.name)) || e));
+  }
+}
+async function exportBackupInner() {
   const plain = JSON.stringify(state, null, 1);
   const enc = sec.isEncrypted();
   if (enc && !sec.isUnlocked()) {
