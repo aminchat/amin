@@ -3,6 +3,7 @@ import { lightsHtml } from './health.js';
 import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
 import { clarityStrip } from './clarity.js';
+import * as txf from './txfilter.js';
 import { isGoogleLinked, googleSyncOk } from './sync.js';
 import { curMonthKey, fmtDate, monthLabel, shiftMonth, jalaliNow, toGregorian, MONTHS, bookNow, daysInMonthKey } from './jalali.js';
 import { renderSyncCard } from './sync.js';
@@ -275,21 +276,40 @@ export function renderHome() {
   document.getElementById('homeContent').innerHTML = html;
 }
 
-export function renderTx() {
-  const txs = sortTxs(state.transactions.filter((t) => t.month === txMonth));
+txf.onChange((o) => renderTx(o));
+export function renderTx(opts) {
+  const filtered = txf.isActive();
+  const txs = sortTxs(txf.apply(state.transactions, txMonth));
   const after = runningBalanceByTxId();
-  let html = `<div class="mnav">
-    <button type="button" onclick="txShift(-1)" aria-label="${tr('act.prevMonth')}">${icon('chevR')}</button>
-    <div class="mttl">${monthLabel(txMonth)}<div class="small muted">${txMonth === curMonthKey() ? tr('tx.curMonth') : ''}</div></div>
-    <button type="button" onclick="txShift(1)" aria-label="${tr('act.nextMonth')}">${icon('chevL')}</button>
+  const rangeMonth = txf.F.range === 'month';
+  let html = `<div class="mnav" ${rangeMonth ? '' : 'style="opacity:.45"'}>
+    <button type="button" onclick="txShift(-1)" aria-label="${tr('act.prevMonth')}" ${rangeMonth ? '' : 'disabled'}>${icon('chevR')}</button>
+    <div class="mttl">${rangeMonth ? monthLabel(txMonth) : tr((txf.RANGES.find((r) => r.id === txf.F.range) || {}).label || '')}<div class="small muted">${rangeMonth && txMonth === curMonthKey() ? tr('tx.curMonth') : ''}</div></div>
+    <button type="button" onclick="txShift(1)" aria-label="${tr('act.nextMonth')}" ${rangeMonth ? '' : 'disabled'}>${icon('chevL')}</button>
   </div>`;
-
-  if (txs.length === 0) {
+  html += txf.barHtml();
+  html += '<div id="txList">';
+  html += txListHtml(txs, after, filtered);
+  html += '</div>';
+  if (opts && opts.keepFocus) {
+    // فقط لیست عوض شود تا فوکوس جست‌وجو نپرد
+    const list = document.getElementById('txList');
+    if (list) { list.innerHTML = txListHtml(txs, after, filtered); attachSwipe(list); return; }
+  }
+  document.getElementById('txContent').innerHTML = html;
+  attachSwipe(document.getElementById('txContent'));
+  if (opts && opts.focusSearch) { const i = document.getElementById('txfQ'); if (i) i.focus(); }
+}
+function txListHtml(txs, after, filtered) {
+  let html = txf.summaryHtml(txs);
+  if (txs.length === 0 && filtered) {
+    html += `<div class="empty"><span class="ib lg muted">${icon('search')}</span>${tr('با این فیلتر تراکنشی نیست')}<button type="button" class="btn sm" onclick="txfClear()">${tr('پاک کردن فیلترها')}</button></div>`;
+  } else if (txs.length === 0) {
     html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}${state.accounts.length ? `<button type="button" class="btn sm primary" onclick="openQuickTx()">${icon('plus')} ${tr('ثبت تراکنش')}</button>` : `<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button>`}</div>`;
   } else {
     const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
     const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
-    html += `<div class="grid2" style="margin-bottom:var(--sp-3)">
+    if (!filtered) html += `<div class="grid2" style="margin-bottom:var(--sp-3)">
       <div class="stat"><div class="lbl">${tr('tx.spentMonth')}</div><div class="val red">${fmtShort(sumOut)}</div></div>
       <div class="stat"><div class="lbl">${tr('tx.incomeMonth')}</div><div class="val green">${fmtShort(sumIn)}</div></div>
     </div>`;
@@ -306,8 +326,7 @@ export function renderTx() {
     html += `<div class="small muted" style="text-align:center;padding:var(--sp-3)">${tr('tx.swipeHelp')}</div>`;
   }
   html += `<button type="button" class="btn block" style="margin:var(--sp-2) 0" onclick="openScanFromList()">${icon('scan')} ${tr('act.scanPaper')}</button>`;
-  document.getElementById('txContent').innerHTML = html;
-  attachSwipe(document.getElementById('txContent'));
+  return html;
 }
 
 // ── سوایپ روی ردیف تراکنش ──

@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v82';
+const CACHE = 'capital-app-v83';
 const ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const ASSETS = [
   './js/forms.js',
   './js/render.js',
   './js/sync.js',
+  './js/txfilter.js',
   './js/prefs.js',
   './js/onboard.js',
   './js/guide.js',

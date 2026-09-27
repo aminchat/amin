@@ -21,6 +21,7 @@ import { setOnSave, state, curStats } from './state.js';
 import { guideAfterRender } from './guide.js';
 import { celebrateAfterRender } from './clarity.js';
 import { renderAll, fitNumbers, setTodayLabel, resetMonths, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
+import { txfQuery, txfKind, txfToggle, txfSet, txfClear, txfOpen, txfDraft, txfDraftRange, txfDraftAmt, txfDraftClear, txfApply } from './txfilter.js';
 import {
   delDebt,
   enableDebtReminders,
@@ -339,6 +340,7 @@ function findInvest(id) {
 }
 
 Object.assign(window, {
+  txfQuery, txfKind, txfToggle, txfSet, txfClear, txfOpen, txfDraft, txfDraftRange, txfDraftAmt, txfDraftClear, txfApply,
   curStats,
   openPlanForm: inst.openPlanForm,
   plPickSub: inst.plPickSub,
