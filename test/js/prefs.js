@@ -26,7 +26,8 @@ import {
 export { saveGeminiKey, clearGeminiKey };
 
 function geminiHelpHref() {
-  return location.pathname.indexOf('/test') >= 0 ? '../help-gemini.html' : 'help-gemini.html';
+  const base = location.pathname.indexOf('/test') >= 0 ? '../help-gemini.html' : 'help-gemini.html';
+  return base + '?lang=' + (lang() === 'en' ? 'en' : 'fa');
 }
 
 const THEME_KEY = 'capital_theme';

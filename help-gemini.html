@@ -5,18 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>چطور کلید گوگل را بگیرم؟</title>
 <style>
-  body{font-family:Tahoma,sans-serif;background:#0b0f17;color:#e9eff8;margin:0;padding:20px;line-height:1.8;max-width:640px;margin-left:auto;margin-right:auto}
+  :root{color-scheme:light dark}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:#f6f7fb;color:#111827;margin:0;padding:20px;line-height:1.8;max-width:640px;margin-left:auto;margin-right:auto}
   h1{font-size:20px;margin:0 0 12px}
-  h2{font-size:16px;margin:22px 0 8px;color:#93c5fd}
-  a{color:#3d8bfd}
-  .card{background:#141b29;border:1px solid #243044;border-radius:14px;padding:14px 16px;margin:12px 0}
-  ol{padding-right:22px}
-  .warn{color:#fbbf24}
-  .muted{color:#8b98ab;font-size:13px}
+  h2{font-size:16px;margin:22px 0 8px;color:#1d4ed8}
+  a{color:#2563eb}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;margin:12px 0}
+  ol,ul{padding-inline-start:22px}
+  .warn{color:#b45309}
+  .muted{color:#6b7280;font-size:13px}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .seg{display:inline-flex;border:1px solid #e5e7eb;border-radius:999px;overflow:hidden;background:#fff}
+  .seg button{border:0;background:none;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer;color:#6b7280}
+  .seg button.on{background:#2563eb;color:#fff}
+  @media (prefers-color-scheme: dark){
+    body{background:#0b0f17;color:#e9eff8}.card,.seg{background:#141b29;border-color:#243044}h2{color:#93c5fd}a{color:#3d8bfd}.warn{color:#fbbf24}.muted{color:#8b98ab}
+  }
+  [hidden]{display:none!important}
 </style>
 </head>
 <body>
-  <p class="muted"><a href="./">برگشت به برنامه</a></p>
+  <div class="top">
+    <p class="muted" style="margin:0"><a href="./" data-fa>برگشت به برنامه</a><a href="./" data-en hidden>Back to the app</a></p>
+    <div class="seg"><button type="button" id="bFa" onclick="setL('fa')">فارسی</button><button type="button" id="bEn" onclick="setL('en')">English</button></div>
+  </div>
+
+  <div data-fa>
   <h1>کلید خواندن فاکتور از عکس</h1>
   <p>برای اینکه برنامه عکس فاکتور را بخواند، یک کلید رایگان از گوگل لازم است. کلید را در تنظیمات برنامه می‌گذاری؛ به کسی نده.</p>
 
@@ -49,11 +63,71 @@
   <div class="card">
     <h2>اگر کار نکرد</h2>
     <ul>
+      <li>اگر در ایران هستی، فیلترشکن را روشن کن؛ گوگل به ایران سرویس نمی‌دهد.</li>
       <li>اگر کلید را محدود کرده‌ای، این آدرس را در محدودیت کلید اضافه کن: <b>https://aminchat.github.io</b></li>
       <li>کلید را در چت برای کسی نفرست.</li>
       <li>رایگان است تا سقف روزانه گوگل؛ اگر گفت سهمیه تمام شده، فردا دوباره امتحان کن.</li>
     </ul>
     <p class="warn">عکس فاکتور برای خواندن به سرور گوگل فرستاده می‌شود.</p>
   </div>
+  </div>
+
+  <div data-en hidden>
+  <h1>Key for reading receipts from photos</h1>
+  <p>To let the app read a receipt photo, you need a free key from Google. You paste the key into the app's settings; don't share it with anyone.</p>
+
+  <div class="card">
+    <h2>1. Open Google AI Studio</h2>
+    <p>Open this page with your Google account:</p>
+    <p><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a></p>
+  </div>
+
+  <div class="card">
+    <h2>2. Create a key</h2>
+    <ol>
+      <li>Sign in to Google if asked.</li>
+      <li>Tap <b>Create API key</b>.</li>
+      <li>If it asks for a project, pick any (or the default one).</li>
+      <li>You'll get a long string that usually starts with <b>AIza</b>. That's the key.</li>
+      <li>Copy it.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>3. Paste it into the app</h2>
+    <ol>
+      <li>Go back to the app → Settings ⚙</li>
+      <li>Section "Read receipts from photos"</li>
+      <li>Paste the key and save.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>If it doesn't work</h2>
+    <ul>
+      <li>If you're in Iran, turn on a VPN — Google doesn't serve Iran.</li>
+      <li>If you restricted the key, add this origin to its allowed list: <b>https://aminchat.github.io</b></li>
+      <li>Never send the key to anyone in a chat.</li>
+      <li>It's free up to Google's daily limit; if it says the quota is exhausted, try again tomorrow.</li>
+    </ul>
+    <p class="warn">The receipt photo is sent to Google's servers to be read.</p>
+  </div>
+  </div>
+
+<script>
+  function setL(l){
+    var en = l === 'en';
+    document.documentElement.lang = en ? 'en' : 'fa';
+    document.documentElement.dir = en ? 'ltr' : 'rtl';
+    document.title = en ? 'How do I get a Google key?' : 'چطور کلید گوگل را بگیرم؟';
+    document.querySelectorAll('[data-fa]').forEach(function(e){ e.hidden = en; });
+    document.querySelectorAll('[data-en]').forEach(function(e){ e.hidden = !en; });
+    document.getElementById('bFa').classList.toggle('on', !en);
+    document.getElementById('bEn').classList.toggle('on', en);
+    try { history.replaceState(null, '', '?lang=' + (en ? 'en' : 'fa')); } catch (e) {}
+  }
+  var q = new URLSearchParams(location.search).get('lang');
+  setL(q === 'en' ? 'en' : 'fa');
+</script>
 </body>
 </html>
