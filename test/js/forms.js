@@ -1,4 +1,4 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval, vpnNote } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage } from './scan.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, shiftMonth, bookNow, bookCalendar } from './jalali.js';
@@ -210,6 +210,7 @@ export function openTxForm(tx, opts) {
           <button type="button" class="btn sm" style="flex:1" onclick="startScan('gal')">${icon('folder')} ${tr('گالری')}</button>
         </div>
         <div id="scanVerdict"></div>
+        ${vpnNote('خواندن عکس با هوش مصنوعی')}
       </div>
     </div>
     <div class="field"><label>${tr('عنوان')}</label>

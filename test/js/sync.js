@@ -1,5 +1,5 @@
 import { icon } from './icons.js';
-import { esc, store, toast, toFa } from './utils.js';
+import { esc, store, toast, toFa, vpnNote } from './utils.js';
 import { render } from './view.js';
 import {
   fingerprint,
@@ -353,7 +353,7 @@ function tokenErrorHint() {
     case 'bad_sealed':
       return tr('دسترسی این دستگاه از سمت گوگل باطل شده (قطع دسترسی یا تغییر رمز حساب)؛ یک بار دیگر وارد شو.');
     default:
-      return '';
+      return tr('اگر در ایران هستی، فیلترشکن را روشن کن و دوباره بزن.');
   }
 }
 
@@ -1161,7 +1161,8 @@ export function renderSyncCard() {
   return (
     '<div class="card"><h3>' + icon('cloud') + (' ' + tr('همگام‌سازی ابری') + '</h3>') +
     ('<div class="small muted" style="margin-bottom:12px">' + tr('با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.') + '</div>') +
-    ('<button class="btn primary block" onclick="googleSignIn()">' + tr('ورود با گوگل') + '</button></div>')
+    ('<button class="btn primary block" onclick="googleSignIn()">' + tr('ورود با گوگل') + '</button>') +
+    vpnNote('ورود با گوگل و همگام‌سازی') + '</div>'
   );
 }
 

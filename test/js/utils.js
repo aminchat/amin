@@ -1,5 +1,6 @@
+import { t as trI18n } from './i18n.js';
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.26.1';
+export const APP_VERSION = '2.26.2';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -191,6 +192,12 @@ export function fmtShort(n, cur) {
 }
 
 // دکمهٔ ⓘ که توضیح را فقط در صورت درخواست کاربر نشان می‌دهد (چند ثانیه یا تا ضربهٔ بعدی)
+// یادداشت تحریم: سرویس‌های گوگل از داخل ایران فقط با فیلترشکن کار می‌کنند
+export function vpnNote(what) {
+  const T = trI18n;
+  const w = T(what || 'این سرویس');
+  return `<div class="vpn-note" role="note"><span class="vpn-ic">!</span><span>${esc(T('به‌دلیل تحریم،'))} ${esc(w)} ${esc(T('از داخل ایران فقط با فیلترشکنِ روشن کار می‌کند.'))}</span></div>`;
+}
 export function infoTip(text, cls) {
   return `<button type="button" class="info-btn ${cls || ''}" data-tip="${esc(text)}" onclick="event.stopPropagation();showTip(this)" aria-label="راهنما">i</button>`;
 }

@@ -1,6 +1,6 @@
 import { avatarHTML, syncStatusText, displayName } from './sync.js';
 import { needsOnboarding, openOnboarding } from './onboard.js';
-import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain } from './utils.js';
+import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain, vpnNote } from './utils.js';
 import { fmtDate } from './jalali.js';
 import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
 import { icon, hasIcon } from './icons.js';
@@ -923,7 +923,8 @@ export function openSettingsGoogle() {
     <div class="hint" style="margin:0 0 12px">${tr('با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.')}${
       sec.isEncrypted() ? (' ' + tr('داده‌ها رمزشده می‌روند؛ گوگل نمی‌تواند بخواندشان.')) : ''
     }</div>
-    <button class="btn primary block" onclick="closeModal();googleSignIn()">${tr('ورود با گوگل')}</button>`;
+    <button class="btn primary block" onclick="closeModal();googleSignIn()">${tr('ورود با گوگل')}</button>
+    ${vpnNote('ورود با گوگل و همگام‌سازی')}`;
   } else {
     body = `
     <div class="sgroup">
