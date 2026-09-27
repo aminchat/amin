@@ -888,3 +888,11 @@ body.onboarding{overflow:hidden}
 .clar-strip b{font-size:var(--fs-sm)}
 .clar-strip small{color:var(--muted);font-size:var(--fs-xs)}
 .clar-strip>.i{width:16px;height:16px;color:var(--muted)}
+
+/* ماشین‌حساب */
+.kbd.calc{grid-template-columns:repeat(4,1fr)}
+.kbd button.op{background:color-mix(in srgb,var(--accent) 12%,var(--card2));color:var(--accent);font-size:24px}
+.kbd button.eq{grid-column:1 / -1;background:var(--accent);color:#fff;min-height:44px}
+.qa-expr{min-height:20px;font-size:var(--fs-sm);color:var(--muted);direction:ltr;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+input.money.calc{font-family:inherit;letter-spacing:.5px;color:var(--accent)}
+.money-words.calc{color:var(--accent);font-weight:700}

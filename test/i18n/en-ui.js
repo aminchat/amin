@@ -834,4 +834,5 @@ export default {
   'پاکت «{n}» را انتخاب کن': 'Pick a pocket for “{n}”',
   'همهٔ نمودارها با جزئیات کامل': 'All charts at full detail',
   '{n} خرج دیگر را زیرشاخه بزن تا گزارش کامل شود': 'Tag {n} more expenses to complete the report',
+  'عبارت درست نیست': 'That expression isn’t valid',
 };

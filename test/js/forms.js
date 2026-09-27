@@ -1,4 +1,4 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage } from './scan.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, shiftMonth, bookNow, bookCalendar } from './jalali.js';
@@ -1214,7 +1214,7 @@ function returnAfterTx() {
 }
 
 /* ═══════════════════ فرم سریع دو مرحله‌ای ═══════════════════ */
-const qa = { amount: '', type: 'out', cat: 'need', accountId: '', dateISO: '', note: '', sub: '' };
+const qa = { amount: '', expr: '', type: 'out', cat: 'need', accountId: '', dateISO: '', note: '', sub: '' };
 
 // عدد به حروف کوتاه (برای تأیید مبلغ زیر صفحه‌کلید)
 // حذف صفرهای اضافی فقط در بخش اعشاری («۵۰» دست‌نخورده می‌ماند)
@@ -1225,6 +1225,7 @@ function acctLabel(a) {
 
 export function openQuickTx(opts) {
   const rep = opts.repeatOf || null;
+  qa.expr = '';
   qa.amount = rep ? String(rep.amount || '') : opts.amount ? String(opts.amount) : '';
   qa.type = rep ? (rep.type === 'in' ? 'in' : 'out') : 'out';
   qa.cat = rep && rep.cat && rep.cat !== 'loan' ? rep.cat : opts.cat || 'need';
@@ -1245,6 +1246,7 @@ export function openQuickTx(opts) {
       <button type="button" class="${qa.type === 'in' ? 'on in' : ''}" data-t="in" onclick="qaSetType('in')">${tr('درآمد')}</button>
     </div>
     <div class="qa-amount">
+      <div class="qa-expr" id="qaExpr"></div>
       <div class="kbd-display empty" id="qaDisp">${toFa(0)}</div>
       <div class="qa-words" id="qaWords"></div>
       <div class="cur" id="qaCur">${esc(curName(cur))}</div>
@@ -1253,11 +1255,14 @@ export function openQuickTx(opts) {
       <div class="qa-cats" id="qaCats"></div>
       <div id="qaTitles" class="qa-titles"></div>
     </div>
-    <div class="kbd" id="qaKbd">
-      ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button type="button" onclick="qaKey('${d}')">${toFa(d)}</button>`).join('')}
-      <button type="button" class="fn" id="qaFnKey" onclick="qaFn()">${isBigUnit(cur) ? toFa('000') : decSep()}</button>
-      <button type="button" onclick="qaKey('0')">${toFa(0)}</button>
-      <button type="button" class="fn del" onclick="qaKey('del')" aria-label="${tr('پاک کردن')}">${icon('back')}</button>
+    <div class="kbd calc" id="qaKbd">
+      ${[[1, 2, 3, '÷'], [4, 5, 6, '×'], [7, 8, 9, '−'], ['fn', 0, 'del', '+']].map((row) => row.map((k) => {
+        if (k === 'fn') return `<button type="button" class="fn" id="qaFnKey" onclick="qaFn()">${isBigUnit(cur) ? toFa('000') : decSep()}</button>`;
+        if (k === 'del') return `<button type="button" class="fn del" onclick="qaKey('del')" aria-label="${tr('پاک کردن')}">${icon('back')}</button>`;
+        if (typeof k === 'string') return `<button type="button" class="op" onclick="qaOp('${k}')">${k}</button>`;
+        return `<button type="button" onclick="qaKey('${k}')">${toFa(k)}</button>`;
+      }).join('')).join('')}
+      <button type="button" class="op eq" id="qaEq" onclick="qaEq()" style="display:none">=</button>
     </div>
     <div class="qa-meta">
       <button type="button" class="btn sm" id="qaAcctBtn" onclick="qaPickAccount()">${icon('card')}<b id="qaAcctName">${acct ? esc(acctLabel(acct)) : '—'}</b></button>
@@ -1315,6 +1320,10 @@ function qaPaint() {
   const disp = document.getElementById('qaDisp');
   const words = document.getElementById('qaWords');
   if (!disp) return;
+  const ex = document.getElementById('qaExpr');
+  if (ex) ex.textContent = qa.expr ? qa.expr.replace(/[\d.]+/g, (n) => fmt(Number(n))) : '';
+  const eq = document.getElementById('qaEq');
+  if (eq) eq.style.display = qa.expr ? '' : 'none';
   const n = Number(qa.amount) || 0;
   disp.textContent = qa.amount ? fmt(n) + (qa.amount.endsWith('.') ? decSep() : /\.\d*0$/.test(qa.amount) ? '' : '') : toFa(0);
   if (qa.amount && /\.(\d*)$/.test(qa.amount) && !qa.amount.endsWith('.')) {
@@ -1327,6 +1336,13 @@ function qaPaint() {
 }
 
 export function qaKey(k) {
+  if (k === 'del' && !qa.amount && qa.expr) {
+    // برگرداندن آخرین عملگر: عدد قبلی دوباره قابل ویرایش می‌شود
+    const m = qa.expr.match(/^(.*?)([\d.]+)\s*[+\-*/]\s*$/);
+    if (m) { qa.expr = m[1]; qa.amount = m[2]; }
+    else qa.expr = '';
+    haptic(4); qaPaint(); return;
+  }
   if (k === 'del') qa.amount = qa.amount.slice(0, -1);
   else if (k === '000') { if (qa.amount && !qa.amount.includes('.')) qa.amount += '000'; }
   else if (k === '.') { if (!qa.amount.includes('.')) qa.amount = (qa.amount || '0') + '.'; }
@@ -1337,6 +1353,25 @@ export function qaKey(k) {
   }
   qa.amount = qa.amount.replace(/^0+(?=\d)/, '').slice(0, 16);
   haptic(4);
+  qaPaint();
+}
+// ماشین‌حساب: عملگر → عدد فعلی به عبارت می‌رود؛ «=» یا ثبت → محاسبه
+const OPS = { '+': '+', '−': '-', '×': '*', '÷': '/' };
+export function qaOp(sym) {
+  const op = OPS[sym] || sym;
+  if (!qa.amount && !qa.expr) return;
+  if (!qa.amount) { qa.expr = qa.expr.replace(/[+\-*/]\s*$/, '') + ' ' + op + ' '; }
+  else { qa.expr += qa.amount + ' ' + op + ' '; qa.amount = ''; }
+  haptic(4);
+  qaPaint();
+}
+export function qaEq() {
+  if (!qa.expr) return;
+  const v = calcEval((qa.expr + (qa.amount || '')).replace(/[+\-*/]\s*$/, ''));
+  qa.expr = '';
+  if (!isNaN(v) && v >= 0) qa.amount = String(v);
+  else toast(tr('عبارت درست نیست'));
+  haptic(6);
   qaPaint();
 }
 // کلید تابعی کیبورد: «۰۰۰» برای واحدهای بزرگ (تومان)، «.» برای بقیه
@@ -1417,6 +1452,7 @@ export function qaMore() {
 }
 
 export function qaSave() {
+  if (qa.expr) qaEq();
   const amount = Number(qa.amount) || 0;
   if (amount <= 0) {
     toast(tr('مبلغ را وارد کن'));
