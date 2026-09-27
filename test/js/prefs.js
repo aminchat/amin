@@ -1,6 +1,6 @@
 import { avatarHTML, syncStatusText, displayName } from './sync.js';
 import { needsOnboarding, openOnboarding } from './onboard.js';
-import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain, vpnNote } from './utils.js';
+import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain, vpnNote, saveFile } from './utils.js';
 import { fmtDate } from './jalali.js';
 import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
 import { icon, hasIcon } from './icons.js';
@@ -1087,18 +1087,10 @@ export async function exportBackup() {
     return;
   }
   const data = enc ? await sec.encryptStandalone(plain) : plain;
-  const blob = new Blob([data], { type: 'application/json' });
-  const a = document.createElement('a');
   const d = new Date();
   const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'capital-backup-' + stamp + (enc ? '.enc' : '') + '.json';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(a.href);
-    a.remove();
-  }, 500);
+  const how = await saveFile('capital-backup-' + stamp + (enc ? '.enc' : '') + '.json', data);
+  if (how === 'cancel') return;
   toast(enc ? tr('فایل پشتیبان رمزشده ساخته شد') : tr('فایل پشتیبان ساخته شد'));
 }
 

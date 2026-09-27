@@ -1,6 +1,6 @@
 import { t as trI18n } from './i18n.js';
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.26.2';
+export const APP_VERSION = '2.26.3';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -197,6 +197,30 @@ export function vpnNote(what) {
   const T = trI18n;
   const w = T(what || 'این سرویس');
   return `<div class="vpn-note" role="note"><span class="vpn-ic">!</span><span>${esc(T('به‌دلیل تحریم،'))} ${esc(w)} ${esc(T('از داخل ایران فقط با فیلترشکنِ روشن کار می‌کند.'))}</span></div>`;
+}
+// ذخیرهٔ فایل روی گوشی: در موبایل/PWA دانلود مستقیم اغلب کار نمی‌کند → اول share sheet (ذخیره در Files/Drive)، بعد دانلود
+export async function saveFile(name, text, mime) {
+  mime = mime || 'application/json';
+  try {
+    if (typeof File !== 'undefined' && navigator.share && navigator.canShare) {
+      const f = new File([text], name, { type: mime });
+      if (navigator.canShare({ files: [f] })) {
+        await navigator.share({ files: [f], title: name });
+        return 'shared';
+      }
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return 'cancel';
+  }
+  const blob = new Blob([text], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  return 'download';
 }
 export function infoTip(text, cls) {
   return `<button type="button" class="info-btn ${cls || ''}" data-tip="${esc(text)}" onclick="event.stopPropagation();showTip(this)" aria-label="راهنما">i</button>`;

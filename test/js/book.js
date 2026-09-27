@@ -1,7 +1,7 @@
 // ─── شروع دفتر جدید با تقویم دیگر ───
 // تقویم دفتر (state.calendar) بعد از ساخت ثابت است. برای تغییر، دفتر جدید ساخته می‌شود:
 // ۱) آرشیو کامل دفتر فعلی (دانلود + کپی در درایو) ۲) انتقال گزینشی چیزهای مستقل از ماه ۳) جایگزینی.
-import { esc, toast, uid, todayISO, fmtShort, toFa } from './utils.js';
+import { esc, toast, uid, todayISO, fmtShort, toFa, saveFile } from './utils.js';
 import { t as tr, langInfo } from './i18n.js';
 import { state, replaceState, accountCurrent, defaultState, baseCur, save } from './state.js';
 import { openModal, closeModal } from './modal.js';
@@ -62,16 +62,7 @@ export function bookToggle(key, el) {
 }
 
 function download(name, text) {
-  const blob = new Blob([text], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(a.href);
-    a.remove();
-  }, 500);
+  return saveFile(name, text);
 }
 
 // ساخت state دفتر جدید از روی دفتر فعلی
