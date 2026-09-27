@@ -708,7 +708,7 @@ export function encryptStep3() {
 export async function encryptFinish() {
   const pin = null;
   try {
-    await sec.enableEncryption(state, wizPass, wizPhrase, pin);
+    await (delete state.encOff, sec.enableEncryption)(state, wizPass, wizPhrase, pin);
     store.set(LEGACY_DATA_KEY, '');
     store.set(PIN_KEY, '');
     wizPass = '';
@@ -729,6 +729,36 @@ export function openPinRestoreModal() {}
 export async function savePinRestore() {}
 
 // ─── تغییر رمز عبور / عبارت بازیابی جدید ───────────────────────────────────
+export function disableEncPrompt() {
+  openModal(`
+    <button class="x" onclick="openSettingsSecurity()" aria-label="${tr('بازگشت')}">${icon('x')}</button>
+    <h2>${tr('خاموش کردن رمزنگاری')}</h2>
+    <p class="hint">${tr('بعد از این، داده‌ها روی این گوشی و در Google Drive بدون رمز ذخیره می‌شوند و دستگاه‌های دیگرت هم در همگام‌سازی بعدی از حالت رمز خارج می‌شوند. اثر انگشت و قفل ورود هم برداشته می‌شود.')}</p>
+    <div class="field"><label>${tr('رمز عبور فعلی')}</label>
+      <input class="input" id="deOld" type="password" autocomplete="off" dir="ltr"></div>
+    <button class="btn danger block" style="margin-top:12px" onclick="disableEncDo()">${tr('بله، رمزنگاری را خاموش کن')}</button>
+    <button class="btn block" style="margin-top:8px" onclick="openSettingsSecurity()">${tr('انصراف')}</button>
+  `);
+}
+export async function disableEncDo() {
+  const pass = String((document.getElementById('deOld') || {}).value || '');
+  if (!pass) { toast(tr('رمز عبور را وارد کن')); return; }
+  try {
+    await sec.unlock(pass, 'pass');
+  } catch (e) {
+    toast(tr('رمز عبور درست نیست'));
+    return;
+  }
+  // نشانه برای دستگاه‌های دیگر: از این زمان به بعد داده ساده است
+  state.encOff = Date.now();
+  sec.disableEncryption();
+  clearPin();
+  save();
+  closeModal();
+  toast(tr('رمزنگاری خاموش شد؛ داده‌ها ساده ذخیره می‌شوند'));
+  render();
+}
+
 export function changePassPrompt() {
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
@@ -886,6 +916,9 @@ export function openSettingsSecurity() {
           : '<div class="hint">' + tr('اثر انگشت روی این آدرس در دسترس نیست (https لازم است).') + '</div>'
       }
       ${settingsRow('lock', '#ef4444', tr('قفل کردن همین حالا'), tr('برای بازکردن رمز یا اثر انگشت لازم است'), 'closeModal();lockApp()')}
+    </div>
+    <div class="sgroup">
+      ${settingsRow('shield', '#64748b', tr('خاموش کردن رمزنگاری'), tr('داده‌ها ساده ذخیره می‌شوند؛ روی همهٔ دستگاه‌ها'), 'disableEncPrompt()')}
     </div>`;
   } else {
     body += `

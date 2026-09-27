@@ -82,6 +82,14 @@ export async function unlock(secret, kind) {
   return JSON.parse(text);
 }
 
+// خاموش‌کردن کامل رمزنگاری روی این دستگاه: پاکت حذف، کلید از حافظه پاک؛ داده بعداً ساده ذخیره می‌شود
+export function disableEncryption() {
+  dk = null;
+  sessionPass = null;
+  envelope = null;
+  store.set(ENV_KEY, '');
+}
+
 export function lockSession() {
   dk = null;
   sessionPass = null;

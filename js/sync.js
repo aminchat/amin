@@ -502,8 +502,23 @@ function openModalSafe(html) {
 
 // خروج فقط روی همین دستگاه؛ کلید نزد گوگل باطل نمی‌شود تا دستگاه‌های دیگر نیفتند
 export function googleSignOut() {
+  openModalSafe(
+    ('<button class="x" onclick="openProfileMenu()" aria-label="' + tr('بازگشت') + '">') + icon('x') + ('</button><h2>' + tr('خروج از حساب گوگل') + '</h2>') +
+      '<p class="hint">' + tr('داده‌های روی این گوشی چه شوند؟ اگر می‌خواهی با حساب دیگری وارد شوی، پاک‌کردن لازم است.') + '</p>' +
+      '<button class="btn block" onclick="closeModal();googleSignOutDo(false)">' + tr('فقط خروج؛ داده‌ها بمانند') + '</button>' +
+      '<button class="btn danger block" style="margin-top:8px" onclick="closeModal();googleSignOutDo(true)">' + tr('خروج و پاک‌کردن داده‌های این گوشی') + '</button>' +
+      '<button class="btn block" style="margin-top:8px" onclick="openProfileMenu()">' + tr('انصراف') + '</button>'
+  );
+}
+export function googleSignOutDo(wipe) {
   store.set(SEALED_KEY, '');
   clearSignedIn();
+  if (wipe) {
+    // همهٔ کلیدهای برنامه (وضعیت، پاکت رمز، پین، اثر انگشت، تنظیمات) پاک می‌شود و برنامه از نو بالا می‌آید
+    try { store.clearAll(); } catch (e) {}
+    location.reload();
+    return;
+  }
   render();
   toast(tr('از حساب خارج شدی'));
 }
@@ -520,7 +535,7 @@ export function googleRevokeAll() {
 export function googleRevokeAllDo() {
   const sealed = store.get(SEALED_KEY);
   const done = function () {
-    googleSignOut();
+    googleSignOutDo(false);
     toast(tr('دسترسی از همهٔ دستگاه‌ها قطع شد'));
   };
   if (!sealed) return done();
@@ -711,7 +726,17 @@ export function loadFromDrive(cb, interactive, quiet) {
           if (remote && remote.v === 2 && remote.wraps && remote.data) {
             return handleRemoteEnvelope(remote, f.id);
           }
-          // فایل قدیمیِ متن‌ساده
+          // فایل متن‌ساده
+          if (sec.isEncrypted() && remote && remote.encOff && remote.encOff > sec.metaUpdatedAt()) {
+            // روی دستگاه دیگری رمزنگاری خاموش شده؛ این‌جا هم دنبالش می‌رویم
+            sec.disableEncryption();
+            clearBioRecord();
+            replaceState(remote);
+            persistLocal();
+            render();
+            toast(tr('رمزنگاری از دستگاه دیگر خاموش شد؛ داده‌ها ساده ذخیره می‌شوند'));
+            return;
+          }
           if (sec.isEncrypted()) {
             if (!sec.isUnlocked()) return; // بعد از باز شدن قفل رسیدگی می‌شود
             const d2 = decideSync(state, remote);

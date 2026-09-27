@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.26.8';
+export const APP_VERSION = '2.27.0';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -138,6 +138,15 @@ export const store = (() => {
       } catch (e) {
         mem[k] = v;
       }
+    },
+    // پاک‌کردن همهٔ کلیدهای این برنامه (نسخهٔ تست با پیشوند t_ دست نمی‌خورد)
+    clearAll() {
+      try {
+        if (!ok) { for (const k of Object.keys(mem)) delete mem[k]; return; }
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+        keys.filter((k) => k && k.indexOf('t_') !== 0).forEach((k) => localStorage.removeItem(k));
+      } catch (e) {}
     },
     persisted: ok,
   };
