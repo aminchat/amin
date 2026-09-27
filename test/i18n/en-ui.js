@@ -840,4 +840,7 @@ export default {
   'ذخیره روی گوشی': 'Save to phone',
   'رمزشده': 'encrypted',
   'ذخیره نشد': 'Could not save',
+  'اشتراک‌گذاری (Drive، تلگرام…)': 'Share (Drive, Telegram…)',
+  'کپی متن پشتیبان': 'Copy backup text',
+  'کپی شد؛ در یک یادداشت یا پیام بچسبان': 'Copied — paste it into a note or message',
 };

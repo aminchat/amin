@@ -1090,15 +1090,29 @@ export async function exportBackup() {
   const d = new Date();
   const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const name = 'capital-backup-' + stamp + (enc ? '.enc' : '') + '.json';
-  pendingBackup = { name, data, enc };
-  // Safari/iOS: اشتراک فایل فقط داخل خودِ لمس کاربر مجاز است؛ چون رمزگذاری/آماده‌سازی زمان می‌برد، یک دکمهٔ جدا برای لحظهٔ ذخیره می‌گذاریم
+  if (pendingBackup && pendingBackup.url) { try { URL.revokeObjectURL(pendingBackup.url); } catch (e) {} }
+  const url = URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
+  pendingBackup = { name, data, enc, url };
+  // لینک واقعی با download: مطمئن‌ترین راه در کروم اندروید؛ اشتراک‌گذاری برای iOS/انتقال به Drive و تلگرام
+  const canShare = !!(navigator.share && navigator.canShare && typeof File !== 'undefined' && navigator.canShare({ files: [new File(['x'], 'x.txt', { type: 'text/plain' })] }));
   openModal(`
     <h2>${tr('نسخهٔ پشتیبان آماده است')}</h2>
     <div class="hint" style="margin:0 0 12px">${esc(name)}${enc ? ' · ' + tr('رمزشده') : ''}</div>
-    <button class="btn primary block" onclick="saveBackupNow()">${tr('ذخیره روی گوشی')}</button>
+    <a class="btn primary block" href="${url}" download="${esc(name)}" onclick="backupSaved()">${tr('ذخیره روی گوشی')}</a>
+    ${canShare ? `<button class="btn block" style="margin-top:8px" onclick="saveBackupNow()">${tr('اشتراک‌گذاری (Drive، تلگرام…)')}</button>` : ''}
+    <button class="btn block" style="margin-top:8px" onclick="copyBackupText()">${tr('کپی متن پشتیبان')}</button>
     <button class="btn block" style="margin-top:8px" onclick="closeModal()">${tr('بستن')}</button>`);
 }
 let pendingBackup = null;
+export function backupSaved() {
+  const b = pendingBackup;
+  setTimeout(() => { closeModal(); toast(b && b.enc ? tr('فایل پشتیبان رمزشده ساخته شد') : tr('فایل پشتیبان ساخته شد')); }, 300);
+}
+export async function copyBackupText() {
+  const b = pendingBackup;
+  if (!b) return;
+  try { await navigator.clipboard.writeText(b.data); toast(tr('کپی شد؛ در یک یادداشت یا پیام بچسبان')); } catch (e) { toast(tr('ذخیره نشد') + ': ' + ((e && e.message) || e)); }
+}
 export async function saveBackupNow() {
   const b = pendingBackup;
   if (!b) return;

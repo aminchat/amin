@@ -897,3 +897,6 @@ body.onboarding{overflow:hidden}
 input.money.calc{font-family:inherit;letter-spacing:.5px;color:var(--accent)}
 .money-words.calc{color:var(--accent);font-weight:700}
 
+
+a.btn{text-decoration:none;box-sizing:border-box;width:100%}
+a.btn.block{display:flex}
