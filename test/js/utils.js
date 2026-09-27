@@ -1,6 +1,6 @@
 import { t as trI18n } from './i18n.js';
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.26.3';
+export const APP_VERSION = '2.26.4';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -192,12 +192,6 @@ export function fmtShort(n, cur) {
 }
 
 // دکمهٔ ⓘ که توضیح را فقط در صورت درخواست کاربر نشان می‌دهد (چند ثانیه یا تا ضربهٔ بعدی)
-// یادداشت تحریم: سرویس‌های گوگل از داخل ایران فقط با فیلترشکن کار می‌کنند
-export function vpnNote(what) {
-  const T = trI18n;
-  const w = T(what || 'این سرویس');
-  return `<div class="vpn-note" role="note"><span class="vpn-ic">!</span><span>${esc(T('به‌دلیل تحریم،'))} ${esc(w)} ${esc(T('از داخل ایران فقط با فیلترشکنِ روشن کار می‌کند.'))}</span></div>`;
-}
 // ذخیرهٔ فایل روی گوشی: در موبایل/PWA دانلود مستقیم اغلب کار نمی‌کند → اول share sheet (ذخیره در Files/Drive)، بعد دانلود
 export async function saveFile(name, text, mime) {
   mime = mime || 'application/json';

@@ -1,5 +1,5 @@
 import { icon } from './icons.js';
-import { esc, store, toast, toFa, vpnNote } from './utils.js';
+import { esc, store, toast, toFa } from './utils.js';
 import { render } from './view.js';
 import {
   fingerprint,
@@ -322,7 +322,7 @@ export function requestAccessToken(cb, interactive) {
 function tokenErrorHint() {
   switch (lastTokenError) {
     case 'gsi-not-loaded':
-      return tr('کتابخانهٔ گوگل بارگذاری نشده (اینترنت/فیلترشکن را چک کن و صفحه را دوباره باز کن).');
+      return tr('فیلترشکن را روشن کن');
     case 'popup_closed':
     case 'popup':
       return tr('پنجرهٔ ورود گوگل بسته شد یا مرورگر آن را بلاک کرد؛ اجازهٔ پاپ‌آپ بده و دوباره بزن.');
@@ -353,7 +353,7 @@ function tokenErrorHint() {
     case 'bad_sealed':
       return tr('دسترسی این دستگاه از سمت گوگل باطل شده (قطع دسترسی یا تغییر رمز حساب)؛ یک بار دیگر وارد شو.');
     default:
-      return tr('اگر در ایران هستی، فیلترشکن را روشن کن و دوباره بزن.');
+      return tr('فیلترشکن را روشن کن');
   }
 }
 
@@ -530,7 +530,7 @@ export function googleRevokeAllDo() {
       if (j && j.ok) return done();
       toast(tr('قطع دسترسی انجام نشد (گوگل در دسترس نیست)؛ دوباره امتحان کن یا در myaccount.google.com دسترسی «تراز» را حذف کن.'));
     })
-    .catch(() => toast(tr('به سرور همگام‌سازی نرسیدم؛ اینترنت را چک کن.')));
+    .catch(() => toast(tr('فیلترشکن را روشن کن')));
 }
 if (typeof window !== 'undefined') {
   window.googleRevokeAll = googleRevokeAll;
@@ -1161,8 +1161,7 @@ export function renderSyncCard() {
   return (
     '<div class="card"><h3>' + icon('cloud') + (' ' + tr('همگام‌سازی ابری') + '</h3>') +
     ('<div class="small muted" style="margin-bottom:12px">' + tr('با حساب گوگل وارد شو تا داده‌هایت خودکار در Google Drive ذخیره شود و از هر دستگاهی در دسترس باشد.') + '</div>') +
-    ('<button class="btn primary block" onclick="googleSignIn()">' + tr('ورود با گوگل') + '</button>') +
-    vpnNote('ورود با گوگل و همگام‌سازی') + '</div>'
+    ('<button class="btn primary block" onclick="googleSignIn()">' + tr('ورود با گوگل') + '</button></div>')
   );
 }
 

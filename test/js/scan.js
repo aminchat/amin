@@ -187,8 +187,8 @@ function shortErr(e) {
   if (s.includes('quota') || s.includes('resource exhausted')) return 'سهمیه رایگان گوگل تمام شده';
   if (s.includes('not found') || s.includes('supported methods') || s.includes('listmodels'))
     return 'مدل گوگل عوض شده؛ یک‌بار دیگر عکس را بفرست';
-  if (s.includes('location') || s.includes('not supported') || s.includes('unavailable in your country')) return 'گوگل به ایران سرویس نمی‌دهد؛ فیلترشکن را روشن کن';
-  if (s.includes('failed to fetch') || s.includes('network')) return 'اینترنت نرسید به گوگل (اگر در ایران هستی فیلترشکن را روشن کن)';
+  if (s.includes('location') || s.includes('not supported') || s.includes('unavailable in your country')) return 'فیلترشکن را روشن کن';
+  if (s.includes('failed to fetch') || s.includes('network')) return 'فیلترشکن را روشن کن';
   const cut = raw.replace(/\s+/g, ' ').trim();
   return cut.length > 80 ? cut.slice(0, 80) + '…' : cut || 'خواندن عکس نشد';
 }

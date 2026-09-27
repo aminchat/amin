@@ -897,6 +897,3 @@ body.onboarding{overflow:hidden}
 input.money.calc{font-family:inherit;letter-spacing:.5px;color:var(--accent)}
 .money-words.calc{color:var(--accent);font-weight:700}
 
-/* یادداشت تحریم/فیلترشکن */
-.vpn-note{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--warn,#f59e0b) 12%,transparent);color:var(--text);font-size:12px;line-height:1.6;text-align:start}
-.vpn-note .vpn-ic{flex:none;width:18px;height:18px;border-radius:50%;background:var(--warn,#f59e0b);color:#fff;font-weight:900;font-size:12px;display:inline-grid;place-items:center;margin-top:2px}

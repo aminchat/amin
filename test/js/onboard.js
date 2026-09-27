@@ -1,7 +1,7 @@
 // راه‌اندازی اول («خوش آمدی»): فقط برای دستگاهی که هیچ داده‌ای ندارد.
 // کاربر قدیمی (داده دارد) هرگز این را نمی‌بیند؛ پرچم onboarded خودکار ست می‌شود.
 import { icon } from './icons.js';
-import { esc, store, toast, uid, vpnNote } from './utils.js';
+import { esc, store, toast, uid } from './utils.js';
 import { t as tr, LANGS, setLang, lang } from './i18n.js';
 import { state, save, hasLocalData, baseCur, curName, ACCT_TYPES } from './state.js';
 import { setBookCalendar, curMonthKey } from './jalali.js';
@@ -110,7 +110,6 @@ function pageWelcome() {
       <button type="button" class="btn block lg" onclick="obRestore()">${icon('cloud')} ${tr('قبلاً حساب داشته‌ام')}</button>
     </div>
     <p class="small muted" style="margin-top:14px">${tr('بازیابی از گوگل درایو یا فایل پشتیبان')}</p>
-    ${vpnNote('نصب برنامه، ورود با گوگل و خواندن عکس با هوش مصنوعی')}
   `);
 }
 
@@ -125,7 +124,6 @@ function pageRestore() {
       <input type="file" id="obFile" accept="application/json,.json" style="display:none" onchange="obImport(this.files[0])">
     </div>
     <p class="small muted" style="margin-top:14px">${tr('اگر داده‌ها رمز داشته باشند، رمز یا عبارت بازیابی را می‌پرسیم.')}</p>
-    ${vpnNote('ورود با گوگل')}
   `, { back: true });
 }
 

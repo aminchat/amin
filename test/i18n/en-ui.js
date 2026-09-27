@@ -835,10 +835,5 @@ export default {
   'همهٔ نمودارها با جزئیات کامل': 'All charts at full detail',
   '{n} خرج دیگر را زیرشاخه بزن تا گزارش کامل شود': 'Tag {n} more expenses to complete the report',
   'عبارت درست نیست': 'That expression isn’t valid',
-  'به‌دلیل تحریم،': 'Due to sanctions,',
-  'از داخل ایران فقط با فیلترشکنِ روشن کار می‌کند.': 'only works from inside Iran with a VPN turned on.',
-  'نصب برنامه، ورود با گوگل و خواندن عکس با هوش مصنوعی': 'installing the app, Google sign-in and AI photo reading',
-  'ورود با گوگل و همگام‌سازی': 'Google sign-in and sync',
-  'خواندن عکس با هوش مصنوعی': 'AI photo reading',
-  'اگر در ایران هستی، فیلترشکن را روشن کن و دوباره بزن.': 'If you are in Iran, turn on a VPN and try again.',
+  'فیلترشکن را روشن کن': 'Turn on a VPN',
 };
