@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v72';
+const CACHE = 'capital-app-v73';
 const ASSETS = [
   './',
   './index.html',
@@ -34,10 +34,10 @@ const ASSETS = [
   './js/healthui.js',
   './js/securestore.js',
   './js/crypto.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable-192.png',
-  './icons/icon-maskable-512.png',
+  './icons/icon-192.png?v=5',
+  './icons/icon-512.png?v=5',
+  './icons/icon-maskable-192.png?v=5',
+  './icons/icon-maskable-512.png?v=5',
 ];
 
 self.addEventListener('install', (e) => {
