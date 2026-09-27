@@ -99,6 +99,8 @@ let tokenClient = null;
 let tokenWaiters = [];
 let tokenRequesting = false;
 let lastRefreshTry = 0;
+let lastNetDetail = '';
+let workerReachable = null;
 let syncTimer = null;
 let pushInFlight = false;
 let pullInFlight = false;
@@ -237,9 +239,11 @@ export function requestAccessToken(cb, interactive) {
           else finish(false);
         }
       })
-      .catch(() => {
+      .catch((e) => {
         lastTokenError = 'network';
-        finish(false);
+        lastNetDetail = String((e && e.message) || e || '');
+        // تشخیص: آیا خودِ سرور در دسترس است؟ (اگر بله، مشکل از پاسخ /refresh است نه اینترنت)
+        fetch(SYNC_WORKER + '/health', { cache: 'no-store' }).then((r) => { workerReachable = r.ok; }).catch(() => { workerReachable = false; }).finally(() => finish(false));
       });
     return;
   }
@@ -333,7 +337,9 @@ function tokenErrorHint() {
     case 'timeout':
       return tr('گوگل جواب نداد؛ اتصال اینترنت را چک کن.');
     case 'network':
-      return tr('به سرور همگام‌سازی نرسیدم؛ اینترنت را چک کن.');
+      return workerReachable
+        ? tr('سرور همگام‌سازی جواب نمی‌دهد ({d})؛ چند دقیقه بعد دوباره بزن.', { d: lastNetDetail || '—' })
+        : tr('به سرور همگام‌سازی نرسیدم؛ اینترنت یا فیلتر شبکه (DNS/آنتی‌ویروس) را چک کن.') + ' ' + tr('آزمایش: {u}', { u: SYNC_WORKER + '/health' });
     case 'google_down':
     case 'bad_response':
       return tr('گوگل موقتاً جواب نمی‌دهد؛ چند دقیقه بعد دوباره امتحان کن.');

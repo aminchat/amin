@@ -859,4 +859,7 @@ export default {
   'نمایش نتایج': 'Show results',
   'با این فیلتر تراکنشی نیست': 'No transactions match this filter',
   'پاک کردن فیلترها': 'Clear filters',
+  'سرور همگام‌سازی جواب نمی‌دهد ({d})؛ چند دقیقه بعد دوباره بزن.': 'Sync server is not responding ({d}); try again in a few minutes.',
+  'به سرور همگام‌سازی نرسیدم؛ اینترنت یا فیلتر شبکه (DNS/آنتی‌ویروس) را چک کن.': 'Could not reach the sync server; check your internet or network filter (DNS/antivirus).',
+  'آزمایش: {u}': 'Test: {u}',
 };
