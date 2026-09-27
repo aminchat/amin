@@ -1102,7 +1102,8 @@ let pendingBackup = null;
 export async function saveBackupNow() {
   const b = pendingBackup;
   if (!b) return;
-  const how = await saveFile(b.name, b.data);
+  let how;
+  try { how = await saveFile(b.name, b.data); } catch (e) { toast(tr('ذخیره نشد') + ': ' + ((e && e.message) || e)); return; }
   if (how === 'cancel') return;
   closeModal();
   toast(b.enc ? tr('فایل پشتیبان رمزشده ساخته شد') : tr('فایل پشتیبان ساخته شد'));

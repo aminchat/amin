@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.26.4';
+export const APP_VERSION = '2.26.5';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -196,7 +196,8 @@ export async function saveFile(name, text, mime) {
   mime = mime || 'application/json';
   try {
     if (typeof File !== 'undefined' && navigator.share && navigator.canShare) {
-      const f = new File([text], name, { type: mime });
+      // کروم اندروید فقط چند نوع فایل را اجازهٔ اشتراک می‌دهد (application/json نه) → به‌عنوان متن ساده می‌فرستیم
+      const f = new File([text], name, { type: 'text/plain' });
       if (navigator.canShare({ files: [f] })) {
         await navigator.share({ files: [f], title: name });
         return 'shared';

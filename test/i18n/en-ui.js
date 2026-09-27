@@ -839,4 +839,5 @@ export default {
   'نسخهٔ پشتیبان آماده است': 'Backup is ready',
   'ذخیره روی گوشی': 'Save to phone',
   'رمزشده': 'encrypted',
+  'ذخیره نشد': 'Could not save',
 };
