@@ -8,7 +8,11 @@ const ITER_PASS = 250000; // برای رمز عبور و عبارت بازیاب
 const ITER_PIN = 600000; // برای پین (سنگین‌تر چون فضای حدس کوچک است)
 
 export function b64(buf) {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+  // تکه‌تکه: spread روی آرایه‌های بزرگ (داده‌های زیاد) «Maximum call stack size exceeded» می‌داد
+  const u = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
 }
 export function unb64(s) {
   return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));

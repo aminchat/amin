@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.26.9';
+export const APP_VERSION = '2.26.10';
 
 let faDigits = true;
 export function setFaDigits(on) {

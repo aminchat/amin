@@ -1088,8 +1088,8 @@ export async function exportBackup() {
   }
 }
 async function exportBackupInner() {
-  const plain = JSON.stringify(state, null, 1);
   const enc = sec.isEncrypted();
+  const plain = JSON.stringify(state, null, enc ? 0 : 1);
   if (enc && !sec.isUnlocked()) {
     toast(tr('اول قفل برنامه را باز کن'));
     return;
