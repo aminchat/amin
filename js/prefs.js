@@ -1089,9 +1089,23 @@ export async function exportBackup() {
   const data = enc ? await sec.encryptStandalone(plain) : plain;
   const d = new Date();
   const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  const how = await saveFile('capital-backup-' + stamp + (enc ? '.enc' : '') + '.json', data);
+  const name = 'capital-backup-' + stamp + (enc ? '.enc' : '') + '.json';
+  pendingBackup = { name, data, enc };
+  // Safari/iOS: اشتراک فایل فقط داخل خودِ لمس کاربر مجاز است؛ چون رمزگذاری/آماده‌سازی زمان می‌برد، یک دکمهٔ جدا برای لحظهٔ ذخیره می‌گذاریم
+  openModal(`
+    <h2>${tr('نسخهٔ پشتیبان آماده است')}</h2>
+    <div class="hint" style="margin:0 0 12px">${esc(name)}${enc ? ' · ' + tr('رمزشده') : ''}</div>
+    <button class="btn primary block" onclick="saveBackupNow()">${tr('ذخیره روی گوشی')}</button>
+    <button class="btn block" style="margin-top:8px" onclick="closeModal()">${tr('بستن')}</button>`);
+}
+let pendingBackup = null;
+export async function saveBackupNow() {
+  const b = pendingBackup;
+  if (!b) return;
+  const how = await saveFile(b.name, b.data);
   if (how === 'cancel') return;
-  toast(enc ? tr('فایل پشتیبان رمزشده ساخته شد') : tr('فایل پشتیبان ساخته شد'));
+  closeModal();
+  toast(b.enc ? tr('فایل پشتیبان رمزشده ساخته شد') : tr('فایل پشتیبان ساخته شد'));
 }
 
 let pendingImportEnv = null;

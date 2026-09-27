@@ -836,4 +836,7 @@ export default {
   '{n} خرج دیگر را زیرشاخه بزن تا گزارش کامل شود': 'Tag {n} more expenses to complete the report',
   'عبارت درست نیست': 'That expression isn’t valid',
   'فیلترشکن را روشن کن': 'Turn on a VPN',
+  'نسخهٔ پشتیبان آماده است': 'Backup is ready',
+  'ذخیره روی گوشی': 'Save to phone',
+  'رمزشده': 'encrypted',
 };
