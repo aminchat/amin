@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.31.0';
+export const APP_VERSION = '2.31.1';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -497,9 +497,20 @@ function calcBarBackspace(el) {
   try { el.setSelectionRange(a, a); } catch (e) {}
   el.dispatchEvent(new Event('input', { bubbles: true }));
 }
-function placeCalcBar() {
-  if (!calcBar || !calcBar.classList.contains('show')) return;
+// کیبورد باز است؟ (وقتی صفحهٔ دیدنی به‌اندازهٔ چشمگیری کوتاه‌تر از پنجره شده)
+function keyboardOpen() {
   const vv = window.visualViewport;
+  if (!vv) return true; // نمی‌دانیم → نوار را نشان بده
+  const base = Math.max(window.innerHeight, screen.availHeight || 0, window.outerHeight || 0);
+  return base - vv.height > 200;
+}
+function placeCalcBar() {
+  if (!calcBar || !calcBarEl) return;
+  const vv = window.visualViewport;
+  // با پنهان‌کردن کیبورد (دکمهٔ برگشت اندروید) فیلد هنوز فوکوس دارد؛ نوار هم باید برود
+  const open = keyboardOpen();
+  calcBar.classList.toggle('show', open);
+  if (!open) return;
   // در iOS صفحه با کیبورد کوچک نمی‌شود؛ نوار را روی لبهٔ بالای کیبورد می‌نشانیم
   const bottom = vv ? Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)) : 0;
   calcBar.style.bottom = bottom + 'px';
@@ -540,7 +551,6 @@ function showCalcBar(el) {
   if (!isTouch() || el.dataset.nocalc != null) return;
   ensureCalcBar();
   calcBarEl = el;
-  calcBar.classList.add('show');
   placeCalcBar();
   // کیبورد با تأخیر باز می‌شود؛ جای نوار را دوباره حساب کن
   setTimeout(placeCalcBar, 120);
@@ -550,7 +560,7 @@ function hideCalcBar(el) {
   if (!calcBar || calcBarEl !== el) return;
   // اگر فوکوس مستقیم به فیلد مبلغ دیگری رفت، showCalcBar خودش نوار را نگه می‌دارد
   setTimeout(() => {
-    if (calcBarEl === el && document.activeElement !== el) { calcBar.classList.remove('show'); calcBarEl = null; }
+    if (calcBarEl === el && document.activeElement !== el) { calcBarEl = null; calcBar.classList.remove('show'); }
   }, 60);
 }
 
