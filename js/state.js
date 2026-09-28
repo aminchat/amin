@@ -22,6 +22,12 @@ export const LOAN_CAT = 'loan';
 export function isLoanTx(t) {
   return !!(t && t.cat === LOAN_CAT && !isTransfer(t));
 }
+// سهم سود روی تراکنشِ برگشت طلب (پاکت قرض، نوع in): درآمد واقعی است — به تومان
+export function txInterestToman(t) {
+  if (!t || t.type !== 'in' || !isLoanTx(t) || !(t.interest > 0)) return 0;
+  const a = accountById(t.accountId);
+  return Math.min(t.interest, t.amount || 0) * rateOf(a ? a.currency : baseCur());
+}
 
 export const catById = (id) => CATS.find((c) => c.id === id);
 export const ACCT_TYPES = ['کارت بانکی', 'نقدی', 'ارز دیجیتال', 'کیف پول آنلاین', 'سایر'];
@@ -377,7 +383,7 @@ export function loanFlow(mk) {
         for (const line of t.lines) if (line.cat === LOAN_CAT) out += (line.amount || 0) * rate;
       } else if (isLoanTx(t)) out += txAmountToman(t);
     } else if (t.type === 'in' && isLoanTx(t)) {
-      inn += txAmountToman(t);
+      inn += txAmountToman(t) - txInterestToman(t);
     }
   }
   return { out, in: inn, net: inn - out };
@@ -410,7 +416,7 @@ export function pocketItems(mk, catId) {
       if (catId === LOAN_CAT && isLoanTx(t))
         items.push({
           txId: t.id,
-          amount: t.amount || 0,
+          amount: (t.amount || 0) - Math.min(t.interest > 0 ? t.interest : 0, t.amount || 0),
           title: t.note || 'قرض گرفته/برگشت طلب',
           dateISO: t.dateISO,
           accountId: t.accountId,
@@ -466,8 +472,8 @@ export function catCarried(mk, catId) {
 // درآمد واقعی ماه — بدون پول قرضی/برگشتی
 export function incomeIn(mk) {
   return state.transactions
-    .filter((t) => t.month === mk && t.type === 'in' && !isLoanTx(t))
-    .reduce((s, t) => s + txAmountToman(t), 0);
+    .filter((t) => t.month === mk && t.type === 'in' && !isTransfer(t))
+    .reduce((s, t) => s + (isLoanTx(t) ? txInterestToman(t) : txAmountToman(t)), 0);
 }
 
 export function allMonthKeys() {

@@ -3,7 +3,9 @@ import { esc, fmt, fmtShort, store, toast, uid, todayISO, infoTip } from './util
 import { fmtDate, monthOfISO } from './jalali.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
 import { render } from './view.js';
-import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT, baseCur, curName } from './state.js';
+import { save, state, accountById, rateOf, accountOptGroups, LOAN_CAT, CATS, baseCur, curName } from './state.js';
+import { subChipsHtml } from './subs.js';
+import { pickSub } from './subsui.js';
 import { overdueInstallments } from './installments.js';
 import { t as tr } from './i18n.js';
 
@@ -18,8 +20,33 @@ export function allDebts() {
 export function debtPaid(d) {
   return (d.payments || []).reduce((s, x) => s + (Number(x.amount) || 0), 0);
 }
+// سود/بهره = مبلغ بازپرداخت − اصل (اختیاری؛ اگر بازپرداخت ثبت نشده، صفر)
+export function debtInterest(d) {
+  const pb = Number(d.payback) || 0;
+  return pb > (d.amount || 0) ? pb - (d.amount || 0) : 0;
+}
+// کل چیزی که باید رد و بدل شود = اصل + سود
+export function debtTotal(d) {
+  return (d.amount || 0) + debtInterest(d);
+}
 export function debtRemaining(d) {
-  return Math.max(0, (d.amount || 0) - debtPaid(d));
+  return Math.max(0, debtTotal(d) - debtPaid(d));
+}
+// تقسیم هر پرداخت به «اصل» و «سود»: اول اصل پر می‌شود، بعد سود
+function splitPayments(d) {
+  const out = new Map();
+  let cum = 0;
+  const principal = d.amount || 0;
+  for (const pay of (d.payments || []).slice().sort((a, b) => String(a.dateISO).localeCompare(String(b.dateISO)))) {
+    const amt = Number(pay.amount) || 0;
+    const p = Math.max(0, Math.min(amt, principal - cum));
+    out.set(pay.id, { principal: p, interest: amt - p });
+    cum += amt;
+  }
+  return out;
+}
+export function paymentSplit(d, pay) {
+  return splitPayments(d).get(pay.id) || { principal: Number(pay.amount) || 0, interest: 0 };
 }
 // مهاجرت رکورد قدیمی: settled + settleTxId → یک پرداخت کامل
 function migrateDebt(d) {
@@ -78,6 +105,7 @@ function accountOptionsHtml(selectedId) {
 
 export function openDebtForm(d) {
   editingDebtId = d ? d.id : null;
+  dInterestSub = d ? d.interestSub || '' : '';
   const kind = d ? d.kind : 'in';
   const accId = d ? d.accountId || '' : lastDebtAccountId();
   const acc = accountById(accId);
@@ -97,7 +125,15 @@ export function openDebtForm(d) {
       <div class="hint" style="margin-top:6px">${tr('با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. حساب تسویه را موقع تسویه جدا انتخاب می‌کنی (می‌تواند فرق کند).')}</div>
     </div>
     <div class="field"><label id="dAmountLbl">${tr('مبلغ')} (${curName(acc ? acc.currency : baseCur())})</label>
-      <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 500000')}" value="${d ? d.amount : ''}">
+      <input class="input" id="dAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 500000')}" value="${d ? d.amount : ''}" oninput="debtPaybackChanged()">
+    </div>
+    <div class="field"><label>${tr('مبلغ بازپرداخت (اختیاری)')} ${infoTip(tr('اگر قرار است بیشتر از اصل برگردد (سود/بهره)، کل مبلغ بازپرداخت را بنویس. خالی = همان اصل.'))}</label>
+      <input class="input" id="dPayback" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 550000')}" value="${d && d.payback ? d.payback : ''}" oninput="debtPaybackChanged()">
+      <div class="hint" id="dInterestHint" style="margin-top:6px"></div>
+    </div>
+    <div class="field" id="dInterestCatBox" style="display:none"><label>${tr('بهره به کدام پاکت؟')} ${infoTip(tr('سهم بهرهٔ هر پرداخت، خرج واقعی ماه است و از بودجهٔ همین پاکت کم می‌شود؛ اصل قرض همچنان در پاکت قرض می‌ماند.'))}</label>
+      <select class="input" id="dInterestCat" onchange="debtInterestCatChanged()">${CATS.filter((c) => !c.loan).map((c) => `<option value="${c.id}" ${c.id === ((d && d.interestCat) || lastInterestCat()) ? 'selected' : ''}>${c.label}</option>`).join('')}</select>
+      <div id="dInterestSubWrap" style="margin-top:8px">${subChipsHtml((d && d.interestCat) || lastInterestCat(), (d && d.interestSub) || '', 'debtPickInterestSub')}</div>
     </div>
     <div class="field"><label>${tr('تاریخ ثبت')}</label>
       <input class="input" id="dDate" type="date" value="${d && d.createdISO ? d.createdISO : todayISO()}">
@@ -111,12 +147,42 @@ export function openDebtForm(d) {
     <button class="btn primary block" onclick="saveDebt()">${d ? tr('ذخیره') : tr('ثبت')}</button>
     ${d ? `<button class="btn danger block" style="margin-top:8px" onclick="delDebt('${d.id}')">${tr('حذف')}</button>` : ''}
   `);
+  debtPaybackChanged();
 }
 
 export function setDebtKind(btn) {
   document.querySelectorAll('#debtKindSeg button').forEach((b) => b.classList.remove('on', 'out'));
   btn.classList.add('on');
   if (btn.dataset.k === 'out') btn.classList.add('out');
+  debtPaybackChanged();
+}
+
+let dInterestSub = '';
+function lastInterestCat() {
+  const withCat = allDebts().filter((x) => x.interestCat).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return withCat.length ? withCat[0].interestCat : 'need';
+}
+// نمایش سود و (برای بدهی) انتخاب پاکت بهره — فقط وقتی بازپرداخت > اصل
+export function debtPaybackChanged() {
+  const amt = parseFloat((document.getElementById('dAmount') || {}).value) || 0;
+  const pb = parseFloat((document.getElementById('dPayback') || {}).value) || 0;
+  const onBtn = document.querySelector('#debtKindSeg button.on');
+  const kind = onBtn ? onBtn.dataset.k : 'in';
+  const hint = document.getElementById('dInterestHint');
+  const box = document.getElementById('dInterestCatBox');
+  const extra = pb > amt && amt > 0 ? pb - amt : 0;
+  if (hint) {
+    hint.textContent = extra > 0 ? (kind === 'in' ? tr('سود من: {a}', { a: fmt(extra) }) : tr('بهره‌ای که می‌دهم: {a}', { a: fmt(extra) })) : '';
+  }
+  if (box) box.style.display = extra > 0 && kind === 'out' ? '' : 'none';
+}
+export function debtInterestCatChanged() {
+  dInterestSub = '';
+  const wrap = document.getElementById('dInterestSubWrap');
+  if (wrap) wrap.innerHTML = subChipsHtml(document.getElementById('dInterestCat').value, '', 'debtPickInterestSub');
+}
+export function debtPickInterestSub(btn) {
+  pickSub(btn, document.getElementById('dInterestCat').value, (sub) => { dInterestSub = sub; });
 }
 
 export function saveDebt() {
@@ -132,6 +198,15 @@ export function saveDebt() {
   }
   const onBtn = document.querySelector('#debtKindSeg button.on');
   const kind = onBtn ? onBtn.dataset.k : 'in';
+  const pbRaw = parseFloat((document.getElementById('dPayback') || {}).value) || 0;
+  if (pbRaw && pbRaw < amount) {
+    toast(tr('مبلغ بازپرداخت نمی‌تواند کمتر از اصل باشد'));
+    return;
+  }
+  const payback = pbRaw > amount ? pbRaw : 0;
+  const hasInterest = payback > 0;
+  const interestCat = hasInterest && kind === 'out' ? ((document.getElementById('dInterestCat') || {}).value || 'need') : '';
+  const interestSub = interestCat ? dInterestSub : '';
   const dueISO = document.getElementById('dDue').value || '';
   const createdISO = (document.getElementById('dDate') || {}).value || todayISO();
   const note = (document.getElementById('dNote').value || '').trim();
@@ -141,7 +216,7 @@ export function saveDebt() {
   if (editingDebtId) {
     const d = allDebts().find((x) => x.id === editingDebtId);
     if (!d) return;
-    Object.assign(d, { person, amount, kind, dueISO, note, accountId, createdISO, updatedAt: stamp });
+    Object.assign(d, { person, amount, kind, dueISO, note, accountId, createdISO, payback, interestCat, interestSub, updatedAt: stamp });
     syncDebtTxs(d);
     toast(tr('ویرایش شد'));
   } else {
@@ -155,6 +230,9 @@ export function saveDebt() {
       note,
       accountId,
       createdISO,
+      payback,
+      interestCat,
+      interestSub,
       settled: false,
       settledAt: null,
       updatedAt: stamp,
@@ -237,6 +315,7 @@ function paymentTx(d, pay) {
   const who = d.person || '';
   const note = (lent ? (tr('برگشت طلب از') + ' ') : (tr('پس دادم به') + ' ')) + who + (pay.note ? ' — ' + pay.note : '');
   let t = pay.txId ? state.transactions.find((x) => x.id === pay.txId) : null;
+  const sp = paymentSplit(d, pay);
   const payload = {
     amount: pay.amount,
     accountId: acc.id,
@@ -248,9 +327,23 @@ function paymentTx(d, pay) {
     reflect: '',
     kind: 'simple',
     lines: null,
+    interest: 0,
     updatedAt: Date.now(),
     debtId: d.id,
   };
+  if (sp.interest > 0) {
+    if (lent) {
+      // طلب من: سود = درآمد؛ همان یک تراکنش با سهم سود روی خودش
+      payload.interest = sp.interest;
+    } else {
+      // بدهی من: یک تراکنش دو قلمی — اصل در پاکت قرض، بهره در پاکت انتخابی
+      payload.kind = 'invoice';
+      payload.cat = null;
+      payload.lines = [];
+      if (sp.principal > 0) payload.lines.push({ id: pay.id + '_p', name: tr('اصل قرض'), unitPrice: sp.principal, qty: 1, unit: '', amount: sp.principal, cat: LOAN_CAT, sub: '', reflect: '' });
+      payload.lines.push({ id: pay.id + '_i', name: tr('بهرهٔ قرض'), unitPrice: sp.interest, qty: 1, unit: '', amount: sp.interest, cat: d.interestCat || 'need', sub: d.interestSub || '', reflect: '' });
+    }
+  }
   if (t) Object.assign(t, payload);
   else {
     t = Object.assign({ id: uid() }, payload);
@@ -268,7 +361,7 @@ function syncDebtTxs(d) {
   } else d.txId = upsertLinkedTx(d.txId, d, 'open');
   // هر پرداخت تسویه، حساب خودش را دارد
   for (const pay of d.payments) paymentTx(d, pay);
-  d.settled = d.amount > 0 && debtPaid(d) >= d.amount - 0.000001;
+  d.settled = d.amount > 0 && debtPaid(d) >= debtTotal(d) - 0.000001;
   d.settledAt = d.settled ? (d.payments[d.payments.length - 1] || {}).dateISO || todayISO() : null;
 }
 
@@ -299,9 +392,11 @@ export function settleDebt(id) {
     .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
     .map((pay) => {
       const a = accountById(pay.accountId);
+      const sp = paymentSplit(d, pay);
+      const splitTxt = sp.interest > 0 ? ' · ' + tr('اصل {p} · سود {i}', { p: fmtShort(sp.principal), i: fmtShort(sp.interest) }) : '';
       return `<div class="item" style="min-height:48px">
         <div class="ic" style="background:var(--green-soft);color:var(--green)">${icon('check')}</div>
-        <div class="mid"><div class="t1">${fmt(pay.amount)} ${esc(curName(cur))}</div><div class="t2">${fmtDate(pay.dateISO)}${a ? ' · ' + esc(a.name) : (' · ' + tr('بدون حساب'))}</div></div>
+        <div class="mid"><div class="t1">${fmt(pay.amount)} ${esc(curName(cur))}</div><div class="t2">${fmtDate(pay.dateISO)}${a ? ' · ' + esc(a.name) : (' · ' + tr('بدون حساب'))}${splitTxt}</div></div>
         <button class="btn sm icon danger" onclick="delDebtPayment('${d.id}','${pay.id}')" aria-label="${tr('حذف')}">${icon('trash')}</button>
       </div>`;
     })
@@ -310,7 +405,7 @@ export function settleDebt(id) {
     <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${lent ? (tr('دریافت از') + ' ') : (tr('پرداخت به') + ' ')}${esc(d.person)}</h2>
     <div class="grid2" style="margin-bottom:12px">
-      <div class="stat"><div class="lbl">${tr('کل')}</div><div class="val">${fmt(d.amount)}</div></div>
+      <div class="stat"><div class="lbl">${tr('کل')}</div><div class="val">${fmt(debtTotal(d))}</div>${debtInterest(d) > 0 ? `<div class="small muted">${tr('اصل {p} · سود {i}', { p: fmtShort(d.amount), i: fmtShort(debtInterest(d)) })}</div>` : ''}</div>
       <div class="stat"><div class="lbl">${tr('مانده')}</div><div class="val ${remain > 0 ? 'red' : 'green'}">${fmt(remain)}</div></div>
     </div>
     ${remain > 0 ? `
@@ -380,9 +475,9 @@ function debtCurrency(d) {
 // معادل تومانی؛ اگر نرخ ثبت نشده باشد null
 function debtToman(d) {
   const cur = debtCurrency(d);
-  if (cur === baseCur()) return d.amount || 0;
+  if (cur === baseCur()) return debtTotal(d);
   const r = rateOf(cur);
-  return r ? (d.amount || 0) * r : null;
+  return r ? debtTotal(d) * r : null;
 }
 function sumToman(list) {
   let sum = 0;
@@ -408,14 +503,14 @@ function debtRow(d) {
       <div class="ic" style="background:${mine ? 'var(--green-soft)' : 'var(--red-soft)'};color:${mine ? 'var(--green)' : 'var(--red)'}">${icon(mine ? 'arrowIn' : 'arrowOut')}</div>
       <div class="mid" onclick="openDebtForm(findDebt('${d.id}'))">
         <div class="t1">${esc(d.person)}</div>
-        <div class="t2">${mine ? tr('طلب من') : tr('بدهی من')} · ${dueLabel(d.dueISO)}${d.note ? ' · ' + esc(d.note) : ''}${
+        <div class="t2">${mine ? tr('طلب من') : tr('بدهی من')} · ${dueLabel(d.dueISO)}${debtInterest(d) > 0 ? ' · ' + (mine ? tr('سود') : tr('بهره')) + ' ' + fmtShort(debtInterest(d)) : ''}${d.note ? ' · ' + esc(d.note) : ''}${
           d.accountId && accountById(d.accountId) ? ' · <span class="badge" style="color:#14b8a6">' + esc(accountById(d.accountId).name) + '</span>' : ''
         }</div>
       </div>
       <div style="text-align:left">
         <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${foreign ? fmt(debtRemaining(d)) : fmtShort(debtRemaining(d))}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
         ${foreign ? `<div class="small muted">${tm == null ? (tr('نرخ') + ' ') + esc(curName(cur)) + (' ' + tr('ثبت نشده')) : '≈ ' + fmtShort(tm) + ' ' + baseCur()}</div>` : ''}
-        ${!d.settled && debtPaid(d) > 0 ? `<div class="small muted">${tr('{a} از {b} تسویه شده', { a: fmtShort(debtPaid(d)), b: fmtShort(d.amount) })}</div>` : ''}
+        ${!d.settled && debtPaid(d) > 0 ? `<div class="small muted">${tr('{a} از {b} تسویه شده', { a: fmtShort(debtPaid(d)), b: fmtShort(debtTotal(d)) })}</div>` : ''}
         <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? tr('جزئیات') : tr('تسویه')}</button>
       </div>
     </div>
@@ -429,7 +524,7 @@ export function renderDebts() {
   const list = sortDebts(allDebts());
   const open = list.filter((d) => !d.settled);
   const done = list.filter((d) => d.settled);
-  const openRem = open.map((d) => Object.assign({}, d, { amount: debtRemaining(d) }));
+  const openRem = open.map((d) => Object.assign({}, d, { amount: debtRemaining(d), payback: 0 }));
   const recT = sumToman(openRem.filter((d) => d.kind === 'in'));
   const payT = sumToman(openRem.filter((d) => d.kind === 'out'));
   const rec = recT.sum;

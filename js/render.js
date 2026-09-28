@@ -187,7 +187,7 @@ function txRow(t, opts = {}) {
           : cat
             ? cat.label
             : tr('tx.expense');
-  const unitHint = !inv && t.qty && t.unitPrice ? toFa(t.qty) + (t.unit ? ' ' + esc(tr(t.unit)) : '') + ' × ' + fmt(t.unitPrice) : '';
+  const unitHint = !inv && t.qty && t.unitPrice ? toFa(t.qty) + (t.unit ? ' ' + esc(tr(t.unit)) : '') + ' × ' + fmt(t.unitPrice) : (t.type === 'in' && t.cat === 'loan' && t.interest > 0 ? tr('اصل {p} · سود {i}', { p: fmtShort((t.amount || 0) - t.interest), i: fmtShort(t.interest) }) : '');
   const amtClass = transfer ? 'transfer' : t.type;
   const sign = t.type === 'in' || t.type === 'transferIn' ? '+' : '−';
   const balTxt = opts.bal == null ? '' : `<div class="bal">${tr('tx.balance', { amt: fmt(opts.bal) })}</div>`;
@@ -307,8 +307,8 @@ function txListHtml(txs, after, filtered) {
   } else if (txs.length === 0) {
     html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}${state.accounts.length ? `<button type="button" class="btn sm primary" onclick="openQuickTx()">${icon('plus')} ${tr('ثبت تراکنش')}</button>` : `<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button>`}</div>`;
   } else {
-    const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
-    const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (t.amount || 0), 0);
+    const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (isInvoice(t) ? t.lines.reduce((y, l) => y + (l.cat === 'loan' ? 0 : l.amount || 0), 0) : t.amount || 0), 0);
+    const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t)).reduce((x, t) => x + (t.cat === 'loan' ? Math.min(t.interest > 0 ? t.interest : 0, t.amount || 0) : t.amount || 0), 0);
     if (!filtered) html += `<div class="grid2" style="margin-bottom:var(--sp-3)">
       <div class="stat"><div class="lbl">${tr('tx.spentMonth')}</div><div class="val red">${fmtShort(sumOut)}</div></div>
       <div class="stat"><div class="lbl">${tr('tx.incomeMonth')}</div><div class="val green">${fmtShort(sumIn)}</div></div>

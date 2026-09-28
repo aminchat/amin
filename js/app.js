@@ -35,6 +35,9 @@ import {
   addDebtPayment,
   delDebtPayment,
   syncDebtAmountLabel,
+  debtPaybackChanged,
+  debtInterestCatChanged,
+  debtPickInterestSub,
 } from './debts.js';
 import {
   applyTheme,
@@ -453,6 +456,9 @@ Object.assign(window, {
   delDebtPayment,
   setDebtKind,
   syncDebtAmountLabel,
+  debtPaybackChanged,
+  debtInterestCatChanged,
+  debtPickInterestSub,
   enableDebtReminders,
   render,
   toast,
