@@ -1,4 +1,4 @@
-import { store, setBaseInfo, setBigUnits, setCurDisplay } from './utils.js';
+import { store, setBaseInfo, setBigUnits, setCurDisplay, hmOf } from './utils.js';
 import { t, lang } from './i18n.js';
 import { curMonthKey, setBookCalendar, monthOfISO, shiftMonth } from './jalali.js';
 import { langInfo } from './i18n.js';
@@ -195,6 +195,7 @@ export function syncBase() {
       if (t.month !== mk) t.month = mk;
     }
   }
+  backfillTxTime();
   setBaseInfo(baseCur(), currencyInfo(baseCur()));
   setBigUnits(new Set(Object.keys(CURRENCY_INFO).filter((c) => CURRENCY_INFO[c].big)));
 }
@@ -217,7 +218,15 @@ export function touchMeta() {
   state.rev = (state.rev || 0) + 1;
 }
 
+// ساعت تراکنش: اگر ثبت نشده، از زمان آخرین ذخیره‌اش ثابت می‌شود تا ترتیب داخل روز با ویرایش‌های بعدی جابه‌جا نشود
+export function backfillTxTime() {
+  for (const t of state.transactions || []) {
+    if (!t.time) t.time = hmOf(t.updatedAt || Date.now());
+  }
+}
+
 export function save() {
+  backfillTxTime();
   touchMeta();
   monthsCache = null;
   persistLocal();
@@ -330,6 +339,8 @@ export function sortTxs(txs) {
   return txs.slice().sort((a, b) => {
     const d = (b.dateISO || '').localeCompare(a.dateISO || '');
     if (d) return d;
+    const h = String(b.time || hmOf(b.updatedAt || 0)).localeCompare(String(a.time || hmOf(a.updatedAt || 0)));
+    if (h) return h;
     const ta = b.updatedAt || 0;
     const tb = a.updatedAt || 0;
     if (ta !== tb) return ta - tb;

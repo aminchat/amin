@@ -1,4 +1,4 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval, nowHM } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage } from './scan.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, shiftMonth, bookNow, bookCalendar } from './jalali.js';
@@ -235,8 +235,13 @@ export function openTxForm(tx, opts) {
     <div class="field"><label>${tr('از کدام حساب؟')}</label>
       <select class="input" id="txAccount" onchange="syncTxAmountLabel()">${acctOpts}</select>
     </div>
-    <div class="field"><label>${tr('تاریخ')}</label>
-      <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
+    <div class="row" style="flex-wrap:nowrap">
+      <div class="field col" style="min-width:0"><label>${tr('تاریخ')}</label>
+        <input class="input" id="txDate" type="date" value="${tx ? tx.dateISO : pre.dateISO || todayISO()}">
+      </div>
+      <div class="field" style="flex:0 0 34%"><label>${tr('ساعت (اختیاری)')}</label>
+        <input class="input" id="txTime" type="time" dir="ltr" value="${tx ? tx.time || '' : ''}" placeholder="${tr('الان')}">
+      </div>
     </div>
     <div id="txInvoiceWrap" style="${txMode === 'invoice' ? '' : 'display:none'}">
       <div id="txLines"></div>
@@ -1164,11 +1169,16 @@ export function saveTx() {
     if (type === 'out' && note) learnTitle(note, cat, txSub, amount);
   }
 
+  // ساعت: نوشته‌شده → همان؛ خالی → برای ثبت جدید «الان»، برای ویرایش ساعت قبلی
+  const timeIn = ((document.getElementById('txTime') || {}).value || '').slice(0, 5);
+  const prevTx = editingTxId ? state.transactions.find((x) => x.id === editingTxId) : null;
+  const time = timeIn || (prevTx && prevTx.time) || nowHM();
   const payload = {
     amount,
     accountId,
     note,
     dateISO,
+    time,
     type,
     cat,
     sub: type === 'out' && !invoice ? txSub || '' : '',

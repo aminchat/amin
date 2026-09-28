@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.29.4';
+export const APP_VERSION = '2.30.0';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -100,6 +100,15 @@ export function esc(s) {
   }[c]));
 }
 
+// ساعت محلی «HH:MM» از یک زمان (پیش‌فرض: الان)
+export function hmOf(ts) {
+  const d = ts == null ? new Date() : new Date(ts);
+  if (isNaN(d)) return '';
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+export function nowHM() {
+  return hmOf();
+}
 export function todayISO() {
   const d = new Date();
   return (

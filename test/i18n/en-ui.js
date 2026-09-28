@@ -119,6 +119,8 @@ export default {
   'بررسی رمز جدید از گوگل…': 'Checking new password from Google…',
   'برنامه بالا نیامد. صفحه را کامل ببند و دوباره باز کن.': 'The app failed to start. Close the page completely and reopen it.',
   'برگشت طلب از': 'Repayment from',
+  'ساعت (اختیاری)': 'Time (optional)',
+  'الان': 'now',
   'مبلغ بازپرداخت (اختیاری)': 'Repayment total (optional)',
   'اگر قرار است بیشتر از اصل برگردد (سود/بهره)، کل مبلغ بازپرداخت را بنویس. خالی = همان اصل.': 'If more than the principal will be returned (profit/interest), enter the full repayment amount. Empty = principal only.',
   'بهره به کدام پاکت؟': 'Which pocket for the interest?',
