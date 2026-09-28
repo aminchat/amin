@@ -42,6 +42,7 @@ import {
   debtPickContact,
   sendDebtRemind,
 } from './debts.js';
+import { initReminders, checkReminders, openRemindSettings, remindSetDays, remindSetHour, remindEnable, remindExportCal } from './remind.js';
 import {
   applyTheme,
   bioUnlock,
@@ -465,6 +466,11 @@ Object.assign(window, {
   openDebtRemind,
   debtPickContact,
   sendDebtRemind,
+  openRemindSettings,
+  remindSetDays,
+  remindSetHour,
+  remindEnable,
+  remindExportCal,
   enableDebtReminders,
   render,
   toast,
@@ -592,7 +598,8 @@ try {
   buildAssetTabs();
   render();
   initPrefs();
-  notifyDueDebts();
+  initReminders();
+  checkReminders();
 } catch (err) {
   console.error(err);
   if (window.__capLog) window.__capLog(tr('شروع برنامه'), err);
@@ -608,7 +615,7 @@ initGoogleOnLoad();
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'visible') {
     refreshFromDrive();
-    notifyDueDebts();
+    checkReminders();
   }
 });
 

@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v91';
+const CACHE = 'capital-app-v92';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
   './js/view.js',
   './js/modal.js',
   './js/forms.js',
+  './js/remind.js',
   './js/render.js',
   './js/sync.js',
   './js/txfilter.js',
@@ -93,5 +94,24 @@ self.addEventListener('fetch', (e) => {
       .catch(() =>
         e.request.mode === 'navigate' ? caches.match('./index.html') : caches.match(e.request)
       )
+  );
+});
+
+// کلیک روی اعلان یادآوری: اگر اپ باز است پیام می‌دهیم، وگرنه با پارامتر بازش می‌کنیم
+self.addEventListener('notificationclick', (e) => {
+  const n = e.notification;
+  const data = (n && n.data) || {};
+  const action = e.action || 'open';
+  n.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const c = list.find((x) => 'focus' in x);
+      if (c) {
+        c.postMessage({ type: 'remind-action', action, data });
+        return c.focus();
+      }
+      const base = new URL('./', self.registration.scope).href;
+      return self.clients.openWindow(base + '?remind=' + encodeURIComponent(action) + '&rd=' + encodeURIComponent(JSON.stringify(data)));
+    })
   );
 });

@@ -3,6 +3,7 @@ import { needsOnboarding, openOnboarding } from './onboard.js';
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain, saveFile } from './utils.js';
 import { fmtDate } from './jalali.js';
 import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
+import { remindSummary } from './remind.js';
 import { icon, hasIcon } from './icons.js';
 import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
@@ -865,6 +866,7 @@ export function openSettings() {
     <div class="sgroup">
       ${settingsRow('target', '#16a34a', t('hl.title'), t('hl.set.fun'), 'openHealthSettings()')}
       ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
+      ${settingsRow('bell', '#f59e0b', tr('یادآوری سررسیدها'), remindSummary(), 'openRemindSettings()')}
     </div>
     <div class="sgroup">
       ${settingsRow('sparkle', '#f97316', tr('هوش مصنوعی'), gemini ? tr('خواندن فاکتور از عکس فعال است') : tr('خواندن فاکتور از عکس · تحلیل هوشمند'), 'openSettingsAI()', gemini ? tr('فعال') : tr('خاموش'))}

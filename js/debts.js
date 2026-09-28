@@ -698,14 +698,33 @@ export async function debtPickContact(targetId) {
   try {
     const res = await navigator.contacts.select(['tel', 'name'], { multiple: false });
     const c = res && res[0];
-    const tel = c && c.tel && c.tel[0];
-    if (!tel) return;
-    const el = document.getElementById(targetId || 'dPhone');
-    if (el) el.value = normPhone(tel);
+    const tels = [...new Set(((c && c.tel) || []).map(normPhone).filter(Boolean))];
+    if (!tels.length) return toast(tr('این مخاطب شماره ندارد'));
     if (!targetId) {
       const person = document.getElementById('dPerson');
       if (person && !person.value && c.name && c.name[0]) person.value = c.name[0];
     }
+    const put = (tel) => {
+      const el = document.getElementById(targetId || 'dPhone');
+      if (el) el.value = tel;
+    };
+    if (tels.length === 1) return put(tels[0]);
+    // چند شماره: انتخاب با یک ضربه، بدون بستن فرم زیرین
+    const el = document.getElementById(targetId || 'dPhone');
+    const old = document.getElementById('phonePick');
+    if (old) old.remove();
+    const box = document.createElement('div');
+    box.id = 'phonePick';
+    box.className = 'chips';
+    box.style.marginTop = '8px';
+    box.innerHTML = tels.map((t) => `<button type="button" class="chip" dir="ltr">${esc(t)}</button>`).join('');
+    box.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button');
+      if (!b) return;
+      put(b.textContent.trim());
+      box.remove();
+    });
+    if (el && el.parentNode) el.parentNode.insertAdjacentElement('afterend', box);
   } catch (e) {}
 }
 export function sendDebtRemind(id, how) {
