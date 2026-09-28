@@ -38,6 +38,9 @@ import {
   debtPaybackChanged,
   debtInterestCatChanged,
   debtPickInterestSub,
+  openDebtRemind,
+  debtPickContact,
+  sendDebtRemind,
 } from './debts.js';
 import {
   applyTheme,
@@ -459,6 +462,9 @@ Object.assign(window, {
   debtPaybackChanged,
   debtInterestCatChanged,
   debtPickInterestSub,
+  openDebtRemind,
+  debtPickContact,
+  sendDebtRemind,
   enableDebtReminders,
   render,
   toast,

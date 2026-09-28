@@ -120,6 +120,12 @@ export function openDebtForm(d) {
     <div class="field"><label>${tr('اسم طرف')}</label>
       <input class="input" id="dPerson" placeholder="${tr('مثلاً علی')}" value="${d ? esc(d.person || '') : ''}">
     </div>
+    <div class="field"><label>${tr('شمارهٔ موبایل (اختیاری)')} ${infoTip(tr('برای فرستادن یادآوری با پیامک یا واتساپ؛ فقط روی همین گوشی می‌ماند.'))}</label>
+      <div class="row" style="flex-wrap:nowrap">
+        <input class="input col" id="dPhone" type="tel" inputmode="tel" dir="ltr" data-plain placeholder="0912…" value="${d ? esc(d.phone || '') : ''}" style="min-width:0">
+        ${navigator.contacts && navigator.contacts.select ? `<button type="button" class="btn" onclick="debtPickContact()" aria-label="${tr('از مخاطبین')}">${icon('user')}</button>` : ''}
+      </div>
+    </div>
     <div class="field"><label>${tr('از/به کدام حساب؟')}</label>
       <select class="input" id="dAccount" onchange="syncDebtAmountLabel()">${accountOptionsHtml(accId)}</select>
       <div class="hint" style="margin-top:6px">${tr('با انتخاب حساب، مبلغ خودکار از حساب کم/به آن اضافه می‌شود و در پاکت «قرض / امانت» می‌نشیند — نه در خرج یا درآمد ماه. حساب تسویه را موقع تسویه جدا انتخاب می‌کنی (می‌تواند فرق کند).')}</div>
@@ -207,6 +213,7 @@ export function saveDebt() {
   const hasInterest = payback > 0;
   const interestCat = hasInterest && kind === 'out' ? ((document.getElementById('dInterestCat') || {}).value || 'need') : '';
   const interestSub = interestCat ? dInterestSub : '';
+  const phone = normPhone((document.getElementById('dPhone') || {}).value || '');
   const dueISO = document.getElementById('dDue').value || '';
   const createdISO = (document.getElementById('dDate') || {}).value || todayISO();
   const note = (document.getElementById('dNote').value || '').trim();
@@ -216,7 +223,7 @@ export function saveDebt() {
   if (editingDebtId) {
     const d = allDebts().find((x) => x.id === editingDebtId);
     if (!d) return;
-    Object.assign(d, { person, amount, kind, dueISO, note, accountId, createdISO, payback, interestCat, interestSub, updatedAt: stamp });
+    Object.assign(d, { person, amount, kind, dueISO, note, accountId, createdISO, payback, interestCat, interestSub, phone, updatedAt: stamp });
     syncDebtTxs(d);
     toast(tr('ویرایش شد'));
   } else {
@@ -233,6 +240,7 @@ export function saveDebt() {
       payback,
       interestCat,
       interestSub,
+      phone,
       settled: false,
       settledAt: null,
       updatedAt: stamp,
@@ -511,7 +519,7 @@ function debtRow(d) {
         <div class="amt ${mine ? 'in' : 'out'}">${mine ? '+' : '−'}${foreign ? fmt(debtRemaining(d)) : fmtShort(debtRemaining(d))}${foreign ? ' <span class="badge">' + esc(cur) + '</span>' : ''}</div>
         ${foreign ? `<div class="small muted">${tm == null ? (tr('نرخ') + ' ') + esc(curName(cur)) + (' ' + tr('ثبت نشده')) : '≈ ' + fmtShort(tm) + ' ' + baseCur()}</div>` : ''}
         ${!d.settled && debtPaid(d) > 0 ? `<div class="small muted">${tr('{a} از {b} تسویه شده', { a: fmtShort(debtPaid(d)), b: fmtShort(debtTotal(d)) })}</div>` : ''}
-        <button class="btn sm" style="margin-top:6px" onclick="settleDebt('${d.id}')">${d.settled ? tr('جزئیات') : tr('تسویه')}</button>
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px">${d.settled ? '' : `<button class="btn sm icon" onclick="openDebtRemind('${d.id}')" aria-label="${tr('یادآوری')}">${icon('bell')}</button>`}<button class="btn sm" onclick="settleDebt('${d.id}')">${d.settled ? tr('جزئیات') : tr('تسویه')}</button></div>
       </div>
     </div>
     ${hot ? ('<div class="small" style="color:var(--red);margin:-4px 0 10px 52px">' + tr('سررسید گذشته') + '</div>') : ''}
@@ -619,4 +627,109 @@ export function notifyDueDebts(force) {
       tag: 'capital-debts',
     });
   } catch (e) {}
+}
+
+
+// ─── یادآوری به طرف مقابل: پیامک / واتساپ / اشتراک — متن آماده، ارسال با دست خودِ کاربر ────
+export function normPhone(p) {
+  p = String(p || '')
+    .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[^\d+]/g, '');
+  return p;
+}
+// شمارهٔ بین‌المللی برای واتساپ (پیش‌فرض ایران اگر با 0 شروع شود)
+function intlPhone(p) {
+  p = normPhone(p);
+  if (!p) return '';
+  if (p.startsWith('+')) return p.slice(1);
+  if (p.startsWith('00')) return p.slice(2);
+  if (p.startsWith('0')) return '98' + p.slice(1);
+  return p;
+}
+function remindText(d) {
+  const mine = d.kind === 'in';
+  const remain = debtRemaining(d);
+  const cur = debtCurrency(d);
+  const amt = fmt(remain) + ' ' + curName(cur);
+  const n = daysUntilDue(d.dueISO);
+  let when = '';
+  if (d.dueISO) {
+    if (n === 0) when = tr('امروز');
+    else if (n === 1) when = tr('فردا');
+    else if (n !== null && n < 0) when = fmtDate(d.dueISO) + ' (' + tr('گذشته') + ')';
+    else when = fmtDate(d.dueISO);
+  }
+  const name = d.person || '';
+  if (mine) {
+    return when
+      ? tr('سلام {name}، یادآوری دوستانه: مبلغ {amt} که قرار بود {when} برگردانی. ممنون 🙏', { name, amt, when })
+      : tr('سلام {name}، یادآوری دوستانه: مبلغ {amt} که از من قرض گرفتی. ممنون 🙏', { name, amt });
+  }
+  return when
+    ? tr('سلام {name}، مبلغ {amt} را {when} برمی‌گردانم. ممنون از صبرت 🙏', { name, amt, when })
+    : tr('سلام {name}، مبلغ {amt} را به‌زودی برمی‌گردانم. ممنون از صبرت 🙏', { name, amt });
+}
+export function openDebtRemind(id) {
+  const d = findDebt(id);
+  if (!d) return;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  openModal(`
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('یادآوری به')} ${esc(d.person)}</h2>
+    <div class="field"><label>${tr('شمارهٔ موبایل')}</label>
+      <div class="row" style="flex-wrap:nowrap">
+        <input class="input col" id="rmPhone" type="tel" inputmode="tel" dir="ltr" data-plain placeholder="0912…" value="${esc(d.phone || '')}" style="min-width:0">
+        ${navigator.contacts && navigator.contacts.select ? `<button type="button" class="btn" onclick="debtPickContact('rmPhone')" aria-label="${tr('از مخاطبین')}">${icon('user')}</button>` : ''}
+      </div>
+    </div>
+    <div class="field"><label>${tr('متن پیام')}</label>
+      <textarea class="input" id="rmText" rows="4">${esc(remindText(d))}</textarea>
+    </div>
+    <div class="row">
+      <button class="btn primary col" onclick="sendDebtRemind('${d.id}','sms')">${icon('phone')} ${tr('پیامک')}</button>
+      <button class="btn col" onclick="sendDebtRemind('${d.id}','wa')">${tr('واتساپ')}</button>
+      <button class="btn col" onclick="sendDebtRemind('${d.id}','${navigator.share ? 'share' : 'copy'}')">${icon(navigator.share ? 'upload' : 'copy')} ${navigator.share ? tr('اشتراک') : tr('کپی')}</button>
+    </div>
+    <div class="hint" style="margin-top:10px">${isIOS ? tr('پیام در برنامهٔ پیامک باز می‌شود؛ ارسال با خودت.') : tr('پیام در برنامهٔ پیامک/واتساپ باز می‌شود؛ ارسال با خودت.')}</div>
+  `);
+}
+export async function debtPickContact(targetId) {
+  try {
+    const res = await navigator.contacts.select(['tel', 'name'], { multiple: false });
+    const c = res && res[0];
+    const tel = c && c.tel && c.tel[0];
+    if (!tel) return;
+    const el = document.getElementById(targetId || 'dPhone');
+    if (el) el.value = normPhone(tel);
+    if (!targetId) {
+      const person = document.getElementById('dPerson');
+      if (person && !person.value && c.name && c.name[0]) person.value = c.name[0];
+    }
+  } catch (e) {}
+}
+export function sendDebtRemind(id, how) {
+  const d = findDebt(id);
+  if (!d) return;
+  const phone = normPhone((document.getElementById('rmPhone') || {}).value || '');
+  const text = ((document.getElementById('rmText') || {}).value || '').trim();
+  if (!text) return toast(tr('متن پیام خالی است'));
+  if (phone && phone !== d.phone) { d.phone = phone; d.updatedAt = Date.now(); save(); }
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  if (how === 'sms') {
+    if (!phone) return toast(tr('شمارهٔ موبایل را بنویس'));
+    // iOS جداکنندهٔ body را با & می‌خواهد، اندروید با ?
+    window.location.href = 'sms:' + phone + (isIOS ? '&' : '?') + 'body=' + encodeURIComponent(text);
+    return;
+  }
+  if (how === 'wa') {
+    const u = phone ? 'https://wa.me/' + intlPhone(phone) + '?text=' + encodeURIComponent(text) : 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(u, '_blank', 'noopener');
+    return;
+  }
+  if (how === 'share' && navigator.share) {
+    navigator.share({ text }).catch(() => {});
+    return;
+  }
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast(tr('کپی شد'))).catch(() => toast(tr('کپی نشد')));
 }
