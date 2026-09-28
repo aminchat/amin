@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.29.0';
+export const APP_VERSION = '2.29.1';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -429,6 +429,9 @@ function moneyize(el) {
     if (e.key === 'Enter' || e.key === '=') { if (calcMode) { e.preventDefault(); calcCommit(); } }
   });
   el.addEventListener('blur', calcCommit);
+  el._calcCommit = calcCommit;
+  el.addEventListener('focus', () => showCalcBar(el));
+  el.addEventListener('blur', () => hideCalcBar(el));
   el.addEventListener('input', () => {
     const cur = nativeValue.get.call(el);
     if (hasCalcOps(cur)) {
@@ -453,6 +456,85 @@ function moneyize(el) {
     } catch (e) {}
   });
 }
+// ── نوار عملگر بالای کیبورد سیستم (فقط لمسی): پد عددی گوشی + − × ÷ ندارد ──
+let calcBar = null;
+let calcBarEl = null;
+const isTouch = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+function calcBarInsert(el, txt) {
+  const cur = nativeValue.get.call(el);
+  const a = el.selectionStart == null ? cur.length : el.selectionStart;
+  const b = el.selectionEnd == null ? a : el.selectionEnd;
+  nativeValue.set.call(el, cur.slice(0, a) + txt + cur.slice(b));
+  const pos = a + txt.length;
+  try { el.setSelectionRange(pos, pos); } catch (e) {}
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+function calcBarBackspace(el) {
+  const cur = nativeValue.get.call(el);
+  let a = el.selectionStart == null ? cur.length : el.selectionStart;
+  const b = el.selectionEnd == null ? a : el.selectionEnd;
+  if (a === b) { if (a === 0) return; a -= 1; }
+  nativeValue.set.call(el, cur.slice(0, a) + cur.slice(b));
+  try { el.setSelectionRange(a, a); } catch (e) {}
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+function placeCalcBar() {
+  if (!calcBar || !calcBar.classList.contains('show')) return;
+  const vv = window.visualViewport;
+  // در iOS صفحه با کیبورد کوچک نمی‌شود؛ نوار را روی لبهٔ بالای کیبورد می‌نشانیم
+  const bottom = vv ? Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)) : 0;
+  calcBar.style.bottom = bottom + 'px';
+}
+function ensureCalcBar() {
+  if (calcBar) return calcBar;
+  calcBar = document.createElement('div');
+  calcBar.className = 'calcbar';
+  calcBar.setAttribute('dir', 'ltr');
+  calcBar.setAttribute('role', 'toolbar');
+  const keys = [
+    ['(', '('], [')', ')'], ['÷', '/'], ['×', '*'], ['−', '-'], ['+', '+'], ['000', '000'], ['⌫', 'bs'], ['=', 'eq'],
+  ];
+  calcBar.innerHTML = keys
+    .map(([lab, v]) => `<button type="button" data-k="${v}" class="${v === 'eq' ? 'eq' : v === 'bs' ? 'bs' : v === '000' ? 'k' : ''}">${lab}</button>`)
+    .join('');
+  // pointerdown + preventDefault: فوکوس از فیلد نمی‌پرد و کیبورد بسته نمی‌شود
+  calcBar.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    e.preventDefault();
+    const el = calcBarEl;
+    if (!el || !el.isConnected) return;
+    const k = b.dataset.k;
+    if (k === 'bs') calcBarBackspace(el);
+    else if (k === 'eq') { if (el._calcCommit) el._calcCommit(); }
+    else calcBarInsert(el, k);
+  });
+  calcBar.addEventListener('click', (e) => e.preventDefault());
+  document.body.appendChild(calcBar);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', placeCalcBar);
+    window.visualViewport.addEventListener('scroll', placeCalcBar);
+  }
+  return calcBar;
+}
+function showCalcBar(el) {
+  if (!isTouch() || el.dataset.nocalc != null) return;
+  ensureCalcBar();
+  calcBarEl = el;
+  calcBar.classList.add('show');
+  placeCalcBar();
+  // کیبورد با تأخیر باز می‌شود؛ جای نوار را دوباره حساب کن
+  setTimeout(placeCalcBar, 120);
+  setTimeout(placeCalcBar, 400);
+}
+function hideCalcBar(el) {
+  if (!calcBar || calcBarEl !== el) return;
+  // اگر فوکوس مستقیم به فیلد مبلغ دیگری رفت، showCalcBar خودش نوار را نگه می‌دارد
+  setTimeout(() => {
+    if (calcBarEl === el && document.activeElement !== el) { calcBar.classList.remove('show'); calcBarEl = null; }
+  }, 60);
+}
+
 export function enhanceMoneyInputs(root) {
   const scope = root && root.querySelectorAll ? root : document;
   scope.querySelectorAll('input[type="number"]').forEach((el) => {
