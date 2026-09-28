@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.29.1';
+export const APP_VERSION = '2.29.2';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -437,6 +437,16 @@ function moneyize(el) {
     if (hasCalcOps(cur)) {
       calcMode = true;
       el.classList.add('calc');
+      // هر عدد داخل عبارت هم جداکنندهٔ هزارگان بگیرد؛ نشانگر بعد از همان تعداد کاراکترِ معنادار برگردد
+      const caret0 = el.selectionStart == null ? cur.length : el.selectionStart;
+      const sigBefore = cur.slice(0, caret0).replace(/[,\s]/g, '').length;
+      const grouped = cur.replace(/[,\s]/g, '').replace(/\d[\d.]*/g, (n) => groupNum(normNum(n)));
+      if (grouped !== cur) {
+        nativeValue.set.call(el, grouped);
+        let pos = 0, seen = 0;
+        while (pos < grouped.length && seen < sigBefore) { if (grouped[pos] !== ',') seen++; pos++; }
+        try { el.setSelectionRange(pos, pos); } catch (e) {}
+      }
       calcPreview();
       return;
     }
