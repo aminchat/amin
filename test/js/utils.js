@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.29.3';
+export const APP_VERSION = '2.29.4';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -413,7 +413,7 @@ function moneyize(el) {
       words.className = 'money-words';
       el.insertAdjacentElement('afterend', words);
     }
-    words.textContent = isNaN(v) ? '…' : '= ' + fmt(v) + (v >= 1000 ? ' · ' + amountWords(v, el.dataset.cur) : '');
+    words.textContent = isNaN(v) ? '…' : '= ' + fmt(v) + (v >= 1000 ? ' = ' + amountWords(v, el.dataset.cur) : '');
     words.classList.add('calc');
   };
   const calcCommit = () => {
