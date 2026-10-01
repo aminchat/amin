@@ -224,10 +224,16 @@ async function listModels(key) {
   return names;
 }
 
+let lastB64 = '';
+// همان عکس فشرده‌ای که به مدل رفت (برای ذخیره در تاریخچه)
+export function lastJpegB64() {
+  return lastB64;
+}
 async function readWithGemini(file, prompt, opts) {
   const key = getGeminiKey();
   if (!key) throw new Error('NO_KEY');
   const b64 = await fileToJpeg(file, opts && opts.max, opts && opts.quality);
+  lastB64 = b64;
   let models = MODELS.slice();
   try {
     const listed = await listModels(key);

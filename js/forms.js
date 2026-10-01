@@ -1,6 +1,7 @@
 import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval, nowHM } from './utils.js';
 import { icon } from './icons.js';
-import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage } from './scan.js';
+import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage, lastJpegB64 } from './scan.js';
+import { rememberScan, listScans, loadScan, deleteScan } from './scanhist.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, shiftMonth, bookNow, bookCalendar } from './jalali.js';
 import { jalaliMonths, gregMonths } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
@@ -270,6 +271,7 @@ export function openTxForm(tx, opts) {
           <button type="button" class="btn sm" style="flex:1" onclick="startScan('cam')">${icon('camera')} ${tr('دوربین')}</button>
           <button type="button" class="btn sm" style="flex:1" onclick="startScan('gal')">${icon('folder')} ${tr('گالری')}</button>
         </div>
+        <div id="scanHist"></div>
         <div id="scanVerdict"></div>
       </div>
     </div>
@@ -854,6 +856,55 @@ export function toggleScanPick() {
   }
   const p = document.getElementById('scanPick');
   if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+  const h = document.getElementById('scanHist');
+  if (h) { if (p && p.style.display !== 'none') paintScanHist(); else h.innerHTML = ''; }
+}
+// آخرین خوانده‌شده‌ها: بدون تماس دوباره با مدل
+async function paintScanHist() {
+  const h = document.getElementById('scanHist');
+  if (!h) return;
+  const list = await listScans();
+  if (!document.getElementById('scanHist')) return;
+  if (!list.length) { h.innerHTML = ''; return; }
+  h.innerHTML = `<div class="small muted" style="margin-top:8px">${tr('آخرین خوانده‌شده‌ها')} ${infoTip(tr('نتیجه و عکس فشرده فقط روی همین دستگاه می‌ماند (آخرین ۵ مورد). «همان داده» بدون فرستادن به هوش مصنوعی پر می‌کند؛ «دوباره بخوان» عکس را دوباره می‌فرستد.'))}</div>
+    <div class="sgroup">${list.map((r) => `<div class="srow" style="cursor:default;gap:8px">
+      ${r.thumb ? `<img src="${r.thumb}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;flex:0 0 40px">` : `<span class="ib sm">${icon('receipt')}</span>`}
+      <span class="smid"><span class="st1">${r.kind === 'invoice' ? (esc(r.title) || tr('فاکتور')) : tr('لیست تراکنش')}</span><span class="st2">${fmtDate(new Date(r.at).toISOString().slice(0, 10))} · ${toFa(r.n)} ${tr('قلم')}</span></span>
+      <button type="button" class="btn sm primary" onclick="useScan('${r.id}',0)">${tr('همان داده')}</button>
+      <button type="button" class="btn sm ghost" onclick="useScan('${r.id}',1)" title="${tr('دوباره بخوان')}">${icon('refresh')}</button>
+      <button type="button" class="btn sm ghost" style="color:var(--red)" onclick="dropScan('${r.id}')">${icon('trash')}</button>
+    </div>`).join('')}</div>`;
+}
+function applyScanResult(res) {
+  if (res.kind === 'invoice') {
+    if (!document.getElementById('txAmount')) openTxForm(null, { full: true });
+    paperDraft = [];
+    applyInvoiceScan(res.invoice);
+    scanVerdict('invoice');
+    toast(tr('خوانده شد — قبل از ثبت چک کن'));
+  } else {
+    applyPaperRows(res.list);
+    openPaperReview('invoice');
+  }
+}
+export async function useScan(id, again) {
+  const rec = await loadScan(id);
+  if (!rec) { toast(tr('این مورد در دسترس نیست')); return; }
+  if (!again) { applyScanResult(rec.res); return; }
+  if (!rec.jpegBlob) { toast(tr('عکس این مورد ذخیره نشده')); return; }
+  lastScanFile = rec.jpegBlob;
+  toast(tr('در حال خواندن عکس…'));
+  try {
+    const res = await readAnyImage(rec.jpegBlob, state.accounts.map((a) => a.name));
+    rememberScan(res, lastJpegB64(), rec.jpegBlob);
+    applyScanResult(res);
+  } catch (e) {
+    toast((e && e.message) || tr('خواندن عکس نشد'));
+  }
+}
+export async function dropScan(id) {
+  await deleteScan(id);
+  paintScanHist();
 }
 export function startScan(kind) {
   const inp = document.getElementById(kind === 'gal' ? 'scanGal' : 'scanCam');
@@ -876,6 +927,7 @@ export async function onScanPhoto(inp) {
   toast(tr('در حال خواندن عکس…'));
   try {
     const res = await readAnyImage(file, state.accounts.map((a) => a.name));
+    rememberScan(res, lastJpegB64(), file);
     if (res.kind === 'invoice') {
       applyInvoiceScan(res.invoice);
       scanVerdict('invoice');

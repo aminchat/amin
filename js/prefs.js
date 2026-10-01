@@ -11,6 +11,7 @@ import { render } from './view.js';
 import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES, curName, bookCal } from './state.js';
 import { profileFor } from './state.js';
 import { profileName, openProfileSettings } from './reflect.js';
+import { scanHistOn, setScanHistOn } from './scanhist.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -1034,6 +1035,7 @@ export function openSettingsScan() {
     ${settingsHeader(('🧾 ' + tr('خواندن فاکتور از عکس')), 'openSettingsAI()')}
     <p class="small muted">${tr('کلید')} Google AI Studio ${tr('را این‌جا بگذار. به کسی نشان نده. عکس برای خواندن به گوگل فرستاده می‌شود.')}</p>
     <p><a class="btn block" href="${geminiHelpHref()}" target="_blank" rel="noopener">${tr('چطور کلید بگیرم؟')}</a></p>
+    <label class="srow" style="cursor:pointer;margin-bottom:10px"><span class="smid"><span class="st1">${tr('نگه‌داشتن آخرین خوانده‌شده‌ها')}</span><span class="st2">${tr('۵ مورد آخر، فقط روی همین دستگاه؛ برای پر کردن دوباره بدون عکس جدید')}</span></span><input type="checkbox" ${scanHistOn() ? 'checked' : ''} onchange="setScanHistOn(this.checked)"></label>
     ${
       has
         ? `<div class="hint" style="margin:10px 0">✅ ${tr('کلید ذخیره شده است.')}</div>
@@ -1441,4 +1443,4 @@ export function openProfileSettingsFull() {
   const card = host ? host.closest('.card') : null;
   if (card) card.insertAdjacentHTML('afterend', `<label class="srow" style="margin-top:10px;cursor:pointer"><span class="smid"><span class="st1">${tr('بازتاب ماه در گزارش')}</span><span class="st2">${tr('چند یادداشت از جریان پاکت‌ها؛ هیچ‌وقت خودش بالا نمی‌آید')}</span></span><input type="checkbox" ${off ? '' : 'checked'} onchange="setReflectOn(this.checked)"></label>`);
 }
-if (typeof window !== 'undefined') Object.assign(window, { openProfileSettingsFull });
+if (typeof window !== 'undefined') Object.assign(window, { openProfileSettingsFull, setScanHistOn });
