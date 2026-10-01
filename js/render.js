@@ -228,8 +228,6 @@ export function renderHome() {
   let html = '';
 
   html += renderSyncCard();
-  html += debtHomeBanner();
-  html += installmentHomeCard();
   if (!store.persisted) {
     html += `<div class="banner">${icon('alert')}<span>${tr('home.preview')}</span></div>`;
   }

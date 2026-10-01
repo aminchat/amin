@@ -20,6 +20,7 @@ import { render, setRender } from './view.js';
 import { setOnSave, state, curStats } from './state.js';
 import { guideAfterRender } from './guide.js';
 import { celebrateAfterRender } from './clarity.js';
+import { showDueNotice } from './notice.js';
 import { renderAll, fitNumbers, setTodayLabel, resetMonths, txShift, repShift, togglePocket, toggleAcctGroup } from './render.js';
 import { txfQuery, txfKind, txfToggle, txfSet, txfClear, txfOpen, txfDraft, txfDraftRange, txfDraftAmt, txfDraftClear, txfApply } from './txfilter.js';
 import {
@@ -187,6 +188,7 @@ setRender(() => {
   renderAll();
   guideAfterRender(curTab);
   setTimeout(celebrateAfterRender, 250);
+  setTimeout(() => { try { showDueNotice(); } catch (e) {} }, 600);
 });
 setOnSave(scheduleSync);
 
