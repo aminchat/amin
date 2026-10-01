@@ -35,7 +35,8 @@ import {
   catCeiling,
   loanFlow,
   accountCurrentToman,
-  institutionOf, baseCur, currencyInfo, curName } from './state.js';
+  institutionOf, baseCur, currencyInfo, curName, setTargetMonth } from './state.js';
+import { reflectRow } from './reflect.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
@@ -215,6 +216,7 @@ function txRow(t, opts = {}) {
 }
 
 export function renderHome() {
+  setTargetMonth(null);
   const s = curStats();
   const mk = curMonthKey();
   const hasBudget = !!(state.budgets[mk] && state.budgets[mk].amount);
@@ -464,6 +466,7 @@ function planScore(mk, totalSpent) {
 
 export function renderReport() {
   const mk = repMonth;
+  setTargetMonth(mk);
   const budget = (state.budgets[mk] && state.budgets[mk].amount) || 0;
   const cm = computeMonths()[mk] || { carriedIn: 0, spent: 0, income: 0 };
   const totalSpent = cm.spent;
@@ -512,6 +515,7 @@ export function renderReport() {
     <div style="height:8px"></div>
     <div class="bullets">${bulletRows(mk, budget, totalSpent)}</div>
     ${clarityStrip(mk)}
+    ${reflectRow(mk)}
   </div>`;
 
   if (f.out || f.in) {

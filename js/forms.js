@@ -29,7 +29,7 @@ import {
   state,
   accountGroups,
   accountOptGroups,
-  institutionOf, baseCur, rateOf } from './state.js';
+  institutionOf, baseCur, rateOf, incomeIn } from './state.js';
 import { t as tr } from './i18n.js';
 import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor, subLabel, subTotals } from './subs.js';
 import { pickSub } from './subsui.js';
@@ -96,6 +96,66 @@ function txSubBlockHtml(cat, sub) {
   return subChipsHtml(cat, sub, 'setTxSub');
 }
 let txSubSuggested = false;
+// برچسب‌های تفریح: 'social' (با دیگران) · 'play' (بازی: خودت بازیگر بودی)
+let txTags = [];
+export const FUN_TAGS = [
+  { id: 'social', emoji: '👥', get label() { return tr('با دیگران'); } },
+  { id: 'play', emoji: '🎲', get label() { return tr('بازی'); } },
+];
+export function funTagsHtml(tags, onPick) {
+  return `<div class="funtags">${FUN_TAGS.map((t) => `<button type="button" class="chip ${tags.includes(t.id) ? 'on' : ''}" data-tag="${t.id}" onclick="${onPick}(this)">${t.emoji} ${t.label}</button>`).join('')}${infoTip(tr('بازی یعنی خودت بازیگر بودی — ساختی، یاد گرفتی، حرکت کردی، بازی کردی — نه فقط تماشا و خرید.'))}</div>`;
+}
+function toggleTag(list, id) {
+  const i = list.indexOf(id);
+  if (i >= 0) list.splice(i, 1); else list.push(id);
+  return list;
+}
+export function setTxTag(btn) {
+  toggleTag(txTags, btn.dataset.tag);
+  btn.classList.toggle('on', txTags.includes(btn.dataset.tag));
+}
+// «مطمئن نیستی؟» — آزمون چهارسؤالی تفریح/هدررفت، فقط وقتی کاربر خودش بخواهد
+export const QUIZ = [
+  { id: 'q1', get t() { return tr('بعدش حس خوبی داشتی، نه پشیمانی؟'); } },
+  { id: 'q2', get t() { return tr('از قبل انتخابش کرده بودی، نه این‌که پیش آمد؟'); } },
+  { id: 'q3', get t() { return tr('خودت وسطش بودی یا با کسی بودی — نه فقط تماشا و خرید؟'); } },
+  { id: 'q4', get t() { return tr('بدون قرض و بدون دست‌زدن به سهم پاکت دیگر بود؟'); } },
+];
+export function hesitHtml(cat, onPick) {
+  if (cat !== 'fun' && cat !== 'waste') return '';
+  return `<div class="hesit"><button type="button" class="link" onclick="toggleQuiz(this,'${onPick}')">${tr('مطمئن نیستی تفریح است یا اتلاف؟')}</button><div class="quiz" style="display:none"></div></div>`;
+}
+let quizAns = {};
+export function toggleQuiz(btn, onPick) {
+  const box = btn.nextElementSibling;
+  if (!box) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  quizAns = {};
+  box.dataset.pick = onPick;
+  box.innerHTML = QUIZ.map((q) => `<div class="qrow"><span>${q.t}</span><div class="seg"><button type="button" onclick="quizAnswer('${q.id}',1,this)">${tr('بله')}</button><button type="button" onclick="quizAnswer('${q.id}',0,this)">${tr('نه')}</button></div></div>`).join('') + '<div class="qres"></div>';
+  box.style.display = '';
+}
+export function quizAnswer(id, v, btn) {
+  quizAns[id] = v;
+  const seg = btn.parentElement;
+  [...seg.children].forEach((b) => b.classList.remove('on'));
+  btn.classList.add('on');
+  const box = seg.closest('.quiz');
+  const res = box.querySelector('.qres');
+  if (Object.keys(quizAns).length < QUIZ.length) { res.innerHTML = ''; return; }
+  const yes = Object.values(quizAns).reduce((a, b) => a + b, 0);
+  const sug = yes >= 3 ? 'fun' : 'waste';
+  const txt = yes >= 3 ? tr('بیشتر شبیه تفریح است — لذتی که انتخاب شده و چیزی را خراب نکرده.') : tr('بیشتر شبیه اتلاف است — نه از قصد بود، نه چیزی ازش ماند. اسمش را که بنویسی، نصف راه رفته است.');
+  const c = CATS.find((x) => x.id === sug);
+  res.innerHTML = `${txt} <button type="button" class="btn sm" style="margin-inline-start:6px;border-color:${c.color};color:${c.color}" onclick="${box.dataset.pick}('${sug}')">${tr('بگذار در')} ${c.label}</button>`;
+}
+export function quizPickTx(cat) {
+  const b = document.querySelector(`#txCats .chip[data-cat="${cat}"]`);
+  if (b) setTxCat(b);
+}
+export function quizPickQa(cat) {
+  qaSetCat(cat);
+}
 function catSummaryHtml(cat, sub) {
   const c = CATS.find((x) => x.id === cat);
   if (!c) return '';
@@ -110,7 +170,7 @@ function catSummaryHtml(cat, sub) {
 }
 function paintTxSub(cat) {
   const sw = document.getElementById('txSubWrap');
-  if (sw) { sw.innerHTML = txSubBlockHtml(cat, txSub); sw.style.display = ''; }
+  if (sw) { sw.innerHTML = txSubBlockHtml(cat, txSub) + (cat === 'fun' ? funTagsHtml(txTags, 'setTxTag') : '') + hesitHtml(cat, 'quizPickTx'); sw.style.display = ''; }
   paintCatSummary();
 }
 function paintCatSummary() {
@@ -179,6 +239,7 @@ export function openTxForm(tx, opts) {
   txMode = tx && isInvoice(tx) ? 'invoice' : 'simple';
   draftLines = tx && isInvoice(tx) ? tx.lines.map((l) => Object.assign({}, l)) : [];
   txSub = tx && !isInvoice(tx) ? tx.sub || '' : (pre.sub || '');
+  txTags = tx && Array.isArray(tx.tags) ? tx.tags.slice() : [];
 
   const selectedAccountId = tx ? tx.accountId : pre.accountId || lastAccountId();
   const selectedAccount = accountById(selectedAccountId);
@@ -261,7 +322,7 @@ export function openTxForm(tx, opts) {
     <div class="field catbox" id="txCatWrap" style="${type === 'in' || txMode === 'invoice' ? 'display:none' : ''}">
       <label>${tr('پاکت')} ${infoTip(tr('ضروریات: اجاره، خوراک، قبض. آزادی مالی: پس‌انداز و سرمایه‌گذاری. تفریح: هر چیزی که فقط برای لذت است. نیکوکاری: کمک و هدیه. هدررفت: خرجی که بعدش پشیمان شدی.'))}</label>
       <div class="chips ${pickedCat ? 'picked' : ''}" id="txCats">${catChipsHtml(pickedCat, 'setTxCat')}<button type="button" class="chip change" onclick="txCatsExpand()">${icon('edit')} ${tr('تغییر')}</button></div>
-      <div id="txSubWrap" class="subbox" style="${pickedCat ? '' : 'display:none'}">${pickedCat ? txSubBlockHtml(pickedCat, txSub) : ''}</div>
+      <div id="txSubWrap" class="subbox" style="${pickedCat ? '' : 'display:none'}">${pickedCat ? txSubBlockHtml(pickedCat, txSub) + (pickedCat === 'fun' ? funTagsHtml(txTags, 'setTxTag') : '') + hesitHtml(pickedCat, 'quizPickTx') : ''}</div>
       <div id="txCatSummary" class="cat-sum">${pickedCat ? catSummaryHtml(pickedCat, txSub) : ''}</div>
     </div>
     <div class="field" id="txReflectWrap" style="${showReflect ? '' : 'display:none'}">
@@ -538,6 +599,7 @@ export function pickTxTitle(btn) {
   }
   txSub = sub;
   txSubSuggested = !!sub;
+  if (m && Array.isArray(m.tags) && m.tags.length && !txTags.length) txTags = m.tags.slice();
   const active = document.querySelector('#txCats .chip.on');
   paintTxSub(active ? active.dataset.cat : 'need');
   const amt = Number(btn.dataset.amt) || (m && m.amt) || 0;
@@ -1166,7 +1228,7 @@ export function saveTx() {
     cat = type === 'out' ? activeCat.dataset.cat : null;
     const rf = document.getElementById('txReflect');
     reflect = type === 'out' && cat === 'waste' && rf ? rf.value.trim() : '';
-    if (type === 'out' && note) learnTitle(note, cat, txSub, amount);
+    if (type === 'out' && note) learnTitle(note, cat, txSub, amount, cat === 'fun' ? txTags : []);
   }
 
   // ساعت: نوشته‌شده → همان؛ خالی → برای ثبت جدید «الان»، برای ویرایش ساعت قبلی
@@ -1182,6 +1244,7 @@ export function saveTx() {
     type,
     cat,
     sub: type === 'out' && !invoice ? txSub || '' : '',
+    tags: type === 'out' && !invoice && cat === 'fun' ? txTags.slice() : [],
     reflect,
     month,
     updatedAt: stamp,
@@ -1243,6 +1306,7 @@ export function openQuickTx(opts) {
   qa.dateISO = todayISO();
   qa.note = rep ? rep.note || '' : '';
   qa.sub = rep ? rep.sub || '' : '';
+  qa.tags = rep && Array.isArray(rep.tags) ? rep.tags.slice() : [];
   editingTxId = null;
   txMode = 'simple';
   draftLines = [];
@@ -1264,6 +1328,7 @@ export function openQuickTx(opts) {
     <div id="qaCatsWrap" style="${qa.type === 'in' ? 'display:none' : ''}">
       <div class="qa-cats" id="qaCats"></div>
       <div id="qaTitles" class="qa-titles"></div>
+      <div id="qaFun"></div>
     </div>
     <div class="kbd calc" id="qaKbd">
       ${[[1, 2, 3, '÷'], [4, 5, 6, '×'], [7, 8, 9, '−'], ['fn', 0, 'del', '+']].map((row) => row.map((k) => {
@@ -1298,6 +1363,12 @@ function qaRenderCats() {
   const on = wrap.querySelector('.on');
   if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) {}
   qaRenderTitles();
+  const fw = document.getElementById('qaFun');
+  if (fw) fw.innerHTML = qa.type === 'out' ? (qa.cat === 'fun' ? funTagsHtml(qa.tags || [], 'qaTag') : '') + hesitHtml(qa.cat, 'quizPickQa') : '';
+}
+export function qaTag(btn) {
+  qa.tags = toggleTag(qa.tags || [], btn.dataset.tag);
+  btn.classList.toggle('on', qa.tags.includes(btn.dataset.tag));
 }
 function qaRenderTitles() {
   const box = document.getElementById('qaTitles');
@@ -1313,9 +1384,13 @@ export function qaPickTitle(btn) {
   qa.note = same ? '' : btn.dataset.title || '';
   qa.sub = same ? '' : btn.dataset.sub || '';
   const m = lookupTitle(qa.note);
+  if (!same && m && Array.isArray(m.tags) && m.tags.length) qa.tags = m.tags.slice();
   if (!same && m && m.cat && m.cat !== qa.cat) {
     qa.cat = m.cat;
     qaRenderCats();
+  } else {
+    const fw = document.getElementById('qaFun');
+    if (fw && qa.cat === 'fun') fw.innerHTML = funTagsHtml(qa.tags || [], 'qaTag') + hesitHtml(qa.cat, 'quizPickQa');
   }
   if (!same && !qa.amount) {
     const amt = Number(btn.dataset.amt) || (m && m.amt) || 0;
@@ -1480,6 +1555,7 @@ export function qaSave() {
     type: qa.type,
     cat: qa.type === 'out' ? qa.cat : null,
     sub: qa.type === 'out' ? qa.sub || '' : '',
+    tags: qa.type === 'out' && qa.cat === 'fun' ? (qa.tags || []).slice() : [],
     reflect: '',
     month: monthOfISO(dateISO),
     updatedAt: Date.now(),
@@ -1489,7 +1565,7 @@ export function qaSave() {
     qty: 0,
     unit: '',
   });
-  if (qa.type === 'out' && qa.note) learnTitle(qa.note, qa.cat, qa.sub, amount);
+  if (qa.type === 'out' && qa.note) learnTitle(qa.note, qa.cat, qa.sub, amount, qa.cat === 'fun' ? qa.tags || [] : []);
   haptic(10);
   save();
   closeModal();
@@ -1897,11 +1973,35 @@ export function openBudgetForm(mk) {
     </div>
     <div class="field"><label>${tr('مبلغ بودجه')} (${curName(baseCur())})</label>
       <input class="input" id="bAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مثلاً 15000000')}" value="${b ? b.amount : ''}">
+      ${avgIncomeChipsHtml(mk)}
     </div>
     <button class="btn primary block" onclick="saveBudget()">${b ? tr('ذخیره تغییرات') : tr('ذخیره بودجه')}</button>
   `);
 }
 
+// میانگین درآمد n ماه قبل (برای درآمد نامنظم): چیپ‌ها مبلغ را در فیلد می‌گذارند
+function avgIncome(mk, n) {
+  const first = state.transactions.reduce((m, t) => (t.month && (!m || t.month < m) ? t.month : m), '');
+  let sum = 0, cnt = 0;
+  for (let i = 1; i <= n; i++) {
+    const k = shiftMonth(mk, -i);
+    if (first && k < first) break;
+    sum += incomeIn(k);
+    cnt++;
+  }
+  return cnt ? Math.round(sum / cnt) : 0;
+}
+function avgIncomeChipsHtml(mk) {
+  const items = [3, 6, 12].map((n) => ({ n, v: avgIncome(mk, n) })).filter((x) => x.v > 0);
+  if (!items.length) return '';
+  return `<div class="chips" style="margin-top:6px;align-items:center">${items.map((x) => `<button type="button" class="chip" onclick="setBudgetAmount(${x.v})">${tr('میانگین {n} ماه', { n: toFa(x.n) })} · ${fmtShort(x.v)}</button>`).join('')}${infoTip(tr('اگر درآمدت نامنظم است، بودجه را روی میانگین چند ماه بگذار (حدود ۷۵٪ میانگین ۱۲ ماه، امن‌تر است) و مازاد ماه‌های خوب را در حسابی جدا نگه دار تا ماه‌های کم را پر کند.'))}</div>`;
+}
+export function setBudgetAmount(v) {
+  const el = document.getElementById('bAmount');
+  if (!el) return;
+  el.value = String(v);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
 export function saveBudget() {
   const amount = parseFloat(document.getElementById('bAmount').value);
   if (!amount || amount <= 0) {

@@ -6,11 +6,56 @@ import { isEncrypted, isUnlocked, persist as persistEncrypted } from './securest
 
 export const KEY = 'capital_app_v1';
 
+// ── الگوهای سهم پاکت‌ها (جمع همیشه ۱۰۰) ──
+// standard پیش‌فرض همه؛ بقیه پیشنهاد می‌شوند و هرگز خودکار اعمال نمی‌شوند
+export const PROFILES = {
+  standard: { need: 60, invest: 20, fun: 15, charity: 5 },
+  limited: { need: 70, invest: 20, fun: 5, charity: 5 },
+  abundant: { need: 60, invest: 25, fun: 10, charity: 5 },
+  recovery: { need: 60, invest: 30, fun: 5, charity: 5 },
+};
+let targetMonth = null;
+// ماهی که سهم‌ها برایش خوانده می‌شوند (گزارش ماه‌های قبل با الگوی همان ماه)
+export function setTargetMonth(mk) {
+  targetMonth = mk || null;
+}
+export function getTargetMonth() {
+  return targetMonth;
+}
+// الگوی فعال برای یک ماه: آخرین رکورد با fromMK ≤ mk؛ «نقاهت» بعد از تاریخ پایانش به رکورد قبلی برمی‌گردد
+export function profileFor(mk) {
+  mk = mk || targetMonth || curMonthKey();
+  const list = (state && state.profiles) || [];
+  let pick = null;
+  for (const pr of list) {
+    if (!pr || !pr.fromMK || pr.fromMK > mk) continue;
+    if (pr.endISO && monthOfISO(pr.endISO) < mk) continue;
+    if (!pick || pr.fromMK >= pick.fromMK) pick = pr;
+  }
+  if (!pick) return { id: 'standard', targets: PROFILES.standard, fromMK: '' };
+  const targets = pick.targets && typeof pick.targets === 'object' ? pick.targets : PROFILES[pick.id] || PROFILES.standard;
+  return Object.assign({}, pick, { targets });
+}
+export function targetOf(catId, mk) {
+  const pr = profileFor(mk);
+  const v = pr.targets[catId];
+  return typeof v === 'number' ? v : 0;
+}
+// ثبت الگو از یک ماه به بعد (ماه‌های قبل دست نمی‌خورند)
+export function setProfile(id, fromMK, opts) {
+  if (!state.profiles) state.profiles = [];
+  fromMK = fromMK || curMonthKey();
+  state.profiles = state.profiles.filter((p) => p.fromMK !== fromMK);
+  const targets = (opts && opts.targets) || PROFILES[id] || PROFILES.standard;
+  state.profiles.push({ id, fromMK, targets, funCap: (opts && opts.funCap) || 0, endISO: (opts && opts.endISO) || '', at: Date.now() });
+  monthsCache = null;
+}
+
 export const CATS = [
-  { id: 'need', get label() { return t('cat.need'); }, color: '#3d8bfd', target: 60, emoji: '🏠' },
-  { id: 'invest', get label() { return t('cat.invest'); }, color: '#22c55e', target: 20, emoji: '📈' },
-  { id: 'fun', get label() { return t('cat.fun'); }, color: '#f59e0b', target: 15, emoji: '🎮' },
-  { id: 'charity', get label() { return t('cat.charity'); }, color: '#a78bfa', target: 5, emoji: '🤲' },
+  { id: 'need', get label() { return t('cat.need'); }, color: '#3d8bfd', get target() { return targetOf('need'); }, emoji: '🏠' },
+  { id: 'invest', get label() { return t('cat.invest'); }, color: '#22c55e', get target() { return targetOf('invest'); }, emoji: '📈' },
+  { id: 'fun', get label() { return t('cat.fun'); }, color: '#f59e0b', get target() { return targetOf('fun'); }, emoji: '🎮' },
+  { id: 'charity', get label() { return t('cat.charity'); }, color: '#a78bfa', get target() { return targetOf('charity'); }, emoji: '🤲' },
   { id: 'waste', get label() { return t('cat.waste'); }, color: '#ef4444', target: 0, emoji: '🚨' },
   // پاکت قرض/امانت: جابه‌جایی پول است نه خرج/درآمد واقعی؛ سقف ندارد و در بودجهٔ ماه حساب نمی‌شود
   { id: 'loan', get label() { return t('cat.loan'); }, color: '#14b8a6', target: 0, emoji: '🤝', loan: true },
@@ -162,6 +207,8 @@ export function defaultState() {
     titleGroupsAt: 0,
     health: {},
     customSubs: [],
+    profiles: [],
+    reflect: {},
     customCurrencies: [],
     updatedAt: 0,
     rev: 0,
@@ -465,10 +512,17 @@ export function pocketItems(mk, catId) {
 
 // سهم پایهٔ پاکت از بودجهٔ همین ماه (بدون ماندهٔ قبلی)
 export function catShare(mk, catId) {
-  const cat = catById(catId);
-  const target = cat ? cat.target : 0;
-  return Math.round((budgetOf(mk) * target) / 100);
+  const target = targetOf(catId, mk);
+  let share = Math.round((budgetOf(mk) * target) / 100);
+  // سقف تومانیِ تفریح (الگوی «فراوان»)
+  if (catId === 'fun') {
+    const cap = profileFor(mk).funCap || 0;
+    if (cap > 0 && share > cap) share = cap;
+  }
+  return share;
 }
+// سقف انباشت تفریح: حداکثر ۳ برابر سهم ماه (بیشتر از آن دیگر تفریح نیست)
+export const FUN_CARRY_MONTHS = 3;
 // سقف پاکت = سهم این ماه + ماندهٔ همان پاکت از ماه‌های قبل
 export function catCeiling(mk, catId) {
   const m = computeMonths()[mk];
@@ -527,14 +581,24 @@ function absorbDeficit(left, deficit, cats) {
   }
   return out;
 }
+function mergeProfiles(a, b) {
+  const m = {};
+  for (const p of [...(a || []), ...(b || [])]) {
+    if (!p || !p.fromMK) continue;
+    if (!m[p.fromMK] || (p.at || 0) > (m[p.fromMK].at || 0)) m[p.fromMK] = p;
+  }
+  return Object.values(m).sort((x, y) => (x.fromMK < y.fromMK ? -1 : 1));
+}
 export function computeMonths() {
-  const key = state.updatedAt + ':' + state.transactions.length + ':' + Object.keys(state.budgets).length;
+  const key = state.updatedAt + ':' + state.transactions.length + ':' + Object.keys(state.budgets).length + ':' + ((state.profiles || []).length);
   if (monthsCache && monthsCacheKey === key) return monthsCache;
   const keys = allMonthKeys();
-  const cats = CATS.filter((c) => !c.loan && c.target > 0);
+  const cats = CATS.filter((c) => !c.loan && c.id !== 'waste');
   let carriedCats = {};
   const res = {};
+  const prevTM = targetMonth;
   for (const k of keys) {
+    targetMonth = k;
     const budget = (state.budgets[k] && state.budgets[k].amount) || 0;
     const spent = spentIn(k);
     const income = incomeIn(k);
@@ -548,14 +612,18 @@ export function computeMonths() {
     const next = {};
     let deficit = 0;
     for (const c of cats) {
-      const ceil = Math.round((budget * c.target) / 100) + (carriedCats[c.id] || 0);
+      const ceil = catShare(k, c.id) + (carriedCats[c.id] || 0);
       const left = ceil - catSpent(k, c.id);
       if (left > 0) next[c.id] = left;
       else deficit += -left;
     }
-    deficit += CATS.filter((c) => !c.loan && c.target === 0).reduce((a, c) => a + catSpent(k, c.id), 0);
+    deficit += catSpent(k, 'waste');
     carriedCats = absorbDeficit(next, deficit, cats);
+    // سقف انباشت تفریح
+    const funCap = catShare(k, 'fun') * FUN_CARRY_MONTHS;
+    if (budget > 0 && carriedCats.fun > funCap) carriedCats.fun = funCap;
   }
+  targetMonth = prevTM;
   monthsCache = res;
   monthsCacheKey = key;
   return res;
@@ -639,6 +707,8 @@ export function mergeStates(local, remote) {
     titleMap: mergeTitleMap(local.titleMap, remote.titleMap),
     ...((local.titleGroupsAt || 0) >= (remote.titleGroupsAt || 0) ? { titleGroups: local.titleGroups || {}, titleNo: local.titleNo || [], titleGroupsAt: local.titleGroupsAt || 0 } : { titleGroups: remote.titleGroups || {}, titleNo: remote.titleNo || [], titleGroupsAt: remote.titleGroupsAt || 0 }),
     customSubs: mergeById(local.customSubs, remote.customSubs),
+    profiles: mergeProfiles(local.profiles, remote.profiles),
+    reflect: ((local.reflect || {}).at || 0) >= ((remote.reflect || {}).at || 0) ? local.reflect || {} : remote.reflect || {},
     health: ((local.health || {}).updatedAt || 0) >= ((remote.health || {}).updatedAt || 0) ? local.health || {} : remote.health || {},
     baseCurrency: local.baseCurrency || remote.baseCurrency || DEFAULT_BASE,
     customCurrencies: [

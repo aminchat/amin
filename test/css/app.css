@@ -889,6 +889,24 @@ body.onboarding{overflow:hidden}
 .clar-strip small{color:var(--muted);font-size:var(--fs-xs)}
 .clar-strip>.i{width:16px;height:16px;color:var(--muted)}
 
+/* بازتاب ماه */
+.rf-strip{margin-top:8px}
+.rf-strip .ib.sm{width:28px;height:28px;flex:0 0 28px}
+.rf-list{display:flex;flex-direction:column;gap:10px}
+.rf-note{padding:12px 14px;border-radius:var(--r-md);background:var(--card2);border-inline-start:3px solid var(--accent)}
+.rf-note .rf-head{font-size:var(--fs-sm);font-weight:700;line-height:1.7}
+.rf-note .rf-body{font-size:var(--fs-sm);color:var(--muted);line-height:1.8;margin-top:4px}
+.rf-profile{border-inline-start-color:var(--green)}
+.rf-about p{font-size:var(--fs-sm);line-height:1.9;margin:0 0 10px}
+.funtags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.funtags .chip{font-size:var(--fs-xs)}
+.hesit{margin-top:8px}
+.hesit .link{font-size:var(--fs-xs);color:var(--muted);text-decoration:underline dotted}
+.quiz{margin-top:8px;padding:10px 12px;border-radius:var(--r-md);background:var(--card2)}
+.quiz .qrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;font-size:var(--fs-sm)}
+.quiz .qrow .seg{flex:0 0 auto;margin:0}
+.quiz .qres{margin-top:8px;font-size:var(--fs-sm);line-height:1.7}
+
 /* ماشین‌حساب */
 .kbd.calc{grid-template-columns:repeat(4,1fr)}
 .kbd button.op{background:color-mix(in srgb,var(--accent) 12%,var(--card2));color:var(--accent);font-size:24px}

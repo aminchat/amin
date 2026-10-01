@@ -200,12 +200,12 @@ export function suggestGroups(catId, sub) {
 }
 
 // ── یادگیری: هر ثبت با عنوان → نگاشت عنوان به (پاکت، زیرشاخه، آخرین مبلغ) ──
-export function learnTitle(title, cat, sub, amt) {
+export function learnTitle(title, cat, sub, amt, tags) {
   const k = normTitle(title);
   if (!k || k.length < 2) return;
   if (!state.titleMap) state.titleMap = {};
   const prev = state.titleMap[k] || { n: 0 };
-  state.titleMap[k] = { cat: cat || prev.cat || 'need', sub: sub || prev.sub || '', amt: amt || prev.amt || 0, n: (prev.n || 0) + 1, at: Date.now(), title: String(title).trim() };
+  state.titleMap[k] = { cat: cat || prev.cat || 'need', sub: sub || prev.sub || '', tags: Array.isArray(tags) ? tags.slice() : prev.tags || [], amt: amt || prev.amt || 0, n: (prev.n || 0) + 1, at: Date.now(), title: String(title).trim() };
 }
 export function lookupTitle(title) {
   const k = normTitle(title);

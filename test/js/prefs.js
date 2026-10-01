@@ -1,7 +1,7 @@
 import { avatarHTML, syncStatusText, displayName } from './sync.js';
 import { needsOnboarding, openOnboarding } from './onboard.js';
 import { esc, store, toast, isMoneyHidden, setMoneyHidden, APP_VERSION, infoTip, toFa, fmtPlain, saveFile } from './utils.js';
-import { fmtDate } from './jalali.js';
+import { fmtDate, curMonthKey } from './jalali.js';
 import { t, t as tr, LANGS, langPref, lang, digitsPref, setDigitsPref } from './i18n.js';
 import { remindSummary } from './remind.js';
 import { icon, hasIcon } from './icons.js';
@@ -9,6 +9,8 @@ import { saveGeminiKey, clearGeminiKey } from './scan.js';
 import { openModal, closeModal } from './modal.js';
 import { render } from './view.js';
 import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo, changeBaseCurrency, CURRENCIES, curName, bookCal } from './state.js';
+import { profileFor } from './state.js';
+import { profileName, openProfileSettings } from './reflect.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -865,6 +867,7 @@ export function openSettings() {
     </div>
     <div class="sgroup">
       ${settingsRow('target', '#16a34a', t('hl.title'), t('hl.set.fun'), 'openHealthSettings()')}
+      ${settingsRow('chart', '#a78bfa', tr('الگوی پاکت‌ها'), profileName(profileFor(curMonthKey()).id) + ((state.reflect || {}).off ? ' · ' + tr('بازتاب ماه خاموش') : ''), 'openProfileSettingsFull()')}
       ${settingsRow('coin', '#0ea5e9', tr('ارز'), ratesSummary(), 'openSettingsRates()')}
       ${settingsRow('bell', '#f59e0b', tr('یادآوری سررسیدها'), remindSummary(), 'openRemindSettings()')}
     </div>
@@ -1429,3 +1432,13 @@ export function openSettingsBook() {
     <p class="small muted" style="margin-top:12px">${(sec.isEncrypted() ? tr('فایل پشتیبان با همان رمز عبور برنامه رمز می‌شود؛ بدون رمز قابل باز شدن نیست.') : tr('فایل خروجی همهٔ داده‌های برنامه را بدون رمزنگاری دارد؛ آن را جای امن نگه دار.'))}</p>
   `);
 }
+
+// الگوی پاکت‌ها + روشن/خاموش بازتاب ماه
+export function openProfileSettingsFull() {
+  openProfileSettings();
+  const off = !!(state.reflect || {}).off;
+  const host = document.getElementById('pf_end');
+  const card = host ? host.closest('.card') : null;
+  if (card) card.insertAdjacentHTML('afterend', `<label class="srow" style="margin-top:10px;cursor:pointer"><span class="smid"><span class="st1">${tr('بازتاب ماه در گزارش')}</span><span class="st2">${tr('چند یادداشت از جریان پاکت‌ها؛ هیچ‌وقت خودش بالا نمی‌آید')}</span></span><input type="checkbox" ${off ? '' : 'checked'} onchange="setReflectOn(this.checked)"></label>`);
+}
+if (typeof window !== 'undefined') Object.assign(window, { openProfileSettingsFull });
