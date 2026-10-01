@@ -126,8 +126,14 @@ export function rowTag(p, r) {
 function rowLabel(p, r) {
   if (r.kind === 'down') return (tr('پیش‌پرداخت') + ' ') + p.title;
   if (r.kind === 'interest') return (tr('سود') + ' ') + p.title;
-  const n = (p.rows || []).filter((x) => x.kind !== 'down' && x.kind !== 'interest').indexOf(r) + 1;
-  return (tr('قسط') + ' ') + toFa(n) + ' ' + p.title;
+  const list = (p.rows || []).filter((x) => x.kind !== 'down' && x.kind !== 'interest');
+  const isRestOf = (i) => i > 0 && list[i].part && list[i - 1].part && list[i - 1].dueISO === list[i].dueISO;
+  let n = 0, me = 0, isRest = false;
+  for (let i = 0; i < list.length; i++) {
+    if (!isRestOf(i)) n++;
+    if (list[i] === r) { me = n; isRest = isRestOf(i); break; }
+  }
+  return (tr('قسط') + ' ') + toFa(me) + (isRest ? ' (' + tr('مانده') + ')' : '') + ' ' + p.title;
 }
 function syncRowTx(p, r) {
   const acc = accountById(r.accountId || p.accountId);
@@ -577,6 +583,7 @@ export function openPayRow(planId, rowId) {
     <div class="field"><label>${tr('از کدام حساب؟')}</label><select class="input" id="prAcc">${accountOptGroups(acc)}</select></div>
     <div class="field"><label>${tr('تاریخ پرداخت')}</label><input class="input" id="prDate" type="date" value="${todayISO()}"></div>
     <div class="field"><label>${tr('جریمهٔ دیرکرد (اختیاری)')}</label><input class="input" id="prPenalty" type="number" inputmode="numeric" value="${r.penalty || ''}" placeholder="0"></div>
+    <div class="field"><label>${tr('مبلغ پرداختی')} ${infoTip(tr('اگر کمتر از کل قسط بنویسی، همین مقدار پرداخت‌شده ثبت می‌شود و باقی‌مانده به‌عنوان ردیفی جدا با همان سررسید می‌ماند تا بعداً بپردازی.'))}</label><input class="input" id="prAmount" type="number" inputmode="numeric" value="${rowTotal(r)}"></div>
     <button class="btn primary block" onclick="confirmPayRow('${p.id}','${r.id}')">${icon('check')} ${tr('ثبت پرداخت')}</button>
   `);
 }
@@ -585,8 +592,25 @@ export function confirmPayRow(planId, rowId) {
   const r = p && (p.rows || []).find((x) => x.id === rowId);
   if (!r) return;
   r.penalty = v('prPenalty');
+  const total = rowTotal(r);
+  const paid = v('prAmount');
+  if (!(paid > 0)) return toast(tr('مبلغ پرداختی را وارد کن'));
+  if (paid > total + 0.5) return toast(tr('بیشتر از مبلغ قسط است؛ اگر لازم است اول ردیف را ویرایش کن'));
+  if (paid < total - 0.5) splitRow(p, r, paid);
   closeModal();
   payRow(planId, rowId, { accountId: document.getElementById('prAcc').value, dateISO: document.getElementById('prDate').value });
+}
+
+// پرداخت جزئی: ردیف فعلی به اندازهٔ مبلغ پرداختی کوچک می‌شود (اول اصل، بعد سود، بعد جریمه)
+// و باقی‌مانده به‌عنوان ردیفی جدید با همان سررسید، درست بعد از آن می‌نشیند
+function splitRow(p, r, paid) {
+  let left = paid;
+  const take = (x) => { const t = Math.min(x || 0, left); left -= t; return t; };
+  const pa = take(r.amount), pi = take(r.interest), pp = take(r.penalty);
+  const rest = { id: uid(), kind: r.kind, dueISO: r.dueISO, amount: (r.amount || 0) - pa, interest: (r.interest || 0) - pi, penalty: (r.penalty || 0) - pp, paidISO: null, part: true };
+  r.amount = pa; r.interest = pi; r.penalty = pp; r.part = true;
+  const i = p.rows.indexOf(r);
+  p.rows.splice(i + 1, 0, rest);
 }
 
 // ── ویرایش یک ردیف ──
@@ -866,7 +890,7 @@ export function installmentHomeCard() {
     </div>
     <div class="row" style="margin-top:var(--sp-3)">
       <button class="btn sm primary" style="flex:1" onclick="openPayRow('${first.plan.id}','${first.row.id}')">${icon('check')} ${tr('پرداخت شد')}</button>
-      <button class="btn sm" style="flex:1" onclick="switchTab('debts')">${more ? tr('همه') : tr('جزئیات')}</button>
+      <button class="btn sm" style="flex:1" onclick="${more ? "switchTab('installments')" : `openPlanDetail('${first.plan.id}')`}">${more ? tr('همه') : tr('جزئیات')}</button>
     </div>
   </div>`;
 }
