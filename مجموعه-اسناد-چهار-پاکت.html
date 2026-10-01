@@ -1,0 +1,3007 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سیستم چهار پاکت — پایگاه جامع مستندات و پشتوانه پژوهشی</title>
+<style>
+
+:root {
+  --font-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Iranian Sans', Tahoma, sans-serif;
+  --bg-page: #f8f6f0;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1ede4;
+  --bg-sidebar: #fbf9f5;
+  --text-main: #1e2530;
+  --text-muted: #5e6d82;
+  --text-dim: #8c9ba5;
+  --border-color: #e2ddd3;
+  --border-focus: #3b82f6;
+  --primary: #2563eb;
+  --primary-light: #eff6ff;
+  --accent-need: #c2603f;
+  --accent-invest: #10b981;
+  --accent-fun: #3b82f6;
+  --accent-meaning: #8b5cf6;
+  --accent-waste: #ef4444;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+  --content-max-width: 920px;
+}
+
+[data-theme="dark"] {
+  --bg-page: #0d121a;
+  --bg-card: #161e2b;
+  --bg-subtle: #202b3c;
+  --bg-sidebar: #111722;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --border-color: #273449;
+  --border-focus: #60a5fa;
+  --primary: #3b82f6;
+  --primary-light: rgba(59, 130, 246, 0.15);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.5);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.6);
+}
+
+[data-theme="warm"] {
+  --bg-page: #f5efe3;
+  --bg-card: #fdfbf7;
+  --bg-subtle: #eae2d1;
+  --bg-sidebar: #f9f5ed;
+  --text-main: #2b251d;
+  --text-muted: #736959;
+  --text-dim: #9e9381;
+  --border-color: #ded4bf;
+  --border-focus: #b45309;
+  --primary: #b45309;
+  --primary-light: #fef3c7;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  direction: rtl;
+  text-align: right;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  line-height: 1.85;
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#reading-progress {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(to left, #2563eb, #8b5cf6, #10b981);
+  width: 0%;
+  z-index: 1000;
+  transition: width 0.1s ease;
+}
+
+/* Site Header */
+.site-header {
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  backdrop-filter: blur(12px);
+  z-index: 900;
+  box-shadow: var(--shadow-sm);
+  padding: 8px 16px;
+}
+
+.header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-main);
+  flex-shrink: 0;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, #c2603f, #3b82f6);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-weight: 900;
+  font-size: 19px;
+  box-shadow: 0 2px 8px rgba(194,96,63,0.3);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: 16.5px;
+  font-weight: 850;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.brand-subtitle {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-focus);
+}
+
+.doc-switcher-bar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 16px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.doc-switcher-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doc-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text-muted);
+  text-decoration: none;
+  background: var(--bg-subtle);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doc-tab-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+.doc-tab-btn.active {
+  background: var(--primary);
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+
+/* Layout */
+.app-container {
+  display: flex;
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sidebar-toc {
+  width: 300px;
+  padding: 28px 18px;
+  position: sticky;
+  top: 105px;
+  height: calc(100vh - 105px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  border-left: 1px solid var(--border-color);
+  background: var(--bg-sidebar);
+  flex-shrink: 0;
+}
+
+.toc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toc-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.toc-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.toc-item a {
+  display: block;
+  padding: 6px 10px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  border-right: 3px solid transparent;
+  transition: all 0.15s ease;
+  line-height: 1.5;
+}
+
+.toc-item.level-3 a {
+  padding-right: 22px;
+  font-size: 12.5px;
+  opacity: 0.9;
+}
+
+.toc-item a:hover {
+  color: var(--text-main);
+  background: var(--bg-card);
+}
+
+.toc-item.active a {
+  color: var(--primary);
+  font-weight: 750;
+  border-right-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.main-content {
+  flex: 1;
+  padding: 36px 32px 80px;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  min-width: 0;
+}
+
+/* Document Header Card */
+.doc-header-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  margin-bottom: 36px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.doc-header-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  background: var(--doc-accent, var(--primary));
+}
+
+.doc-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 750;
+  border-radius: var(--radius-pill);
+}
+
+.doc-number {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.doc-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text-main);
+  line-height: 1.35;
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+
+.doc-subtitle {
+  font-size: 15.5px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* Proportion Bar */
+.pockets-bar {
+  display: flex;
+  height: 44px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 24px 0 10px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.08);
+  font-weight: 800;
+  font-size: 13.5px;
+}
+
+.pocket-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  transition: filter 0.2s ease;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.pocket-segment:hover {
+  filter: brightness(1.1);
+}
+
+.pocket-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Typography Inside Articles */
+.prose {
+  font-size: 16px;
+  color: var(--text-main);
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: var(--text-main);
+  font-weight: 850;
+  line-height: 1.4;
+  scroll-margin-top: 120px;
+}
+
+.prose h1 {
+  font-size: 24px;
+  margin: 42px 0 18px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.prose h2 {
+  font-size: 20px;
+  margin: 38px 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prose h3 {
+  font-size: 17px;
+  margin: 28px 0 12px;
+}
+
+.prose h4 {
+  font-size: 15px;
+  margin: 22px 0 10px;
+}
+
+.prose p {
+  margin-bottom: 20px;
+  line-height: 1.95;
+}
+
+.prose ul, .prose ol {
+  margin: 16px 0 22px 24px;
+  padding-right: 14px;
+}
+
+.prose li {
+  margin-bottom: 10px;
+  line-height: 1.9;
+}
+
+.prose hr {
+  border: none;
+  height: 1px;
+  background: var(--border-color);
+  margin: 40px 0;
+}
+
+.prose strong {
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+/* Callout Boxes */
+.callout {
+  display: flex;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  margin: 24px 0;
+  border-right: 5px solid;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.callout-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.callout-body {
+  flex: 1;
+  font-size: 15px;
+}
+
+.callout-body p:last-child {
+  margin-bottom: 0;
+}
+
+.callout-warning {
+  border-right-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.callout-danger {
+  border-right-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.callout-success {
+  border-right-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.callout-info {
+  border-right-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.rich-quote {
+  border-right: 4px solid var(--text-dim);
+  background: var(--bg-subtle);
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  margin: 22px 0;
+  font-style: italic;
+  color: var(--text-main);
+}
+
+/* Tables */
+.table-responsive {
+  overflow-x: auto;
+  margin: 26px 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  scrollbar-width: thin;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+  font-size: 14.5px;
+}
+
+th {
+  background: var(--bg-subtle);
+  color: var(--text-main);
+  font-weight: 800;
+  padding: 13px 16px;
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+}
+
+td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:nth-child(even) td {
+  background: rgba(0,0,0,0.015);
+}
+
+[data-theme="dark"] tr:nth-child(even) td {
+  background: rgba(255,255,255,0.02);
+}
+
+/* Badges & Tags */
+.badge-grade {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.grade-a {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.grade-b {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+
+.grade-c {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+[data-theme="dark"] .grade-a {
+  background: rgba(22, 163, 74, 0.25);
+  color: #4ade80;
+  border-color: #22c55e;
+}
+[data-theme="dark"] .grade-b {
+  background: rgba(2, 132, 199, 0.25);
+  color: #38bdf8;
+  border-color: #0ea5e9;
+}
+[data-theme="dark"] .grade-c {
+  background: rgba(217, 119, 6, 0.25);
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.pill-green {
+  background: #dcfce7;
+  color: #15803d;
+}
+.pill-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+.pill-red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Card layout for concept doc */
+.concept-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  margin: 22px 0;
+  border: 1px solid var(--border-color);
+  border-right: 6px solid var(--card-color, #ccc);
+  box-shadow: var(--shadow-sm);
+}
+
+.concept-card h3 {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+
+.concept-pct {
+  background: var(--card-color);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 2px 12px;
+  font-size: 13.5px;
+  font-weight: bold;
+}
+
+.seal-badge {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+/* Footer Navigation */
+.doc-footer-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 50px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.footer-nav-btn {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-main);
+  min-width: 220px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: right;
+}
+
+.footer-nav-btn:hover {
+  border-color: var(--primary);
+  background: var(--bg-subtle);
+  transform: translateY(-2px);
+}
+
+.nav-direction {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.nav-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--primary);
+}
+
+/* Tab Panels for unified index.html */
+.doc-panel {
+  display: none;
+}
+
+.doc-panel.active {
+  display: block;
+}
+
+
+/* Interactive Income Tree Styles */
+.income-tree-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 26px 0;
+}
+
+.tree-tier {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s ease;
+  border-right: 6px solid var(--tier-border, var(--border-color));
+}
+
+.tree-tier[open] {
+  box-shadow: var(--shadow-md);
+  border-color: var(--tier-border, var(--border-color));
+}
+
+.tier-emergency {
+  --tier-border: #ef4444;
+  --tier-bg-tint: rgba(239, 68, 68, 0.04);
+}
+.tier-low {
+  --tier-border: #f59e0b;
+  --tier-bg-tint: rgba(245, 158, 11, 0.04);
+}
+.tier-middle {
+  --tier-border: #10b981;
+  --tier-bg-tint: rgba(16, 185, 129, 0.04);
+}
+.tier-high {
+  --tier-border: #3b82f6;
+  --tier-bg-tint: rgba(59, 130, 246, 0.04);
+}
+
+.tree-tier summary {
+  padding: 16px 20px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  user-select: none;
+  background: var(--bg-card);
+  transition: background 0.2s ease;
+  list-style: none;
+}
+
+.tree-tier summary::-webkit-details-marker {
+  display: none;
+}
+
+.tree-tier summary:hover {
+  background: var(--bg-subtle);
+}
+
+.tree-tier[open] summary {
+  background: var(--tier-bg-tint, var(--bg-subtle));
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tier-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tier-title {
+  flex: 1;
+  font-size: 15.5px;
+  color: var(--text-main);
+}
+
+.tier-badge {
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.badge-red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.badge-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+.badge-green {
+  background: #dcfce7;
+  color: #15803d;
+}
+.badge-blue {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+[data-theme="dark"] .badge-red {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+[data-theme="dark"] .badge-amber {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fcd34d;
+}
+[data-theme="dark"] .badge-green {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+}
+[data-theme="dark"] .badge-blue {
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+
+.tier-content {
+  padding: 20px 24px;
+  font-size: 15px;
+  line-height: 1.9;
+  background: var(--bg-card);
+}
+
+.tier-content p {
+  margin-bottom: 12px;
+}
+.tier-content p:last-child {
+  margin-bottom: 0;
+}
+
+.tier-content ul {
+  margin: 8px 0 8px 20px;
+  padding-right: 10px;
+}
+
+.tier-content li {
+  margin-bottom: 8px;
+}
+
+/* Print Styles */
+@media print {
+  .site-header, .doc-switcher-bar, .sidebar-toc, .doc-footer-nav, #reading-progress, .btn-icon {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .main-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .doc-panel {
+    display: block !important;
+    page-break-after: always;
+  }
+  .doc-header-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 0 20px 0 !important;
+  }
+  .callout, .table-responsive, .concept-card {
+    box-shadow: none !important;
+    border-color: #ccc !important;
+    page-break-inside: avoid;
+  }
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .sidebar-toc {
+    display: none;
+  }
+  .main-content {
+    padding: 24px 16px 60px;
+  }
+  .doc-title {
+    font-size: 22px;
+  }
+  .doc-header-card {
+    padding: 22px 18px;
+  }
+}
+
+</style>
+</head>
+<body>
+<div id="reading-progress"></div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand-section">
+      <div class="brand-logo">۴</div>
+      <div class="brand-text">
+        <span class="brand-title">سیستم چهار پاکت</span>
+        <span class="brand-subtitle">پایگاه جامع مفهوم‌سازی، شواهد پژوهشی و تطبیق محصول</span>
+      </div>
+    </div>
+    
+    <div class="header-controls">
+      <button class="btn-icon" onclick="toggleTheme()" title="تغییر تم (روشن / تاریک / گرم)">🌓 <span>تم</span></button>
+      <button class="btn-icon" onclick="adjustFontSize(1)" title="بزرگ‌تر کردن فونت">A+</button>
+      <button class="btn-icon" onclick="adjustFontSize(-1)" title="کوچک‌تر کردن فونت">A-</button>
+      <button class="btn-icon" onclick="window.print()" title="چاپ یا ذخیره PDF">🖨️ <span>چاپ</span></button>
+    </div>
+  </div>
+</header>
+
+<div class="doc-switcher-bar">
+  <div class="doc-switcher-inner">
+    
+    <button type="button" class="doc-tab-btn active" onclick="switchDoc('four-pockets')" id="tab-btn-four-pockets">
+      <span>📦</span>
+      <span>۱. مفهوم‌سازی سیستم چهار پاکت</span>
+    </button>
+    
+    <button type="button" class="doc-tab-btn " onclick="switchDoc('fun-guide')" id="tab-btn-fun-guide">
+      <span>🎮</span>
+      <span>۲. تفریح</span>
+    </button>
+    
+    <button type="button" class="doc-tab-btn " onclick="switchDoc('fun-research')" id="tab-btn-fun-research">
+      <span>🔬</span>
+      <span>۳. پشتوانه‌ی پژوهشی پاکت تفریح</span>
+    </button>
+    
+    <button type="button" class="doc-tab-btn " onclick="switchDoc('meaning-research')" id="tab-btn-meaning-research">
+      <span>🤲</span>
+      <span>۴. پشتوانه‌ی پژوهشی پاکت معنا و نیکوکاری</span>
+    </button>
+    
+    <button type="button" class="doc-tab-btn " onclick="switchDoc('evidence-scorecard')" id="tab-btn-evidence-scorecard">
+      <span>⚖️</span>
+      <span>۵. کارنامه‌ی شواهد و ارزیابی اعتبار</span>
+    </button>
+    
+    <button type="button" class="doc-tab-btn " onclick="switchDoc('taraz-review')" id="tab-btn-taraz-review">
+      <span>📱</span>
+      <span>۶. بررسی اپلیکیشن «تراز» در برابر چهار پاکت</span>
+    </button>
+    
+  </div>
+</div>
+
+<div class="app-container">
+  <aside class="sidebar-toc">
+    
+    <div class="toc-block active" id="toc-block-four-pockets" style="display: block;">
+      <div class="toc-header">
+        <span class="toc-title">فهرست مفهوم‌سازی سیستم چهار پاکت</span>
+        <span style="font-size:12px;color:var(--text-dim);">28 بخش</span>
+      </div>
+      <ul class="toc-list">
+        <li class="toc-item level-2"><a href="#four-pockets-۱-تعریف-هسته">۱. تعریف هسته</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۲-کیفیت-زندگی-خروجی-سیستم،-نه-یک-پاکت">۲. کیفیت زندگی: خروجی سیستم، نه یک پاکت</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۳-چهار-پاکت">۳. چهار پاکت</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-۶۰٪-پاکت-ضروری">۶۰٪ پاکت ضروری</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-۲۰٪-پاکت-آزادی-مالی">۲۰٪ پاکت آزادی مالی</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-۱۵٪-پاکت-تفریح">۱۵٪ پاکت تفریح</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-۵٪-پاکت-نیکوکاری">۵٪ پاکت نیکوکاری</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۴-پاکت-پنجم-هدررفت">۴. پاکت پنجم: هدررفت</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۵-قاعدهی-تصمیم">۵. قاعده‌ی تصمیم</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۶-قواعد-بنیادین-سیستم">۶. قواعد بنیادین سیستم</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۷-مثال-عددی">۷. مثال عددی</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۸-از-مفهوم-تا-اجرا">۸. از مفهوم تا اجرا</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۹-سناریوی-دشوار-درآمد-نامنظم">۹. سناریوی دشوار: درآمد نامنظم</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-صورت-مسئله">صورت مسئله</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-راهحل-مفهومی-حوضچه">راه‌حل مفهومی: حوضچه</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-مکانیزم-به-خودت-حقوق-بده">مکانیزم: به خودت حقوق بده</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-قاعدهی-ظرفیت-حوضچه">قاعده‌ی ظرفیت حوضچه</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-مثال">مثال</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-خلاصهی-اصل">خلاصه‌ی اصل</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۱۰-سناریوی-دشوار-بدهی">۱۰. سناریوی دشوار: بدهی</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-چرا-بدهی-پیچیده-است">چرا بدهی پیچیده است</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-اصل-حل-مسئله-بدهی-را-به-منشأش-برگردان">اصل حل مسئله: بدهی را به منشأش برگردان</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-بنبست-بدهی-بد">بن‌بست بدهی بد</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-گرهگشایی-بدهی-بد،-سرمایهگذاری-منفی-است">گره‌گشایی: بدهی بد، سرمایه‌گذاری منفی است</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-وقتی-۲۰٪-کافی-نیست-حالت-نقاهت">وقتی ۲۰٪ کافی نیست: حالت نقاهت</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-چهار-قاعدهی-عملی">چهار قاعده‌ی عملی</a></li>
+<li class="toc-item level-3"><a href="#four-pockets-خلاصهی-اصل-2">خلاصه‌ی اصل</a></li>
+<li class="toc-item level-2"><a href="#four-pockets-۱۱-در-یک-جمله">۱۱. در یک جمله</a></li>
+
+      </ul>
+    </div>
+    
+    <div class="toc-block " id="toc-block-fun-guide" style="display: none;">
+      <div class="toc-header">
+        <span class="toc-title">فهرست تفریح</span>
+        <span style="font-size:12px;color:var(--text-dim);">13 بخش</span>
+      </div>
+      <ul class="toc-list">
+        <li class="toc-item level-3"><a href="#fun-guide-چرا-پانزده-درصد،-و-چرا-اینطور-خرج-شود">چرا پانزده درصد، و چرا این‌طور خرج شود</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۰-یک-اعتراف،-پیش-از-هر-ادعا">۰. یک اعتراف، پیش از هر ادعا</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۱-تلهی-اول-تفریح-را-اتلاف-وقت-و-پول-ندان">۱. تله‌ی اول: تفریح را «اتلاف وقت و پول» ندان</a></li>
+<li class="toc-item level-3"><a href="#fun-guide-راهحل-چیست؟">راه‌حل چیست؟</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۲-شکوفایی-در-برابر-مصرف-پایان-زنجیرهی-چراها">۲. شکوفایی در برابر مصرف: پایان زنجیره‌ی «چراها»</a></li>
+<li class="toc-item level-3"><a href="#fun-guide-یک-هشدار-مهم-تفریح-مدرسه-یا-کارِ-دوم-نیست">🎮 یک هشدار مهم: تفریح «مدرسه یا کارِ دوم» نیست!</a></li>
+<li class="toc-item level-3"><a href="#fun-guide-رقصِ-الاکلنگ-درد-و-لذت-در-یادگیری">رقصِ الاکلنگ درد و لذت در یادگیری</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۳-کالای-یادگیرنده-در-برابر-سفر-خطای-شعار-فقط-تجربه-بخر">۳. کالای یادگیرنده در برابر سفر: خطای شعار «فقط تجربه بخر»</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۴-راز-بزرگ-تجربه-اجتماعی-بودن،-نه-برچسب-تجربه">۴. راز بزرگ تجربه: «اجتماعی بودن»، نه برچسب تجربه</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۵-تنظیم-تفریح-با-سطح-درآمد-درخت-تصمیمگیری-و-راهبردها">۵. تنظیم تفریح با سطح درآمد: درخت تصمیم‌گیری و راهبردها</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۶-قاعدهی-انباشت-تا-۳-ماه-و-یک-هشدار-مهم">۶. قاعده‌ی انباشت تا ۳ ماه — و یک هشدار مهم</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۷-آزمون-۴-سؤالی-تفریح-است-یا-هدررفت؟">۷. آزمون ۴ سؤالی: تفریح است یا هدررفت؟</a></li>
+<li class="toc-item level-2"><a href="#fun-guide-۸-خلاصهی-کل-ماجرا-در-سه-اصل">۸. خلاصه‌ی کل ماجرا در سه اصل</a></li>
+
+      </ul>
+    </div>
+    
+    <div class="toc-block " id="toc-block-fun-research" style="display: none;">
+      <div class="toc-header">
+        <span class="toc-title">فهرست پشتوانه‌ی پژوهشی پاکت تفریح</span>
+        <span style="font-size:12px;color:var(--text-dim);">19 بخش</span>
+      </div>
+      <ul class="toc-list">
+        <li class="toc-item level-3"><a href="#fun-research-پشتوانهی-پژوهشی-پاکت-تفریح-۱۵٪-نسخهی-۳،-جامع-و-اصلاحشده">پشتوانه‌ی پژوهشی پاکت تفریح (۱۵٪) — نسخه‌ی ۳، جامع و اصلاح‌شده</a></li>
+<li class="toc-item level-2"><a href="#fun-research-۰-اول-تفریح-دقیقاً-یعنی-چه؟">۰. اول: تفریح دقیقاً یعنی چه؟</a></li>
+<li class="toc-item level-2"><a href="#fun-research-۱-تلهی-ذهنی-تفریح-اتلاف-وقت">۱. تله‌ی ذهنی: «تفریح = اتلاف وقت»</a></li>
+<li class="toc-item level-2"><a href="#fun-research-۲-مبانی-عصبشناختی-الاکلنگ-درد-و-لذت،-هومیوستازی،-بازیگوشی-و-">۲. مبانی عصب‌شناختی: الاکلنگ درد و لذت، هومیوستازی، بازیگوشی و زیبایی فی‌نفسه</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۱-الاکلنگ-درد-و-لذت-و-هومیوستازی-آنا-لمبکی،-۲۰۲۱">۱) الاکلنگ درد و لذت و هومیوستازی (آنا لمبکی، ۲۰۲۱)</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۲-دینامیک-پیستونی-چالش-و-پاداش-در-تفریح-یادگیرنده-The-Piston">۲) دینامیک پیستونی چالش و پاداش در تفریح یادگیرنده (The Piston Engine of Flow)</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۳-نظریهی-بازیگوشی-و-رهایی-از-غایتمندی-ابزاری-Autotelic-Play">۳) نظریه‌ی بازیگوشی و رهایی از غایت‌مندی ابزاری (Autotelic Play)</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۴-فرسایش-انگیزهی-درونی-با-پاداش-بیرونی-لپر-۱۹۷۳-مورایاما-۲۰۱">۴) فرسایش انگیزه‌ی درونی با پاداش بیرونی (لپر ۱۹۷۳ / مورایاما ۲۰۱۰)</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۵-علوم-اعصاب-زیباییشناسی-و-ارزش-ذاتی-سمیر-زکی،-۲۰۱۱">۵) علوم اعصاب زیبایی‌شناسی و ارزش ذاتی (سمیر زکی، ۲۰۱۱)</a></li>
+<li class="toc-item level-2"><a href="#fun-research-۳-نقد-بنیادین-دوگانهی-کالا-در-برابر-تجربه">۳. نقد بنیادین دوگانه‌ی «کالا در برابر تجربه»</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۱-فراتحلیل-واینگارتن-و-گودمن-۲۰۲۱">۱) فراتحلیل واینگارتن و گودمن (۲۰۲۱)</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۲-محوشدگی-سریع-اثر-تعطیلات-دی-بلوم-و-همکاران،-۲۰۰۹">۲) محوشدگی سریع اثر تعطیلات (دی بلوم و همکاران، ۲۰۰۹)</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۳-شادی-مکرر-روزمره-در-برابر-شادی-در-خاطره-وایدمن-و-دان،-۲۰۱۶">۳) شادی مکرر روزمره در برابر شادی در خاطره (وایدمن و دان، ۲۰۱۶)</a></li>
+<li class="toc-item level-2"><a href="#fun-research-۴-شرط-درآمدی،-کف-بقا-و-درخت-تصمیمگیری-بودجه">۴. شرط درآمدی، کف بقا و درخت تصمیم‌گیری بودجه</a></li>
+<li class="toc-item level-2"><a href="#fun-research-۵-قاعدهی-انباشت-سهماهه-و-حذف-شمارش-معکوس">۵. قاعده‌ی انباشت سه‌ماهه و حذف شمارش معکوس</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۱-تجربهی-کشیده-نه-متراکم-گودمن،-۲۰۱۹">۱) تجربه‌ی کشیده نه متراکم (گودمن، ۲۰۱۹)</a></li>
+<li class="toc-item level-3"><a href="#fun-research-۲-حذف-نوار-پیشرفت-و-تایمر-مالکوچ،-۲۰۲۶">۲) حذف نوار پیشرفت و تایمر (مالکوچ، ۲۰۲۶)</a></li>
+<li class="toc-item level-2"><a href="#fun-research-۶-خلاصه-و-کارنامهی-نهایی-اصول-تفریح">۶. خلاصه و کارنامه‌ی نهایی اصول تفریح</a></li>
+<li class="toc-item level-3"><a href="#fun-research-منابع-کلیدی-اضافهشده-در-نسخهی-۳">منابع کلیدی اضافه‌شده در نسخه‌ی ۳</a></li>
+
+      </ul>
+    </div>
+    
+    <div class="toc-block " id="toc-block-meaning-research" style="display: none;">
+      <div class="toc-header">
+        <span class="toc-title">فهرست پشتوانه‌ی پژوهشی پاکت معنا و نیکوکاری</span>
+        <span style="font-size:12px;color:var(--text-dim);">18 بخش</span>
+      </div>
+      <ul class="toc-list">
+        <li class="toc-item level-3"><a href="#meaning-research-پشتوانهی-پژوهشی-پاکت-نیکوکاری-۵٪-نسخهی-۲،-اصلاحشده">پشتوانه‌ی پژوهشی پاکت نیکوکاری (۵٪) — نسخه‌ی ۲، اصلاح‌شده</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۰-اول-معنا-دقیقاً-یعنی-چه؟">۰. اول: معنا دقیقاً یعنی چه؟</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۱-معنا-با-خوشحالی-یکی-نیست-ولی-مقابل-آن-هم-نیست">۱. معنا با خوشحالی یکی نیست — ولی مقابل آن هم نیست</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۲-معناهدف-چه-چیزی-تأمین-میکند؟-شواهد-کمّی،-با-قید">۲. معنا/هدف چه چیزی تأمین می‌کند؟ — شواهد کمّی، با قید</a></li>
+<li class="toc-item level-3"><a href="#meaning-research-الف-طول-عمر">الف) طول عمر</a></li>
+<li class="toc-item level-3"><a href="#meaning-research-ب-بدن-و-زیستشناسی">ب) بدن و زیست‌شناسی</a></li>
+<li class="toc-item level-3"><a href="#meaning-research-ج-ذهن-و-رفتار">ج) ذهن و رفتار</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۳-دادن-بهطور-خاص-چه-میکند؟-شواهد-متضاد">۳. «دادن» به‌طور خاص چه می‌کند؟ — شواهد متضاد</a></li>
+<li class="toc-item level-3"><a href="#meaning-research-دادن-مؤثرتر-از-گرفتن-است">دادن مؤثرتر از گرفتن است</a></li>
+<li class="toc-item level-3"><a href="#meaning-research-اما-چقدر-اهمیت-دارد-و-اینجا-عدد-داریم">اما «چقدر» اهمیت دارد — و اینجا عدد داریم</a></li>
+<li class="toc-item level-3"><a href="#meaning-research-دادنِ-پول-شواهد-متناقضاند">دادنِ پول: شواهد متناقض‌اند</a></li>
+<li class="toc-item level-3"><a href="#meaning-research-آزمایشهای-خرج-کردن-نوعدوستانه">آزمایش‌های خرج کردن نوع‌دوستانه</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۴-آنچه-شواهد-نمیگوید-صداقت-روششناختی">۴. آنچه شواهد نمی‌گوید — صداقت روش‌شناختی</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۵-نتیجهگیری-برای-طراحی-پاکت-۵٪">۵. نتیجه‌گیری برای طراحی پاکت ۵٪</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۶-پاسخ-کوتاه-به-سؤال-اصلی">۶. پاسخ کوتاه به سؤال اصلی</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-۷-تنها-راه-پر-کردن-خلأ-شواهد">۷. تنها راه پر کردن خلأ شواهد</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-فهرست-کامل-منابع">فهرست کامل منابع</a></li>
+<li class="toc-item level-2"><a href="#meaning-research-پیوست-فهرست-تغییرات-نسبت-به-نسخهی-اول">پیوست: فهرست تغییرات نسبت به نسخه‌ی اول</a></li>
+
+      </ul>
+    </div>
+    
+    <div class="toc-block " id="toc-block-evidence-scorecard" style="display: none;">
+      <div class="toc-header">
+        <span class="toc-title">فهرست کارنامه‌ی شواهد و ارزیابی اعتبار</span>
+        <span style="font-size:12px;color:var(--text-dim);">20 بخش</span>
+      </div>
+      <ul class="toc-list">
+        <li class="toc-item level-3"><a href="#evidence-scorecard-ارزیابی-لایهی-سوم-نه-صحت-نقلقول،-بلکه-اعتبار-خودِ-شواهد">ارزیابی لایه‌ی سوم: نه صحت نقل‌قول، بلکه اعتبار خودِ شواهد</a></li>
+<li class="toc-item level-2"><a href="#evidence-scorecard-۰-تشخیص-اصلی">۰. تشخیص اصلی</a></li>
+<li class="toc-item level-2"><a href="#evidence-scorecard-۱-کارنامهی-خطبهخط">۱. کارنامه‌ی خط‌به‌خط</a></li>
+<li class="toc-item level-2"><a href="#evidence-scorecard-۲-دو-چیزی-که-در-متن-اصلی-پیدا-کردم-و-در-هیچ-نقدی-نبود">۲. دو چیزی که در متن اصلی پیدا کردم و در هیچ نقدی نبود</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-یافتهی-اول-منحنی-U-وارونهی-شریف،-۰٫۴٪-واریانس-توضیح-میدهد">🔴 یافته‌ی اول: منحنی U وارونه‌ی شریف، ۰٫۴٪ واریانس توضیح می‌دهد</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-یافتهی-دوم-یکی-از-چهار-وجه-چارچوب-بازیابی،-ارزش-افزوده-ندارد">🔴 یافته‌ی دوم: یکی از چهار وجه چارچوب بازیابی، ارزش افزوده ندارد</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-افزودهی-۲٫۲-یک-تعارض-باز-در-ادبیات">🔴 افزوده‌ی ۲٫۲ — یک تعارض باز در ادبیات</a></li>
+<li class="toc-item level-2"><a href="#evidence-scorecard-۳-پنج-الگوی-ساختاری">۳. پنج الگوی ساختاری</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-۱-پرستیژ-ژورنال-استحکام-شواهد">۱. پرستیژ ژورنال ≠ استحکام شواهد</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-۲-وابستگی-تکآزمایشگاهی-مهمترین-الگو">۲. وابستگی تک‌آزمایشگاهی — مهم‌ترین الگو</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-۳-سوگیری-انتشار-حالا-کمّی-شده">۳. سوگیری انتشار — حالا کمّی شده</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-۴-شکاف-نسل-روششناختی">۴. شکاف نسل روش‌شناختی</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-۵-همهی-پیامدها-کوتاهمدت-و-خودگزارشیاند">۵. همه‌ی پیامدها کوتاه‌مدت و خودگزارشی‌اند</a></li>
+<li class="toc-item level-2"><a href="#evidence-scorecard-۴-بازرتبهبندی-نهایی-برچسبها">۴. بازرتبه‌بندی نهایی برچسب‌ها</a></li>
+<li class="toc-item level-2"><a href="#evidence-scorecard-۵-پس-چه-چیزی-سرِ-پا-میماند؟">۵. پس چه چیزی سرِ پا می‌ماند؟</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-اصل-اول-تفریح-را-اجتماعی-کن">🟢 اصل اول: تفریح را اجتماعی کن</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-اصل-دوم-برچسب-هدررفت-را-باریک-نگه-دار">🟢 اصل دوم: برچسب «هدررفت» را باریک نگه دار</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-و-بقیه؟">و بقیه؟</a></li>
+<li class="toc-item level-2"><a href="#evidence-scorecard-۶-نتیجهگیری-برای-کل-پروژه">۶. نتیجه‌گیری برای کل پروژه</a></li>
+<li class="toc-item level-3"><a href="#evidence-scorecard-منابع-افزوده-در-این-کارنامه">منابع افزوده در این کارنامه</a></li>
+
+      </ul>
+    </div>
+    
+    <div class="toc-block " id="toc-block-taraz-review" style="display: none;">
+      <div class="toc-header">
+        <span class="toc-title">فهرست بررسی اپلیکیشن «تراز» در برابر چهار پاکت</span>
+        <span style="font-size:12px;color:var(--text-dim);">13 بخش</span>
+      </div>
+      <ul class="toc-list">
+        <li class="toc-item level-2"><a href="#taraz-review-جمعبندی-کوتاه">جمع‌بندی کوتاه</a></li>
+<li class="toc-item level-2"><a href="#taraz-review-آنچه-درست-و-همراستاست">آنچه درست و هم‌راستاست</a></li>
+<li class="toc-item level-2"><a href="#taraz-review-شکافها-به-ترتیب-اهمیت">شکاف‌ها — به ترتیب اهمیت</a></li>
+<li class="toc-item level-3"><a href="#taraz-review-۱-حوضچهی-درآمد-نامنظم-وجود-ندارد">۱. حوضچه‌ی درآمد نامنظم — وجود ندارد</a></li>
+<li class="toc-item level-3"><a href="#taraz-review-۲-سقف-سهماههی-پاکت-تفریح-وجود-ندارد">۲. سقف سه‌ماهه‌ی پاکت تفریح — وجود ندارد</a></li>
+<li class="toc-item level-3"><a href="#taraz-review-۳-ضروری-کف-است،-نه-سقف-منطق-فعلی-نامتقارن-نیست">۳. «ضروری کف است، نه سقف» — منطق فعلی نامتقارن نیست</a></li>
+<li class="toc-item level-3"><a href="#taraz-review-۴-اصل-سرمایه-در-برابر-سود-تفکیک-نشده">۴. اصل سرمایه در برابر سود — تفکیک نشده</a></li>
+<li class="toc-item level-3"><a href="#taraz-review-۵-حالت-نقاهت-دورهی-بدهی-وجود-ندارد">۵. حالت نقاهت (دوره‌ی بدهی) — وجود ندارد</a></li>
+<li class="toc-item level-3"><a href="#taraz-review-۶-تفکیک-تفریح-از-هدررفت-در-لحظهی-ثبت">۶. تفکیک تفریح از هدررفت در لحظه‌ی ثبت</a></li>
+<li class="toc-item level-3"><a href="#taraz-review-۷-یک-عدد-سرصفحهای-که-ندارد">۷. یک عدد سرصفحه‌ای که ندارد</a></li>
+<li class="toc-item level-2"><a href="#taraz-review-سه-نکتهی-غیرمفهومی-که-به-چشمم-آمد">سه نکته‌ی غیرمفهومی که به چشمم آمد</a></li>
+<li class="toc-item level-2"><a href="#taraz-review-اولویت-پیشنهادی">اولویت پیشنهادی</a></li>
+<li class="toc-item level-2"><a href="#taraz-review-شکاف-۸-افزوده-شمارش-معکوسِ-هدف-تفریح-را-نگذارید">🔴 شکاف ۸ (افزوده) — شمارش معکوسِ هدف تفریح را نگذارید</a></li>
+
+      </ul>
+    </div>
+    
+  </aside>
+
+  <main class="main-content">
+    
+    <div class="doc-panel active" id="panel-four-pockets">
+      <div class="doc-header-card" style="--doc-accent: #c2603f;">
+        <div class="doc-meta-row">
+          <span class="doc-badge">📦 سند مبنایی</span>
+          <span class="doc-number">سند شماره‌ی ۱ از ۶</span>
+        </div>
+        <h1 class="doc-title">مفهوم‌سازی سیستم چهار پاکت</h1>
+        <p class="doc-subtitle">چارچوب بسته برای مدیریت جامع تمام مخارج و درآمدهای زندگی</p>
+        
+        <div class="pockets-bar">
+          <div class="pocket-segment" style="flex:60;background:#c2603f">ضروری ۶۰٪</div>
+          <div class="pocket-segment" style="flex:20;background:#10b981">آزادی مالی ۲۰٪</div>
+          <div class="pocket-segment" style="flex:15;background:#3b82f6">تفریح ۱۵٪</div>
+          <div class="pocket-segment" style="flex:5;background:#8b5cf6">معنا ۵٪</div>
+        </div>
+        <div class="seal-badge">چهار پاکت مهر و موم‌شده — مجموع همیشه ۱۰۰٪</div>
+        
+      </div>
+
+      <article class="prose">
+        
+
+
+
+
+
+<h2 id="four-pockets-۱-تعریف-هسته">۱. تعریف هسته</h2>
+<p><strong>سیستم چهار پاکت</strong> یک قاعده‌ی تقسیم درآمد است: هر واحد پولی که وارد زندگی شما می‌شود، پیش از آنکه خرج شود، به یکی از چهار پاکت تعلق می‌گیرد. هیچ پولی بی‌خانمان نمی‌ماند و هیچ خرج مشروعی خارج از این چهار پاکت وجود ندارد.</p>
+<p>جمله‌ی محوری: <strong>«اول تقسیم کن، بعد خرج کن.»</strong> — نه برعکس.</p>
+<p>هر پاکت یک <strong>کیف مستقل</strong> است با پول خودش، هدف خودش و قواعد خودش. پاکت‌ها به هم قرض نمی‌دهند و از هم قرض نمی‌گیرند.</p>
+
+<h2 id="four-pockets-۲-کیفیت-زندگی-خروجی-سیستم،-نه-یک-پاکت">۲. کیفیت زندگی: خروجی سیستم، نه یک پاکت</h2>
+<p><strong>کیفیت زندگی</strong> متعلق به هیچ پاکتی نیست — <em>حاصل جمع هر چهار پاکت</em> است. اگر آن را صفت یک پاکت بدانیم، سه پاکت دیگر بی‌دلیل به حاشیه می‌روند.</p>
+<p>هر پاکت یک <strong>بُعد متفاوت</strong> از کیفیت زندگی را می‌سازد. هیچ‌کدام جانشین دیگری نمی‌شود:</p>
+<div class="table-responsive"><div class="table-responsive"><table>
+  <tr><th>پاکت</th><th>مخاطبش</th><th>بُعدی که می‌سازد</th><th>اگر ضعیف باشد</th></tr>
+  <tr><td>ضروری</td><td>بدن و زندگی روزمره</td><td><strong>آسایش</strong> — سطح مادی هر روز</td><td>فرسودگی و ناامنی روزمره</td></tr>
+  <tr><td>آزادی مالی</td><td>منِ فردا</td><td><strong>امنیت و اختیار</strong></td><td>اضطراب دائمی، اسارت در کار</td></tr>
+  <tr><td>تفریح</td><td>روح و انگیزه</td><td><strong>سرزندگی</strong></td><td>خستگی، رهاکردن مسیر</td></tr>
+  <tr><td>نیکوکاری</td><td>دیگری</td><td><strong>معنا</strong></td><td>پوچی و تنگ‌نظری</td></tr>
+</table></div></div>
+<div class="rule"><strong>نتیجه‌ی مهم:</strong> کسی که فقط پاکت ضروری‌اش را بزرگ می‌کند، زندگی <em>مرفه</em> دارد اما نه لزوماً <em>باکیفیت</em>. کیفیت زندگی وقتی بالا می‌رود که <strong>هر چهار بُعد هم‌زمان</strong> رشد کنند — و دقیقاً به همین دلیل است که درصدها ثابت می‌مانند.</div>
+<p class="note">پس درصدها صرفاً تقسیم پول نیستند؛ تعریف شما از یک <strong>زندگی متوازن</strong> هستند.</p>
+
+<h2 id="four-pockets-۳-چهار-پاکت">۳. چهار پاکت</h2>
+
+<div class="concept-card" style="--c:#c2603f">
+  <h3 id="four-pockets-۶۰٪-پاکت-ضروری"><span class="concept-pct">۶۰٪</span> پاکت ضروری</h3>
+  <p><strong>تعریف:</strong> هر خرجی که <strong>چرخ زندگی روزمره</strong> را می‌چرخاند — یعنی بدون آن، روزِ عادی شما نمی‌گذرد.</p>
+  <p><strong>درون پاکت:</strong> مسکن، خوراک، قبض‌ها، حمل‌ونقل، بیمه، درمان، پوشاک، تحصیل فرزند.</p>
+  <p><strong>بیرون پاکت:</strong> رستوران تفننی، خرید هیجانی، سفر، سرگرمی.</p>
+  <div class="rule"><strong>قاعده‌ی کف، نه سقف:</strong> این پاکت نباید از ۶۰٪ <em>کمتر</em> شود. با بالا رفتن درآمد، همین ۶۰٪ هم بزرگ‌تر می‌شود — و باید صرف <strong>ارتقای سطح مادیِ زندگی روزمره</strong> شود: خانه‌ی بهتر، محله‌ی بهتر، غذای سالم‌تر، خودروی مطمئن‌تر، درمان به‌موقع‌تر. صرفه‌جویی افراطی در این پاکت هدف نیست — چون <em>آسایش</em> یکی از چهار بُعد کیفیت زندگی است، نه هزینه‌ای که باید حذف شود.</div>
+  <p class="q">پرسش مرزی: اینترنت ضروری است یا تفریح؟ → اگر ابزار کار و ارتباط است، ضروری.</p>
+</div>
+
+<div class="concept-card" style="--c:#3f7d6e">
+  <h3 id="four-pockets-۲۰٪-پاکت-آزادی-مالی"><span class="concept-pct">۲۰٪</span> پاکت آزادی مالی</h3>
+  <p><strong>تعریف:</strong> پولی که تبدیل به دارایی می‌شود و برای «شما در آینده» کار می‌کند.</p>
+  <p><strong>درون پاکت:</strong> سرمایه‌گذاری، خرید دارایی، سهم در کسب‌وکار، صندوق اضطراری.</p>
+  <div class="rule"><strong>قاعده‌ی اصل و سود:</strong> <span style="color:#a33">اصل سرمایه هرگز خرج نمی‌شود.</span> تنها چیزی که می‌توان از آن استفاده کرد، <strong>سودِ حاصل از آن</strong> است. این پاکت فقط یک جهت دارد: بزرگ‌تر شدن.</div>
+  <p class="q">معیار موفقیت: روزی که سود این پاکت، پاکت ضروری‌تان را بپوشاند — آن روز «آزادی مالی» است.</p>
+</div>
+
+<div class="concept-card" style="--c:#4a6fa5">
+  <h3 id="four-pockets-۱۵٪-پاکت-تفریح"><span class="concept-pct">۱۵٪</span> پاکت تفریح</h3>
+  <p><strong>تعریف:</strong> پولی که هدفش بازسازی انرژی، روحیه و انگیزه‌ی شماست. <strong>این یک نیاز است، نه ولخرجی.</strong> سوختی که ادامه‌ی راه را ممکن می‌کند.</p>
+  <p><strong>درون پاکت:</strong> سفر، رستوران، سرگرمی، هدیه به خود، تجربه‌های لذت‌بخش، استراحت.</p>
+  <div class="rule"><strong>قاعده‌ی انباشت سه‌ماهه:</strong> اگر مبلغ ماهانه برای یک تجربه‌ی درست کم است، می‌توانید <strong>تا حداکثر سه ماه</strong> آن را جمع کنید و یک‌جا خرج کنید. بیش از سه ماه، این پول دیگر تفریح نیست — تبدیل به پس‌اندازِ بی‌هدف می‌شود و کارکردش را از دست می‌دهد.</div>
+  <p class="q">خرج کردن این پاکت، بخشی از انضباط است — نه نقض آن.</p>
+</div>
+
+<div class="concept-card" style="--c:#8a6aa8">
+  <h3 id="four-pockets-۵٪-پاکت-نیکوکاری"><span class="concept-pct">۵٪</span> پاکت نیکوکاری</h3>
+  <p><strong>تعریف:</strong> پولی که بدون انتظار بازگشت، از شما خارج می‌شود.</p>
+  <p><strong>درون پاکت:</strong> کمک به نیازمند، خیریه، حمایت بلاعوض از خانواده، وقف.</p>
+  <p><strong>کارکرد:</strong> رابطه‌ی شما با پول را از «کمبود» به «کفایت» تغییر می‌دهد. کوچک‌ترین پاکت، اما هویتی‌ترین آن‌ها.</p>
+</div>
+
+<h2 id="four-pockets-۴-پاکت-پنجم-هدررفت">۴. پاکت پنجم: هدررفت</h2>
+<div class="warn">
+  <p><strong>هدررفت</strong> پاکت رسمی نیست — سوراخ سیستم است. هر پولی که در هیچ‌یک از چهار پاکت جا نمی‌گیرد، از اینجا بیرون می‌رود.</p>
+  <p><strong>نشانه‌هایش:</strong> خرید هیجانی که فردا پشیمانش هستید، اشتراک‌های فراموش‌شده، جریمه و دیرکرد، سود بدهی بد، خرید برای چشم‌وهم‌چشمی، پولی که نمی‌دانید کجا رفت.</p>
+  <p><strong>تفاوت کلیدی با تفریح:</strong> تفریح <em>انرژی می‌دهد</em> و از قبل انتخاب شده است. هدررفت <em>انرژی می‌گیرد</em> و اتفاق می‌افتد.</p>
+  <p><strong>هدف:</strong> این پاکت درصد ندارد، چون سهمش باید <strong>صفر</strong> باشد. کارِ سیستم چهار پاکت، خشکاندن همین پاکت است.</p>
+</div>
+
+<h2 id="four-pockets-۵-قاعدهی-تصمیم">۵. قاعده‌ی تصمیم</h2>
+<p>وقتی نمی‌دانید یک خرج در کدام پاکت است، به ترتیب بپرسید:</p>
+<div class="table-responsive"><div class="table-responsive"><table>
+  <tr><th>سؤال</th><th>اگر «بله»</th></tr>
+  <tr><td>۱. آیا این خرج، چرخ زندگی روزمره‌ام را می‌چرخاند؟ (آسایش)</td><td>ضروری</td></tr>
+  <tr><td>۲. آیا این پول تبدیل به دارایی می‌شود و در آینده برایم کار می‌کند؟ (امنیت)</td><td>آزادی مالی</td></tr>
+  <tr><td>۳. آیا این خرج آگاهانه انتخاب شده و انرژی و روحیه‌ام را بازسازی می‌کند؟ (سرزندگی)</td><td>تفریح</td></tr>
+  <tr><td>۴. آیا گیرنده‌اش کس دیگری است و انتظار بازگشت ندارم؟ (معنا)</td><td>نیکوکاری</td></tr>
+  <tr style="background:#fdeceb"><td><strong>هیچ‌کدام</strong></td><td><strong>هدررفت — انجامش نده</strong></td></tr>
+</table></div></div>
+
+<h2 id="four-pockets-۶-قواعد-بنیادین-سیستم">۶. قواعد بنیادین سیستم</h2>
+<div class="rule"><strong>۱. پاکت‌ها مهر و موم‌اند.</strong> هیچ جابه‌جایی بین پاکت‌ها مجاز نیست — نه از بالا به پایین، نه از پایین به بالا. هر پاکت پول خودش را دارد و در محدوده‌ی پول خودش زندگی می‌کند.</div>
+<div class="rule"><strong>۲. تنها منبع قابل برداشت، سودِ پاکت آزادی مالی است.</strong> اصل سرمایه دست‌نخوردنی است.</div>
+<div class="rule"><strong>۳. هر درآمدی، همین تقسیم را می‌پذیرد.</strong> پاداش، فروش، هدیه، درآمد غیرمنتظره — همه با همان ۶۰/۲۰/۱۵/۵ تقسیم می‌شوند. استثنا، آغاز فروپاشی سیستم است.</div>
+<div class="rule"><strong>۴. اگر پاکتی کم آورد، مسئله‌ی خودِ آن پاکت است.</strong> راه‌حل، قرض گرفتن از پاکت دیگر نیست؛ راه‌حل یا بازطراحی خرج‌های همان پاکت است یا افزایش درآمد.</div>
+<div class="warn"><strong>وقتی ضروری از ۶۰٪ فراتر می‌رود:</strong> این یعنی سطح زندگی شما از سطح درآمدتان جلو زده. تنها راه پایدار، <strong>افزایش درآمد</strong> است تا ۶۰٪ دوباره کافی شود — نه دست‌درازی به پاکت‌های دیگر.</div>
+
+<h2 id="four-pockets-۷-مثال-عددی">۷. مثال عددی</h2>
+<div class="table-responsive"><div class="table-responsive"><table>
+  <tr><th>درآمد ماهانه</th><th>ضروری ۶۰٪</th><th>آزادی مالی ۲۰٪</th><th>تفریح ۱۵٪</th><th>نیکوکاری ۵٪</th></tr>
+  <tr><td>۱۰٬۰۰۰٬۰۰۰</td><td>۶٬۰۰۰٬۰۰۰</td><td>۲٬۰۰۰٬۰۰۰</td><td>۱٬۵۰۰٬۰۰۰</td><td>۵۰۰٬۰۰۰</td></tr>
+  <tr><td>۳۰٬۰۰۰٬۰۰۰</td><td>۱۸٬۰۰۰٬۰۰۰</td><td>۶٬۰۰۰٬۰۰۰</td><td>۴٬۵۰۰٬۰۰۰</td><td>۱٬۵۰۰٬۰۰۰</td></tr>
+  <tr><td>۸۰٬۰۰۰٬۰۰۰</td><td>۴۸٬۰۰۰٬۰۰۰</td><td>۱۶٬۰۰۰٬۰۰۰</td><td>۱۲٬۰۰۰٬۰۰۰</td><td>۴٬۰۰۰٬۰۰۰</td></tr>
+</table></div></div>
+<p class="note">درصدها ثابت می‌مانند؛ آنچه رشد می‌کند مبلغ است — و چون همه با هم رشد می‌کنند، هر چهار بُعد کیفیت زندگی هم‌زمان بالا می‌روند. پاکت ضروریِ بزرگ‌تر باید صرف <strong>سطح روزمره‌ی بهتر</strong> شود، نه انباشته بماند.</p>
+
+<h2 id="four-pockets-۸-از-مفهوم-تا-اجرا">۸. از مفهوم تا اجرا</h2>
+<ul>
+  <li><strong>چهار حساب یا کیف جدا</strong> بسازید. مرز فیزیکی از مرز ذهنی قوی‌تر است.</li>
+  <li><strong>روز دریافت درآمد</strong> تقسیم را انجام دهید — ترجیحاً خودکار.</li>
+  <li><strong>ماه اول فقط ثبت کنید</strong> تا بفهمید نسبت واقعی فعلی‌تان چیست و هدررفت‌تان چقدر است.</li>
+  <li><strong>هدررفت را شکار کنید</strong> — هر ریالی که در چهار پاکت جا نشد، بنویسید. همین نوشتن، بیشترش را از بین می‌برد.</li>
+  <li><strong>سه ماه صبر کنید</strong> پیش از داوری.</li>
+</ul>
+
+<h2 id="four-pockets-۹-سناریوی-دشوار-درآمد-نامنظم">۹. سناریوی دشوار: درآمد نامنظم</h2>
+
+<h3 id="four-pockets-صورت-مسئله">صورت مسئله</h3>
+<p>سیستم چهار پاکت یک فرض پنهان دارد: <strong>درآمد منظم است</strong>. اما فریلنسر، کاسب، پیمانکار و صاحب کسب‌وکار فصلی با این واقعیت روبه‌رو است:</p>
+<ul>
+  <li>خرج‌های پاکت ضروری <strong>ماهانه و ثابت</strong> است — اجاره هر ماه سر موعد می‌رسد.</li>
+  <li>درآمد <strong>نامنظم و جهشی</strong> است — یک ماه صفر، ماه بعد سه‌برابر.</li>
+</ul>
+<div class="warn">۶۰٪ یک ماهِ پرُبار، بسیار بیشتر از نیاز است. ۶۰٪ یک ماهِ خالی، اجاره را هم نمی‌پوشاند. تقسیم مستقیمِ درآمد در ماه‌های نامنظم، سیستم را می‌شکند.</div>
+
+<h3 id="four-pockets-راهحل-مفهومی-حوضچه">راه‌حل مفهومی: حوضچه</h3>
+<p><strong>حوضچه</strong> یک مخزن است که <em>پیش از</em> چهار پاکت قرار می‌گیرد. درآمد دیگر مستقیم وارد پاکت‌ها نمی‌شود؛ اول وارد حوضچه می‌شود، و حوضچه هر ماه یک مبلغ <strong>ثابت</strong> به پاکت‌ها می‌ریزد.</p>
+<div class="table-responsive"><div class="table-responsive"><table>
+  <tr><th>بدون حوضچه</th><th>با حوضچه</th></tr>
+  <tr>
+    <td>درآمد نامنظم ← مستقیم به چهار پاکت<br><span class="note">پاکت‌ها هم نامنظم می‌شوند</span></td>
+    <td>درآمد نامنظم ← حوضچه ← مبلغ ثابت ماهانه ← چهار پاکت<br><span class="note">پاکت‌ها منظم می‌مانند</span></td>
+  </tr>
+</table></div></div>
+<div class="rule"><strong>نکته‌ی مهم:</strong> حوضچه <u>پاکت پنجم نیست</u> و قاعده‌ی مهر و موم را نقض نمی‌کند. حوضچه <em>بالادستِ</em> تقسیم است، نه یکی از مقصدها. پولِ داخل حوضچه هنوز تقسیم نشده و هنوز به هیچ پاکتی تعلق ندارد.</div>
+
+<h3 id="four-pockets-مکانیزم-به-خودت-حقوق-بده">مکانیزم: به خودت حقوق بده</h3>
+<p>شما کارفرمای خودتان می‌شوید و به خودتان <strong>حقوق ثابت ماهانه</strong> می‌پردازید. فقط همان حقوق است که ۶۰/۲۰/۱۵/۵ می‌شود.</p>
+<div class="table-responsive"><div class="table-responsive"><table>
+  <tr><th>گام</th><th>کار</th></tr>
+  <tr><td>۱</td><td>درآمد ۱۲ ماه گذشته را جمع بزنید و بر ۱۲ تقسیم کنید → <strong>میانگین واقعی</strong></td></tr>
+  <tr><td>۲</td><td>حقوق پایه را <strong>۷۰ تا ۸۰ درصد</strong> این میانگین بگذارید — نه ۱۰۰٪. حاشیه‌ی امن لازم است.</td></tr>
+  <tr><td>۳</td><td>هر درآمدی که رسید، کامل وارد حوضچه شود — بدون تقسیم.</td></tr>
+  <tr><td>۴</td><td>روز اول هر ماه، دقیقاً همان حقوق پایه از حوضچه خارج و بین چهار پاکت تقسیم شود.</td></tr>
+  <tr><td>۵</td><td>مازادِ حوضچه در جای خودش می‌ماند تا ماه‌های خالی را بپوشاند.</td></tr>
+</table></div></div>
+
+<h3 id="four-pockets-قاعدهی-ظرفیت-حوضچه">قاعده‌ی ظرفیت حوضچه</h3>
+<div class="rule"><strong>هدف اول:</strong> حوضچه را تا <strong>۶ برابر حقوق پایه</strong> پر کنید. تا رسیدن به این عدد، هیچ مازادی خارج نمی‌شود. این شش ماه، همان چیزی است که یک کارمند به‌طور طبیعی دارد و شما ندارید: <strong>قطعیت</strong>.</div>
+<div class="rule"><strong>پس از پر شدن:</strong> هر چه از سقف ۶ ماه بالاتر رفت، سرریز است — و سرریز هم دقیقاً با همان ۶۰/۲۰/۱۵/۵ تقسیم می‌شود. استثنا ممنوع.</div>
+<div class="rule"><strong>افزایش حقوق:</strong> اگر حوضچه سه ماه پیاپی بالای سقف ماند، یعنی درآمد واقعی‌تان رشد کرده. حالا حقوق پایه را بالا ببرید (و در نتیجه، کیفیت زندگی در پاکت ضروری را). این تنها راه درستِ «بزرگ‌تر شدن» است.</div>
+<div class="warn"><strong>اگر حوضچه خالی شد:</strong> این یعنی حقوق پایه را بیش از توان واقعی‌تان تعیین کرده‌اید. حقوق را <strong>کاهش دهید</strong> — دست‌درازی به پاکت آزادی مالی راه‌حل نیست.</div>
+
+<h3 id="four-pockets-مثال">مثال</h3>
+<p>درآمد سالانه‌ی یک فریلنسر: ۲۴۰ میلیون در سال، اما پراکنده — سه ماه صفر، دو ماه ۵۰ میلیونی.</p>
+<ul>
+  <li>میانگین ماهانه: <strong>۲۰ میلیون</strong></li>
+  <li>حقوق پایه (۷۵٪): <strong>۱۵ میلیون در ماه</strong></li>
+  <li>تقسیم ثابت هر ماه: ضروری ۹ / آزادی مالی ۳ / تفریح ۲٫۲۵ / نیکوکاری ۰٫۷۵ میلیون</li>
+  <li>سقف حوضچه: <strong>۹۰ میلیون</strong> (۶ × ۱۵)</li>
+</ul>
+<p class="note">در ماه صفر، حوضچه حقوق را می‌پردازد و زندگی تکان نمی‌خورد. در ماه ۵۰ میلیونی، ۱۵ خارج می‌شود و ۳۵ در حوضچه می‌ماند. پس از پر شدن حوضچه، مازاد وارد چهار پاکت می‌شود و آزادی مالی جهش می‌کند.</p>
+
+<h3 id="four-pockets-خلاصهی-اصل">خلاصه‌ی اصل</h3>
+<p><strong>درآمد نامنظم را نمی‌توان منظم کرد — اما می‌توان خروجی‌اش را منظم کرد.</strong> حوضچه دقیقاً همین کار را می‌کند: نوسان را می‌خورد، ثبات بیرون می‌دهد.</p>
+
+<h2 id="four-pockets-۱۰-سناریوی-دشوار-بدهی">۱۰. سناریوی دشوار: بدهی</h2>
+
+<h3 id="four-pockets-چرا-بدهی-پیچیده-است">چرا بدهی پیچیده است</h3>
+<p>سیستم چهار پاکت بر یک فرض بنیادی ساخته شده: <strong>پولِ امروز، خرجِ امروز می‌شود.</strong> بدهی دقیقاً همین فرض را می‌شکند:</p>
+<ul>
+  <li><strong>بدهی یعنی خرجِ گذشته که به امروز منتقل شده است.</strong> شما امروز پولی می‌پردازید بابت تصمیمی که ماه‌ها پیش گرفته‌اید.</li>
+  <li>قسط، درآمد امروز شما را می‌خورد اما لذت یا فایده‌اش قبلاً مصرف شده.</li>
+  <li>بدتر از آن: سودِ بدهی، پولی است که <em>هیچ چیز</em> نمی‌خرد. نه زندگی می‌سازد، نه دارایی، نه لذت.</li>
+</ul>
+<div class="warn"><strong>وسوسه‌ی غلط:</strong> «پس بدهی، پاکت پنجم است.» — نه. اگر برای بدهی پاکت بسازید، بدهی را به عضو دائمی زندگی‌تان تبدیل کرده‌اید. بدهی باید <strong>حذف</strong> شود، نه <strong>جا داده</strong> شود.</div>
+
+<h3 id="four-pockets-اصل-حل-مسئله-بدهی-را-به-منشأش-برگردان">اصل حل مسئله: بدهی را به منشأش برگردان</h3>
+<p>هر بدهی، زمانی که ایجاد شد، یک خرج بود — و آن خرج به یکی از پاکت‌ها تعلق داشت. <strong>قسط را در همان پاکتی بگذارید که علتش در آن بود.</strong></p>
+<div class="table-responsive"><div class="table-responsive"><table>
+  <tr><th>نوع بدهی</th><th>مثال</th><th>پاکت</th></tr>
+  <tr><td><strong>بدهی زندگی</strong></td><td>قسط مسکن، وام درمان، خودروی مورد نیاز</td><td>ضروری — چون جایگزین اجاره یا هزینه‌ی پایه است</td></tr>
+  <tr><td><strong>بدهی مولد</strong></td><td>وام کسب‌وکار، سرمایه‌گذاری با اهرم، وام تحصیل</td><td>آزادی مالی — چون دارایی خریده است</td></tr>
+  <tr><td><strong>بدهی تفریحی</strong></td><td>قسط سفر، خرید اقساطی کالای لوکس</td><td>تفریح — سهم آینده‌ی خودت را از پیش خورده‌ای</td></tr>
+  <tr style="background:#fdeceb"><td><strong>بدهی بد</strong></td><td>خرید هیجانی اقساطی، کارت اعتباری، جریمه و دیرکرد</td><td><strong>هیچ پاکتی — منشأش هدررفت بوده</strong></td></tr>
+</table></div></div>
+
+<h3 id="four-pockets-بنبست-بدهی-بد">بن‌بست بدهی بد</h3>
+<div class="warn">بدهی بد یک تناقض می‌سازد: منشأش <strong>هدررفت</strong> است، و هدررفت سهمش <strong>صفر</strong> است. پس پولی برای پرداختش وجود ندارد. این همان بن‌بستی است که آدم‌ها را سال‌ها در بدهی نگه می‌دارد.</div>
+
+<h3 id="four-pockets-گرهگشایی-بدهی-بد،-سرمایهگذاری-منفی-است">گره‌گشایی: بدهی بد، سرمایه‌گذاری منفی است</h3>
+<p>یک تغییر زاویه‌ی دید، مسئله را حل می‌کند:</p>
+<div class="rule">
+  <p>کار پاکت <strong>آزادی مالی</strong> این است که <em>ثروت خالص</em> شما را بزرگ کند. ثروت خالص = دارایی منهای بدهی.</p>
+  <p>پس بزرگ کردن دارایی و کوچک کردن بدهی، <strong>دقیقاً یک کارند</strong>. و وقتی سودِ بدهی شما ۳۰ یا ۴۰ درصد است، هیچ سرمایه‌گذاری‌ای در بازار چنین بازدهی تضمین‌شده‌ای ندارد.</p>
+  <p><strong>نتیجه: تسویه‌ی بدهی بد، پرسودترین سرمایه‌گذاری ممکن است و از پاکت آزادی مالی پرداخت می‌شود.</strong></p>
+</div>
+<p>این راه‌حل، قاعده‌ی مهر و موم را نقض نمی‌کند — چون پول از پاکت آزادی مالی خارج نمی‌شود تا خرج شود؛ بلکه صرف <em>مأموریت خودِ همان پاکت</em> می‌شود.</p>
+
+<h3 id="four-pockets-وقتی-۲۰٪-کافی-نیست-حالت-نقاهت">وقتی ۲۰٪ کافی نیست: حالت نقاهت</h3>
+<p>اگر بدهی چنان بزرگ است که ۲۰٪ سال‌ها طول می‌کشد، سیستم وارد یک <strong>وضعیت استثنایی و موقت</strong> می‌شود:</p>
+<div class="table-responsive"><div class="table-responsive"><table>
+  <tr><th>پاکت</th><th>حالت عادی</th><th>حالت نقاهت</th></tr>
+  <tr><td>ضروری</td><td>۶۰٪</td><td><strong>۶۰٪ — دست‌نخورده</strong><span class="note"><br>کیفیت زندگی پایه فدا نمی‌شود</span></td></tr>
+  <tr><td>آزادی مالی</td><td>۲۰٪</td><td><strong>۳۰٪ — کاملاً صرف تسویه‌ی بدهی</strong></td></tr>
+  <tr><td>تفریح</td><td>۱۵٪</td><td><strong>۵٪ — کم، اما هرگز صفر</strong></td></tr>
+  <tr><td>نیکوکاری</td><td>۵٪</td><td><strong>۵٪ — دست‌نخورده</strong></td></tr>
+</table></div></div>
+<div class="rule"><strong>چرا تفریح صفر نمی‌شود؟</strong> چون تفریح نیاز است، نه تجمل. حذف کاملش یعنی قطع سوخت — و آدمی که سوخت ندارد، ظرف چند ماه سیستم را رها می‌کند و به بدهی برمی‌گردد. ۵٪ کوچک است، اما ثابت می‌کند که این یک <em>برنامه</em> است، نه یک <em>تنبیه</em>.</div>
+<div class="rule"><strong>چرا نیکوکاری قطع نمی‌شود؟</strong> چون هویتی است، نه مالی. اولین چیزی که در فشار قطع می‌شود، آخرین چیزی است که برمی‌گردد.</div>
+<div class="warn"><strong>حالت نقاهت باید تاریخ پایان داشته باشد.</strong> پیش از شروع، روز تسویه را روی کاغذ بنویسید. وضعیت استثناییِ بی‌پایان، دیگر استثنا نیست — عادت است.</div>
+
+<h3 id="four-pockets-چهار-قاعدهی-عملی">چهار قاعده‌ی عملی</h3>
+<div class="rule"><strong>۱. اول خونریزی را بند بیاور.</strong> تا وقتی بدهی بد جدید می‌سازید، هیچ برنامه‌ی بازپرداختی کار نمی‌کند. قدم اول، صفر کردن ورودی است نه کم کردن خروجی.</div>
+<div class="rule"><strong>۲. ترتیب تسویه: گران‌ترین سود، اول.</strong> فهرست بدهی‌ها را بر اساس نرخ سود مرتب کنید — نه بر اساس مبلغ. جریمه و دیرکرد همیشه در صدر است.</div>
+<div class="rule"><strong>۳. صندوق اضطراری را قربانی نکن.</strong> پیش از حمله به بدهی، یک ذخیره‌ی کوچک (یک تا دو ماه خرج ضروری) بسازید. بدون آن، اولین اتفاق غیرمنتظره شما را به بدهی جدید برمی‌گرداند و از صفر شروع می‌کنید.</div>
+<div class="rule"><strong>۴. بدهی خوب را زودتر از موعد تسویه نکن.</strong> اگر سودِ وام مسکن‌تان از تورم یا بازدهی سرمایه‌گذاری کمتر است، پرداخت زودهنگام یعنی ضرر. بدهی ارزان، ابزار است نه دشمن.</div>
+
+<h3 id="four-pockets-خلاصهی-اصل-2">خلاصه‌ی اصل</h3>
+<p><strong>بدهی پاکت نیست؛ بدهی نشتیِ گذشته در حال است.</strong> هر قسط را به پاکتی بفرست که علتش آنجا بود — و بدهی بد را نه به‌عنوان خرج، بلکه به‌عنوان پرسودترین سرمایه‌گذاریِ ممکن تسویه کن.</p>
+
+<h2 id="four-pockets-۱۱-در-یک-جمله">۱۱. در یک جمله</h2>
+<p style="font-size:17px"><strong>۶۰ برای آسایش، ۲۰ برای امنیت، ۱۵ برای سرزندگی، ۵ برای معنا — و صفر برای هدررفت.</strong></p>
+<p class="note">کیفیت زندگی نام هیچ‌کدام از این‌ها نیست؛ نام جمع‌شان است.</p>
+
+
+      </article>
+
+      <div class="doc-footer-nav"><div></div><button type="button" onclick="switchDoc('fun-guide')" class="footer-nav-btn" style="text-align:left"><span class="nav-direction">سند بعدی →</span><span class="nav-title">۲. تفریح (راهنمای خوانا و کاربردی)</span></button></div>
+    </div>
+    
+    <div class="doc-panel " id="panel-fun-guide">
+      <div class="doc-header-card" style="--doc-accent: #3b82f6;">
+        <div class="doc-meta-row">
+          <span class="doc-badge">🎮 راهنمای عملی</span>
+          <span class="doc-number">سند شماره‌ی ۲ از ۶</span>
+        </div>
+        <h1 class="doc-title">تفریح (راهنمای خوانا و کاربردی)</h1>
+        <p class="doc-subtitle">چرا پانزده درصد، و چرا این‌طور خرج شود — بدون ریاضیات و آمار پیچیده</p>
+        
+        <div class="pockets-bar">
+          <div class="pocket-segment" style="flex:60;background:#c2603f">ضروری ۶۰٪</div>
+          <div class="pocket-segment" style="flex:20;background:#10b981">آزادی مالی ۲۰٪</div>
+          <div class="pocket-segment" style="flex:15;background:#3b82f6">تفریح ۱۵٪</div>
+          <div class="pocket-segment" style="flex:5;background:#8b5cf6">معنا ۵٪</div>
+        </div>
+        <div class="seal-badge">چهار پاکت مهر و موم‌شده — مجموع همیشه ۱۰۰٪</div>
+        
+      </div>
+
+      <article class="prose">
+        <h1 id="fun-guide-تفریح">تفریح</h1>
+<h3 id="fun-guide-چرا-پانزده-درصد،-و-چرا-اینطور-خرج-شود">چرا پانزده درصد، و چرا این‌طور خرج شود</h3>
+<div class="callout callout-info"><div class="callout-icon">ℹ️</div><div class="callout-body"><p><strong>نسخه‌ی خوانا (نسخه‌ی ۳):</strong> بدون آمار و ریاضیات پیچیده. تمام شواهد فنی و ارجاعات مقالات در سند <code>تفریح-پشتوانه-پژوهشی.md</code> آمده است.</p></div></div>
+<hr />
+<h2 id="fun-guide-۰-یک-اعتراف،-پیش-از-هر-ادعا">۰. یک اعتراف، پیش از هر ادعا</h2>
+<p>هیچ پژوهشی در دنیا نمی‌گوید سهم تفریح در بودجه باید دقیقاً پانزده درصد باشد. چنین فرمول جادویی وجود ندارد و نخواهد داشت.</p>
+<p>مغز ما مثل یک <strong>کاکتوس کویری</strong> است که ناگهان در <strong>جنگل بارانیِ مصرف‌گرایی و دوپامینِ ارزان</strong> رها شده است؛ کاکتوس به محض دیدن آب مدام جذب می‌کند تا جایی که ریشه‌هایش می‌پوسد. سقف ۱۵٪ و مرزهای چهار پاکت در واقع یک <strong>گلخانه‌ی محافظ</strong> است تا ریشه‌های روانی و مالی ما در رگبارِ خریدهای بی‌پایان نپوسد و هر قطره پول، واقعاً صرف شکوفایی شود.</p>
+<p>این سند ادعا نمی‌کند عدد ۱۵٪ را اثبات می‌کند؛ بلکه نشان می‌دهد <strong>وقتی آن ۱۵٪ خرج می‌شود، چه چیزهایی تفاوت میان سرزندگی واقعی و پوچی بعد از ولخرجی را رقم می‌زنند.</strong></p>
+<hr />
+<h2 id="fun-guide-۱-تلهی-اول-تفریح-را-اتلاف-وقت-و-پول-ندان">۱. تله‌ی اول: تفریح را «اتلاف وقت و پول» ندان</h2>
+<p>تصور رایج این است که همه از تفریح لذت می‌برند. اما پژوهش مهم <strong>گابریلا تونیتو</strong> نشان داد:</p>
+<blockquote class="rich-quote"><p>کسانی که در اعماق ذهنشان تفریح را <strong>اتلاف وقت یا مانع پیشرفت</strong> می‌دانند، حتی وقتی بهترین تفریح را انجام می‌دهند، <strong>لذت بسیار کمتری می‌برند.</strong></p></blockquote>
+<p>باور منفی، مثل یک سرنگ، لذت را از درون تجربه بیرون می‌کشد.</p>
+<h3 id="fun-guide-راهحل-چیست؟">راه‌حل چیست؟</h3>
+<p>بهترین راه برای فریب ندادنِ خود و خلاص شدن از احساس گناه، انتخاب تفریح‌هایی است که <strong>کارکرد دومی</strong> هم دارند: تفریحی که همزمان سلامت جسمی می‌سازد (ورزش، کوهنوردی)، به یک رابطه عمق می‌بخشد (دورهمی با دوستان صمیمی)، یا یک مهارت تازه به ما یاد می‌دهد (موسیقی، نقاشی، کتاب).</p>
+<hr />
+<h2 id="fun-guide-۲-شکوفایی-در-برابر-مصرف-پایان-زنجیرهی-چراها">۲. شکوفایی در برابر مصرف: پایان زنجیره‌ی «چراها»</h2>
+<p>بیشتر کارهای ما در زندگی مثل یک زنجیره‌ی بی‌پایانِ وسیله‌اند: کار می‌کنی تا پول درآوری، پول درمی‌آوری تا غذا بخری، غذا می‌خوری تا انرژی داشته باشی برای کار...</p>
+<blockquote class="rich-quote"><p>تفریح اصیل، <strong>پایانِ زنجیره‌ی چراهاست</strong>؛ کاری است که انجامش می‌دهی نه برای اینکه پز بدهی، رزومه بسازی یا معامله کنی، بلکه <strong>خودِ انجام دادنش به تو حس زنده‌بودن می‌دهد.</strong></p></blockquote>
+<p>تفریحات زندگی به دو دسته‌ی کاملاً متفاوت تقسیم می‌شوند:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>نوع تفریح</th>
+  <th>مثال‌ها</th>
+  <th>نتیجه پس از انجام</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>تفریح مصرفیِ صرف</strong></td>
+  <td>تماشای بی‌هدف ویدیو، رستوران رفتن، خرید لباس اضافه</td>
+  <td>سقف دارد؛ زود عادی می‌شود؛ بعد از آن حس خستگی یا پوچی می‌ماند.</td>
+</tr>
+<tr>
+  <td><strong>تفریح یادگیرنده و شکوفا</strong></td>
+  <td>ساز زدن، نجاری، باغبانی، یادگیری زبان، ورزش مهارتی</td>
+  <td><strong>بی‌انتهاست</strong>؛ هر بار چالش جدید دارد؛ عزت‌نفس و آرامش عمیق می‌سازد.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="fun-guide-یک-هشدار-مهم-تفریح-مدرسه-یا-کارِ-دوم-نیست">🎮 یک هشدار مهم: تفریح «مدرسه یا کارِ دوم» نیست!</h3>
+<p>وقتی می‌گوییم تفریح یادگیرنده است، اصلاً قرار نیست برای خودمان <strong>تکلیفِ درسی، هدف تجاری یا رزومه</strong> بسازیم. اگر تفریح را زیادی جدی بگیریم، لذت آن می‌میرد.</p>
+<p>تفریح اصیل، <strong>«بازیگوشیِ خالص» (Play)</strong> است؛ کاری که در آن دنبال هیچ سودِ بیرونی نمی‌دوی، بلکه صرفاً با اراده‌ی خودت با یک چالشِ شیرین ور می‌روی (مثل خط‌خطی کردن، ساز زدن در خلوت، باغبانی، بردگیم یا فوتبال‌دستی).</p>
+<p><strong>یادگیری و آرامش، هدفِ بازی نیستند؛ بلکه خروجیِ خودکار و طبیعیِ بازیگوشی‌اند.</strong><br />
+تنها مرز مهم این است: <strong>«خودت بازیگر و کنش‌گر باشی (بازیِ فعال)، نه اینکه بی‌حرکت بنشینی تا یک صفحه نمایش به مغزت دوپامین ارزان تزریق کند (مصرفِ منفعل).»</strong></p>
+<h3 id="fun-guide-رقصِ-الاکلنگ-درد-و-لذت-در-یادگیری">رقصِ الاکلنگ درد و لذت در یادگیری</h3>
+<p>در علم اعصاب، درد و لذت مثل دو سر یک الاکلنگ هستند. تفریح مصرفی می‌خواهد بدون هیچ تلاشی به لذت برسد؛ به همین دلیل خیلی زود الاکلنگ به سمت درد، خستگی و کسالت سقوط می‌کند.</p>
+<p>اما <strong>تفریح یادگیرنده هر دو سر الاکلنگ را با هم به کار می‌اندازد:</strong> اول کمی تقلا و تمرکز (دردِ شیرین چالش)، و بلافاصله ترشحِ دوپامین تمیز و احساس غرور (لذتِ خلق و تسلط). این حرکت پیستونی مدام تکرار می‌شود و روح را به جلو می‌برد.</p>
+<blockquote class="rich-quote"><p><strong>تفریح واقعی فرار از سختی نیست؛ تفریح یعنی داشتن این حق و آزادی که «خودت انتخاب کنی با چه چالشِ زیبا و رشددهنده‌ای می‌خواهی بازی کنی» تا از دل آن، عمیق‌ترین لذت‌های زندگی‌ات متولد شوند.</strong></p></blockquote>
+<hr />
+<h2 id="fun-guide-۳-کالای-یادگیرنده-در-برابر-سفر-خطای-شعار-فقط-تجربه-بخر">۳. کالای یادگیرنده در برابر سفر: خطای شعار «فقط تجربه بخر»</h2>
+<p>سال‌هاست تبلیغ می‌شود که «پول را خرج سفر کن، نه کالا». اما تحقیقات دقیق‌تر نشان داده‌اند این توصیه برای همه درست نیست:</p>
+<ol>
+<li><strong>اثر سفر زود محو می‌شود:</strong> پژوهش‌ها نشان می‌دهند اثرات نشاط‌بخش یک سفر، معمولاً <strong>ظرف ۲ تا ۴ هفته</strong> پس از برگشت به کار روزمره تقریباً ناپدید می‌شود.</li>
+<li><strong>کالای یادگیرنده هر روز لذت می‌سازد:</strong> خرید یک وسیله‌ی تجربه‌سازِ باکیفیت (مثل یک ساز، دوچرخه، ابزار نجاری یا چند کتاب عالی) در تمام طول سال، <strong>شادی روزمره‌ی مکرر</strong> تولید می‌کند.</li>
+</ol>
+<p><strong>نتیجه:</strong> سفر فوق‌العاده است چون «سرمایه‌ی خاطره» می‌سازد؛ اما برای یک زندگی پایدار، پایه‌ی اصلی پاکت تفریح باید خرج <strong>ابزارهای رشد و سرگرمی روزانه</strong> شود، نه اینکه تمام پول سال در یک سفر چندروزه دود شود و برود.</p>
+<hr />
+<h2 id="fun-guide-۴-راز-بزرگ-تجربه-اجتماعی-بودن،-نه-برچسب-تجربه">۴. راز بزرگ تجربه: «اجتماعی بودن»، نه برچسب تجربه</h2>
+<p>فراتحلیل‌های بزرگ نشان داده‌اند رفتن به سینما یا رستورانِ لوکس به‌تنهایی، تفاوت چندانی با خرید یک کالای معمولی ندارد.</p>
+<blockquote class="rich-quote"><p><strong>قدرت واقعی تفریح زمانی آزاد می‌شود که «با دیگران» به اشتراک گذاشته شود.</strong></p></blockquote>
+<p>اگر با پول تفریحتان یک بردگیم (بازی فکری) بخرید و با خانواده و دوستان بازی کنید، بازده روانی آن بسیار بیشتر از یک تجربه‌ی گران‌قیمتِ انفرادی خواهد بود.</p>
+<hr />
+<h2 id="fun-guide-۵-تنظیم-تفریح-با-سطح-درآمد-درخت-تصمیمگیری-و-راهبردها">۵. تنظیم تفریح با سطح درآمد: درخت تصمیم‌گیری و راهبردها</h2>
+<p>آیا همه باید ۱۵ درصد تفریح کنند؟ بستگی مستقیم به این دارد که کجای طیف درآمدی ایستاده‌اید. برای مشاهده‌ی استراتژی و منطق رفتاری هر سطح، شاخه‌ی مربوطه را باز کنید:</p>
+<div class="income-tree-container">
+  <details class="tree-tier tier-emergency">
+    <summary>
+      <span class="tier-icon">🔴</span>
+      <span class="tier-title">سطح ۱-الف: فقر شدید و اضطرار زیستی (زیر کف بقا)</span>
+      <span class="tier-badge badge-red">سهم تفریح: ۰٪</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>وضعیت مالی:</strong> درآمد حتی کفاف نیازهای پایه‌ی زیستی (خوراک کافی، مسکن امن، درمان فوری) را نمی‌دهد.</li>
+        <li><strong>استراتژی تفریح:</strong> سیستم چهار پاکت در این نقطه کار نمی‌کند. تمام ۱۰۰٪ منابع باید صرف تأمین بقا و خروج از بدهی اضطراری شود.</li>
+        <li><strong>علت رفتاری:</strong> ذهن در حالت «دید تونلی و کمبود پهنای باند» است؛ در چنین شرایطی تفریح اثر بازیابی روانی ندارد و فقط احساس گناه تولید می‌کند.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="tree-tier tier-low" open>
+    <summary>
+      <span class="tier-icon">🟡</span>
+      <span class="tier-title">سطح ۱-ب: درآمد محدود اما باثبات (بالای کف بقا)</span>
+      <span class="tier-badge badge-amber">سهم تفریح: ۵٪ تا ۸٪</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>وضعیت مالی:</strong> نیازهای پایه و ضروریات روزمره تأمین است، اما مازاد پولی اندک است (دانشجویان، کارگران ساده و شاغلان تازه‌کار).</li>
+        <li><strong>استراتژی تفریح:</strong> کاهش آگاهانه‌ی درصد تفریح از ۱۵٪ به ۵٪ تا ۸٪ و هدایت ۱۰۰٪ آن به سمت <strong>ابزارهای یادگیرنده</strong> (ساز دست‌دوم، ابزار ورزشی، کتاب) و <strong>ارتباطات اجتماعی ساده و ارزان</strong> (پیک‌نیک، بازی‌های فکری، دورهمی).</li>
+        <li><strong>علت رفتاری:</strong> حذف کامل عذاب وجدان مالی و چشیدن عمیقِ لذت به دلیل اثر کمیابی. حذف کامل سفرهای پرخرج که بار مالی سنگین می‌سازند.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="tree-tier tier-middle" open>
+    <summary>
+      <span class="tier-icon">🟢</span>
+      <span class="tier-title">سطح ۲: درآمد متوسط و باثبات (نقطه‌ی طلایی شکوفایی)</span>
+      <span class="tier-badge badge-green">سهم تفریح: ۱۵٪ (استاندارد)</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>وضعیت مالی:</strong> امنیت کامل در ضروریات (۶۰٪)، پس‌انداز منظم برای آزادی مالی (۲۰٪)، و مازاد پایدار برای تفریح و رشد.</li>
+        <li><strong>استراتژی تفریح:</strong> تعادل ۵۰-۵۰؛ نیمی از ۱۵٪ صرف لذت‌های هفتگی و سرگرمی روزمره (شادی مکرر)، و نیمی دیگر انباشت تا سقف ۳ ماه برای دوره‌های مهارتی تخصصی، تجهیزات نو یا سفرهای خاطره‌ساز اقتصادی.</li>
+        <li><strong>علت رفتاری:</strong> این سطح بالاترین پتانسیل شکوفایی روحی را دارد: امنیت زیستی برقرار است، روزانه ۲ تا ۵ ساعت وقت آزاد وجود دارد و فرد درگیر مسابقات پرهزینه‌ی تجملات نشده است.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="tree-tier tier-high">
+    <summary>
+      <span class="tier-icon">🔵</span>
+      <span class="tier-title">سطح ۳: درآمد بسیار بالا و ثروت فراوان</span>
+      <span class="tier-badge badge-blue">سهم تفریح: ۸٪ تا ۱۰٪ (سقف عددی)</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>وضعیت مالی:</strong> درآمد به مراتب فراتر از هزینه‌های زندگی است و انباشت سرمایه با سرعت بالایی انجام می‌شود.</li>
+        <li><strong>استراتژی تفریح:</strong> کاهش درصد به ۸٪ تا ۱۰٪ و تعیین سقف عددی مطلق؛ پرهیز از تله‌ی «تب تجمل» و مصرف‌گرایی بی‌پایان. هدایت تفریح به سمت <strong>خرید زمان</strong> (سپردن کارهای فرسایشی به دیگران) و فعالیت‌های عمیق مهارتی و ماجراجویانه اصیل.</li>
+        <li><strong>علت رفتاری:</strong> انتقال مازاد بودجه به پاکت‌های آزادی مالی و نیکوکاری/معنا برای جلوگیری از اشباع و بی‌حسی لذت‌جویانه.</li>
+      </ul>
+    </div>
+  </details>
+</div>
+
+<hr />
+<h2 id="fun-guide-۶-قاعدهی-انباشت-تا-۳-ماه-و-یک-هشدار-مهم">۶. قاعده‌ی انباشت تا ۳ ماه — و یک هشدار مهم</h2>
+<ul>
+<li><strong>سه ماه انباشت کنید، نه بیشتر:</strong> پول تفریح را تا ۳ ماه جمع کنید تا بتوانید یک دوره‌ی آموزشی خوب، یک ساز یا یک سفر معقول بخرید. بیشتر از ۳ ماه، تفریح طراوتش را از دست می‌دهد و تبدیل به پس‌انداز راکد می‌شود.</li>
+<li><strong>شمارش معکوس نگذارید:</strong> طبق جدیدترین یافته‌های روان‌شناسی (مالکوچ ۲۰۲۶)، گذاشتن نوار درصد و شمارش معکوس («۴۰ روز تا سفر مانده») بی‌قراری و کلافگی را زیاد می‌کند. فقط پول را کنار بگذارید و تاریخ را رها کنید تا وقتی به مبلغ هدف رسیدید، با خیال راحت خرجش کنید.</li>
+</ul>
+<hr />
+<h2 id="fun-guide-۷-آزمون-۴-سؤالی-تفریح-است-یا-هدررفت؟">۷. آزمون ۴ سؤالی: تفریح است یا هدررفت؟</h2>
+<p>هر زمان خواستید از پاکت تفریح پولی خرج کنید، این ۴ سؤال ساده را از خود بپرسید:</p>
+<ol>
+<li><strong>آیا این خرج یادگیرنده است یا صرفاً مصرفی و گذرا؟</strong></li>
+<li><strong>آیا به پیوند با دوستان یا خانواده کمک می‌کند؟</strong></li>
+<li><strong>آیا از قبل انتخابش کرده بودم یا تصمیمِ تکانه‌ای و لحظه‌ای است؟</strong> (انتخاب قبلی = تفریح؛ تصمیم لحظه‌ای در اثر وسوسه = هدررفت).</li>
+<li><strong>بعد از انجامش حس سرزندگی و رشد خواهم داشت یا حس خستگی و سرزنش؟</strong></li>
+</ol>
+<hr />
+<h2 id="fun-guide-۸-خلاصهی-کل-ماجرا-در-سه-اصل">۸. خلاصه‌ی کل ماجرا در سه اصل</h2>
+<ol>
+<li><strong>تفریح را از جنس یادگیری و مهارت انتخاب کن:</strong> مهارتی که هر روز تو را رشد می‌دهد، بسیار باارزش‌تر از لذت‌های چنددقیقه‌ای است.</li>
+<li><strong>تفریح را اجتماعی کن:</strong> بودن با آدم‌های مهم زندگی، بزرگ‌ترین تقویت‌کننده‌ی شادی است.</li>
+<li><strong>تفریح نباید بدهی بسازد:</strong> تفریحی که با قرض و احساس گناه همراه باشد، دیگر تفریح نیست؛ شکنجه است.</li>
+</ol>
+
+      </article>
+
+      <div class="doc-footer-nav"><button type="button" onclick="switchDoc('four-pockets')" class="footer-nav-btn"><span class="nav-direction">← سند قبلی</span><span class="nav-title">۱. مفهوم‌سازی سیستم چهار پاکت</span></button><button type="button" onclick="switchDoc('fun-research')" class="footer-nav-btn" style="text-align:left"><span class="nav-direction">سند بعدی →</span><span class="nav-title">۳. پشتوانه‌ی پژوهشی پاکت تفریح</span></button></div>
+    </div>
+    
+    <div class="doc-panel " id="panel-fun-research">
+      <div class="doc-header-card" style="--doc-accent: #2563eb;">
+        <div class="doc-meta-row">
+          <span class="doc-badge">🔬 مبانی علمی</span>
+          <span class="doc-number">سند شماره‌ی ۳ از ۶</span>
+        </div>
+        <h1 class="doc-title">پشتوانه‌ی پژوهشی پاکت تفریح</h1>
+        <p class="doc-subtitle">تفریح چه چیزی را برای شخص تأمین می‌کند؟ (نسخه ۲ اصلاح‌شده + لنگرهای فراتحلیلی)</p>
+        
+      </div>
+
+      <article class="prose">
+        <h1 id="fun-research-تفریح-چه-چیزی-را-برای-شخص-تأمین-میکند؟">«تفریح» چه چیزی را برای شخص تأمین می‌کند؟</h1>
+<h3 id="fun-research-پشتوانهی-پژوهشی-پاکت-تفریح-۱۵٪-نسخهی-۳،-جامع-و-اصلاحشده">پشتوانه‌ی پژوهشی پاکت تفریح (۱۵٪) — نسخه‌ی ۳، جامع و اصلاح‌شده</h3>
+<div class="callout callout-info"><div class="callout-icon">ℹ️</div><div class="callout-body"><p><strong>درباره‌ی این نسخه (نسخه‌ی ۳):</strong> تلفیق فراتحلیل واینگارتن و گودمن (۲۰۲۱)، شواهد محوشدگی تعطیلات (دی بلوم ۲۰۰۹)، تفکیک شادی مکرر از خاطره (وایدمن و دان ۲۰۱۶)، شرط طبقه و درآمد (لی، هال و وود ۲۰۱۸)، پهنای باند فقر (مولیناتان و شافیر ۲۰۱۳)، تله‌ی تجمل ثروت (تیم کسر ۲۰۰۲ و رابرت فرانک)، نظریه‌ی بازیگوشی و کنش‌گری فعال (استوارت براون ۲۰۰۹ / برنارد سوتس ۱۹۷۸)، دینامیک پیستونی الاکلنگ و کنتراست دوپامین، اسکن‌های عصبی ارزش درونی و زیبایی (مورایاما ۲۰۱۰، زکی ۲۰۱۱)، و نظریه‌ی صبر فرآیند (مالکوچ ۲۰۲۶). فهرست کامل تغییرات در پایان.</p></div></div>
+<hr />
+<h2 id="fun-research-۰-اول-تفریح-دقیقاً-یعنی-چه؟">۰. اول: تفریح دقیقاً یعنی چه؟</h2>
+<p>معتبرترین چارچوب در روان‌شناسی کار، <strong>سوننتاگ و فریتس (۲۰۰۷)</strong> است که «بازیابی» را به چهار تجربه‌ی متمایز تفکیک می‌کند:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>تجربه</th>
+  <th>تعریف</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>گسست روانی</strong> (Psychological Detachment)</td>
+  <td>ذهن واقعاً از کار جدا شود، نه فقط بدن</td>
+</tr>
+<tr>
+  <td><strong>آرامش</strong> (Relaxation)</td>
+  <td>فعال‌سازی پایین، تنش کم</td>
+</tr>
+<tr>
+  <td><strong>چیرگی و تسلط</strong> (Mastery)</td>
+  <td>چالشی که مهارت می‌سازد — ساز، کوهنوردی، زبان، هنر</td>
+</tr>
+<tr>
+  <td><strong>کنترل</strong> (Control)</td>
+  <td>خودت انتخاب کنی چه کنی و کِی</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="rich-quote"><p>Sonnentag, S., &amp; Fritz, C. (2007). <em>The Recovery Experience Questionnaire.</em> Journal of Occupational Health Psychology, 12(3), 204–221.</p></blockquote>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>✅ <strong>لنگر فراتحلیلی:</strong> <strong>استید، سوایدر، کیم و لیو (۲۰۲۱)</strong>, <em>Journal of Management</em>, 47(4), 867–897. این چارچوب دارای بالاترین اعتبار تجربی در روان‌شناسی بازیابی است.</p>
+<p>⚠️ <strong>نقد فراتحلیل هدریک:</strong> با بیش از ۳۰۰ نمونه‌ی مستقل نشان داد آرامش و چیرگی پیامد مثبت و گسست کاهش فرسودگی می‌آورند، اما «کنترل» ارزش افزوده‌ی متمایزی فراتر از سه بعد دیگر اضافه نمی‌کند.</p></div></div>
+<hr />
+<h2 id="fun-research-۱-تلهی-ذهنی-تفریح-اتلاف-وقت">۱. تله‌ی ذهنی: «تفریح = اتلاف وقت»</h2>
+<p><strong>تونیتو، مالکوچ، رچک و نورتون (۲۰۲۱)</strong>, <em>Journal of Experimental Social Psychology</em>, 97, 104198. چهار مطالعه، <strong>۱٬۳۱۰ شرکت‌کننده</strong>.</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>یافته</th>
+  <th>جزئیات آماری</th>
+  <th>تفسیر عملی</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>باور به اتلاف بودن تفریح</td>
+  <td>لذت تفریح را <strong>b = −۰٫۳۵ تا −۰٫۵۷</strong> کاهش می‌دهد (p &lt; .001)</td>
+  <td>باور منفی، لذت را از درون تجربه بیرون می‌کشد</td>
+</tr>
+<tr>
+  <td>دستکاری علّی</td>
+  <td>القای متن منفی لذت را ریخت؛ <strong>اما القای متن مثبت لذت را ترمیم نکرد</strong></td>
+  <td>تخریب آسان است، ترمیم نه (شیر یک‌طرفه)</td>
+</tr>
+<tr>
+  <td>راه خروج</td>
+  <td>اتصال تفریح به یک <strong>کارکرد دوم</strong> (سلامت، مهارت، ارتباط)</td>
+  <td>دور زدن باور منفی با انتخاب تفریحات یادگیرنده</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="fun-research-۲-مبانی-عصبشناختی-الاکلنگ-درد-و-لذت،-هومیوستازی،-بازیگوشی-و-">۲. مبانی عصب‌شناختی: الاکلنگ درد و لذت، هومیوستازی، بازیگوشی و زیبایی فی‌نفسه</h2>
+<h3 id="fun-research-۱-الاکلنگ-درد-و-لذت-و-هومیوستازی-آنا-لمبکی،-۲۰۲۱">۱) الاکلنگ درد و لذت و هومیوستازی (آنا لمبکی، ۲۰۲۱)</h3>
+<p><em>Dopamine Nation: Finding Balance in the Age of Indulgence</em>:</p>
+<ul>
+<li>درد و لذت در یک مدار مشترک پردازش می‌شوند. لذت‌های مصرفی آسان، الاکلنگ را به سمت لذت می‌برند و بلافاصله واکنش هومیوستازی مغز با افت ترشح دوپامین و حس درد/کسالت پاسخ می‌دهد.</li>
+</ul>
+<h3 id="fun-research-۲-دینامیک-پیستونی-چالش-و-پاداش-در-تفریح-یادگیرنده-The-Piston">۲) دینامیک پیستونی چالش و پاداش در تفریح یادگیرنده (The Piston Engine of Flow)</h3>
+<ul>
+<li>در تفریح یادگیرنده، دو سر الاکلنگ به‌صورت همزمان و متناوب فعال می‌شوند: چالش و تقلا (دردِ شیرین هورمسیس) $\leftarrow$ غلبه بر چالش و ترشح خودجوش اندورفین/دوپامین (لذتِ تسلط).</li>
+<li><strong>قانون کنتراست دوپامین:</strong> دوپامین پایدار زمانی ترشح می‌شود که فاصله‌ای میان «تلاش اولیه» و «حل موفق مسئله» وجود داشته باشد. در واقع، تلاشِ یادگیری همان ظرفی است که بعداً با لذتِ اصیل پر می‌شود.</li>
+<li><strong>کانال غرقگی (<em>Flow Channel</em> - چیکسنت‌میهایی):</strong> حرکت روی مرز دقیق میان اضطراب (چالش بیش از حد) و ملال (لذت بدون چالش).</li>
+</ul>
+<h3 id="fun-research-۳-نظریهی-بازیگوشی-و-رهایی-از-غایتمندی-ابزاری-Autotelic-Play">۳) نظریه‌ی بازیگوشی و رهایی از غایت‌مندی ابزاری (Autotelic Play)</h3>
+<ul>
+<li><strong>پارادوکس رشد در بازی (<em>Stuart Brown, 2009 / Bernard Suits, 1978</em>):</strong> بازی فعالیتی با جذابیت ذاتی و رها از فایده‌ی مادی مستقیم است. تقلیل تفریح به «کسب مهارت اجباری»، آن را به کارِ دوم تبدیل کرده و انگیزه‌ی درونی را فرسایش می‌دهد. در واقع، رشد شناختی و مهارت‌آموزی <strong>محصولِ فرعیِ خودکار (Byproduct)</strong> در فرآیند بازی است، نه هدفِ از پیش‌تعیین‌شده‌ی آن.</li>
+<li><strong>کنش‌گری فعال در برابر مصرف منفعل:</strong> تمایز بنیادین در بازیابی عصبی، میان <strong>«عاملیت فعال (Active Agency)»</strong> (درگیر شدن تصمیم، دست و حواس در بازی) و <strong>«انفعال مصرفی (Passive Consumption)»</strong> است.</li>
+</ul>
+<h3 id="fun-research-۴-فرسایش-انگیزهی-درونی-با-پاداش-بیرونی-لپر-۱۹۷۳-مورایاما-۲۰۱">۴) فرسایش انگیزه‌ی درونی با پاداش بیرونی (لپر ۱۹۷۳ / مورایاما ۲۰۱۰)</h3>
+<ul>
+<li><strong>لپر، گرین و نیسبت (۱۹۷۳ - JPSP):</strong> اضافه کردن پاداش بیرونی به کاری که ذاتاً لذت‌بخش است، انگیزه‌ی درونی را تخریب می‌کند ($p &lt; .02$).</li>
+<li><strong>مورایاما و همکاران (۲۰۱۰ - PNAS):</strong> تصویربرداری fMRI نشان داد که پاداش مادی فعالیت <em>Striatum</em> (مرکز پاداش درونی) را پس از قطع پاداش به شدت سرکوب می‌کند.</li>
+</ul>
+<h3 id="fun-research-۵-علوم-اعصاب-زیباییشناسی-و-ارزش-ذاتی-سمیر-زکی،-۲۰۱۱">۵) علوم اعصاب زیبایی‌شناسی و ارزش ذاتی (سمیر زکی، ۲۰۱۱)</h3>
+<p><em>PLoS ONE</em>, 6(7), e21852: تجربه زیبایی اصیل (شنیدن موسیقی، دیدن هنر یا درک هماهنگی) مستقیماً قشر اوربیتوفرونتال میانی (<strong>mOFC / ناحیه A1</strong>) را فعال می‌کند؛ این ناحیه پاداش‌های «فی‌نفسه» و بدون هدف ابزاری را پردازش می‌کند.</p>
+<hr />
+<h2 id="fun-research-۳-نقد-بنیادین-دوگانهی-کالا-در-برابر-تجربه">۳. نقد بنیادین دوگانه‌ی «کالا در برابر تجربه»</h2>
+<p>ادعای کلاسیک <strong>لیف ون بوون و تامس گیلوویچ (۲۰۰۳)</strong> مدعی بود که خرید تجربه همواره بر خرید کالا برتری دارد. اما ارزیابی‌های مستقل جدیدتر این تصویر را دگرگون کردند:</p>
+<h3 id="fun-research-۱-فراتحلیل-واینگارتن-و-گودمن-۲۰۲۱">۱) فراتحلیل واینگارتن و گودمن (۲۰۲۱)</h3>
+<p><em>Journal of Consumer Research</em>, 47(6), 855–877. بر روی <strong>۳۶۰ اندازه‌ی اثر از ۱۴۱ مطالعه</strong>:</p>
+<ul>
+<li>اندازه‌ی اثر ادعاشده پس از تصحیح سوگیری انتشار به <strong>$d pprox ۰٫۲۵$</strong> (اثر کوچک) تنزل یافت.</li>
+<li><strong>راننده‌ی اصلی برتری، «تجربه بودن» نیست، بلکه «ارتباط اجتماعی» (<em>Social Connection</em>) است.</strong> تجربیات انفرادی برتری محسوسی نسبت به کالاها ندارند.</li>
+</ul>
+<h3 id="fun-research-۲-محوشدگی-سریع-اثر-تعطیلات-دی-بلوم-و-همکاران،-۲۰۰۹">۲) محوشدگی سریع اثر تعطیلات (دی بلوم و همکاران، ۲۰۰۹)</h3>
+<p><em>Journal of Occupational Health</em>, 51(1), 13–23 (فراتحلیل):</p>
+<ul>
+<li>اثرات مثبت سفر، کاهش خستگی و شارژ روانی <strong>ظرف ۲ تا ۴ هفته</strong> پس از بازگشت به زندگی روزمره ناپدید می‌شود.</li>
+</ul>
+<h3 id="fun-research-۳-شادی-مکرر-روزمره-در-برابر-شادی-در-خاطره-وایدمن-و-دان،-۲۰۱۶">۳) شادی مکرر روزمره در برابر شادی در خاطره (وایدمن و دان، ۲۰۱۶)</h3>
+<p><em>Social Psychological and Personality Science</em>, 7(4), 397–407:</p>
+<ul>
+<li>کالاهای بادوامِ تجربه‌ساز (ساز، دوچرخه، ابزار هنری، کتاب) <strong>«شادی لحظه‌ای مکرر»</strong> (<em>Frequent Momentary Happiness</em>) در طول ۳۶۵ روز سال تولید می‌کنند.</li>
+<li>سفرها عمدتاً <strong>«شادی پس‌نگر در خاطره»</strong> (<em>Retrospective Happiness</em>) می‌سازند.</li>
+</ul>
+<hr />
+<h2 id="fun-research-۴-شرط-درآمدی،-کف-بقا-و-درخت-تصمیمگیری-بودجه">۴. شرط درآمدی، کف بقا و درخت تصمیم‌گیری بودجه</h2>
+<p>پژوهش‌های <strong>لی، هال و وود (Lee, Hall &amp; Wood, 2018)</strong> در <em>Psychological Science</em> نشان داد که مزیت خریدهای تجربی مشروط به سطح طبقه و منابع مالی است:</p>
+<div class="income-tree-container">
+  <details class="tree-tier tier-emergency">
+    <summary>
+      <span class="tier-icon">🔴</span>
+      <span class="tier-title">سطح ۱-الف: زیر کف بقا (فقر شدید و اضطرار زیستی)</span>
+      <span class="tier-badge badge-red">سهم تفریح: ۰٪</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>شواهد:</strong> دید تونلی فقر (مولیناتان و شافیر، ۲۰۱۳ - <em>Science</em>). فقر شدید معادل افت ۱۳ نمره IQ است.</li>
+        <li><strong>تحلیل:</strong> تمام پهنای باند شناختی صرف رفع نیازهای زیستی فوری می‌شود. سیستم چهار پاکت در این نقطه کاربرد ندارد و اولویت ۱۰۰٪ بقاست.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="tree-tier tier-low" open>
+    <summary>
+      <span class="tier-icon">🟡</span>
+      <span class="tier-title">سطح ۱-ب: بالای کف بقا (درآمد کم اما باثبات)</span>
+      <span class="tier-badge badge-amber">سهم تفریح: ۵٪ تا ۸٪</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>شواهد:</strong> لی، هال و وود (۲۰۱۸). برای افراد با منابع محدود، کالاهای بادوام تجربه‌ساز بالاترین بازده شادی پایدار را دارند.</li>
+        <li><strong>تحلیل:</strong> کاهش آگاهانه‌ی درصد تفریح مانع از آسیب به ضروریات می‌شود و تفریح را از احساس گناه و استرس مالی پاک می‌کند.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="tree-tier tier-middle" open>
+    <summary>
+      <span class="tier-icon">🟢</span>
+      <span class="tier-title">سطح ۲: درآمد متوسط باثبات (نقطه‌ی طلایی شکوفایی)</span>
+      <span class="tier-badge badge-green">سهم تفریح: ۱۵٪</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>شواهد:</strong> جب و همکاران (۲۰۱۸ - <em>Nature Human Behaviour</em>) و شریف و همکاران (۲۰۲۱ - <em>JPSP</em>).</li>
+        <li><strong>تحلیل:</strong> نقطه‌ی تعادل ایده‌آل؛ وجود ۲ تا ۵ ساعت وقت آزاد روزانه، امنیت مالی پایه و امکان تخصیص متوازن به شادی روزمره و خاطرات بلندمدت.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="tree-tier tier-high">
+    <summary>
+      <span class="tier-icon">🔵</span>
+      <span class="tier-title">سطح ۳: ثروت بالا و مازاد فراوان</span>
+      <span class="tier-badge badge-blue">سهم تفریح: ۸٪ تا ۱۰٪ (سقف عددی)</span>
+    </summary>
+    <div class="tier-content">
+      <ul>
+        <li><strong>شواهد:</strong> تب تجمل (فرانک ۱۹۹۹)، تخریب چشیدن لذت (کواکباخ ۲۰۱۰) و بهای سنگین ماده‌گرایی (کسر ۲۰۰۲).</li>
+        <li><strong>تحلیل:</strong> مهار تله‌ی اشباع لذت‌جویانه از طریق تعیین سقف عددی و انتقال مازاد درآمد به پاکت‌های آزادی مالی و نیکوکاری/معنا.</li>
+      </ul>
+    </div>
+  </details>
+</div>
+
+<hr />
+<h2 id="fun-research-۵-قاعدهی-انباشت-سهماهه-و-حذف-شمارش-معکوس">۵. قاعده‌ی انباشت سه‌ماهه و حذف شمارش معکوس</h2>
+<h3 id="fun-research-۱-تجربهی-کشیده-نه-متراکم-گودمن،-۲۰۱۹">۱) تجربه‌ی کشیده نه متراکم (گودمن، ۲۰۱۹)</h3>
+<p><em>JCR</em>, 46(4), 671–688: انباشت مالی باید صرف تجربه‌های <strong>کشیده</strong> (دوره‌های آموزشی، تجهیزات یادگیری، سفرهای آرام) شود، نه تجربه‌های <strong>متراکم</strong> (شام گران‌قیمت یک‌ساعته).</p>
+<h3 id="fun-research-۲-حذف-نوار-پیشرفت-و-تایمر-مالکوچ،-۲۰۲۶">۲) حذف نوار پیشرفت و تایمر (مالکوچ، ۲۰۲۶)</h3>
+<p><em>Journal of Consumer Psychology</em>, 36(2): ردیابی روزشمار انتظار، <strong>بی‌قراری فرآیند (<em>Process Impatience</em>)</strong> را به‌شدت بالا می‌برد و خطر رها کردن هدف را افزایش می‌دهد. باید فقط مبلغ ذخیره‌شده نشان داده شود، نه روزهای باقی‌مانده.</p>
+<hr />
+<h2 id="fun-research-۶-خلاصه-و-کارنامهی-نهایی-اصول-تفریح">۶. خلاصه و کارنامه‌ی نهایی اصول تفریح</h2>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>اصل طراحی</th>
+  <th>سطح شواهد</th>
+  <th>منبع کلیدی</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>۱. تفریح را اجتماعی کن</strong></td>
+  <td><span class="pill pill-green">🟢  </span><strong>بسیار قوی (لنگر فراتحلیلی دوگانه)</strong></td>
+  <td>واینگارتن و گودمن ۲۰۲۱ / شریف ۲۰۲۱</td>
+</tr>
+<tr>
+  <td><strong>۲. بر ابزارهای یادگیرنده تکیه کن</strong></td>
+  <td><span class="pill pill-green">🟢  </span><strong>قوی (آزمایشی و نظری)</strong></td>
+  <td>وایدمن و دان ۲۰۱۶ / چیکسنت‌میهایی</td>
+</tr>
+<tr>
+  <td><strong>۳. مرز هدررفت را باریک نگه دار</strong></td>
+  <td><span class="pill pill-green">🟢  </span><strong>قوی (علّی)</strong></td>
+  <td>تونیتو ۲۰۲۱</td>
+</tr>
+<tr>
+  <td><strong>۴. تجربه‌ی کشیده نه متراکم</strong></td>
+  <td><span class="pill pill-green">🟢  </span><strong>قوی (آزمایش با پیامد واقعی)</strong></td>
+  <td>گودمن ۲۰۱۹</td>
+</tr>
+<tr>
+  <td><strong>۵. سقف انباشت سه‌ماهه</strong></td>
+  <td><span class="pill pill-amber">🟡  </span><strong>متوسط (محافظه‌کارانه)</strong></td>
+  <td>مالکوچ ۲۰۲۶ / دی بلوم ۲۰۰۹</td>
+</tr>
+<tr>
+  <td><strong>۶. حذف روزشمار و نوار پیشرفت</strong></td>
+  <td><span class="pill pill-green">🟢  </span><strong>قوی (روان‌شناسی فرآیند)</strong></td>
+  <td>مالکوچ ۲۰۲۶</td>
+</tr>
+<tr>
+  <td><strong>۷. تنظیم سهم با کف بقا (۵٪ تا ۱۵٪)</strong></td>
+  <td><span class="pill pill-green">🟢  </span><strong>قوی (شواهد طبقه اجتماعی)</strong></td>
+  <td>لی، هال و وود ۲۰۱۸ / مولیناتان ۲۰۱۳</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h3 id="fun-research-منابع-کلیدی-اضافهشده-در-نسخهی-۳">منابع کلیدی اضافه‌شده در نسخه‌ی ۳</h3>
+<ul>
+<li><strong>Brown, S. (2009).</strong> <em>Play: How it shapes the brain, opens the imagination, and invigorates the soul.</em> Avery.</li>
+<li><strong>Suits, B. (1978).</strong> <em>The Grasshopper: Games, Life and Utopia.</em> University of Toronto Press.</li>
+<li><strong>Lembke, A. (2021).</strong> <em>Dopamine Nation: Finding Balance in the Age of Indulgence.</em> Dutton.</li>
+<li><strong>Csikszentmihalyi, M. (1990).</strong> <em>Flow: The Psychology of Optimal Experience.</em> Harper &amp; Row.</li>
+<li><strong>Murayama, K., et al. (2010).</strong> <em>Neural basis of the undermining effect of monetary reward on intrinsic motivation.</em> PNAS, 107(49), 20911–20916.</li>
+<li><strong>Zeki, S., &amp; Ishizu, T. (2011).</strong> <em>Toward a brain-based theory of beauty.</em> PLoS ONE, 6(7), e21852.</li>
+<li><strong>Weingarten, E., &amp; Goodman, J. K. (2021).</strong> <em>Re-examining the experiential advantage in consumption: A meta-analysis and review.</em> Journal of Consumer Research, 47(6), 855–877.</li>
+<li><strong>De Bloom, J., et al. (2009).</strong> <em>Do we recover from vacation? Meta-analysis of vacation effects.</em> Journal of Occupational Health, 51(1), 13–23.</li>
+<li><strong>Weidman, A. C., &amp; Dunn, E. W. (2016).</strong> <em>The unsung benefits of material things: Material purchases provide more frequent momentary happiness than experiential purchases.</em> Social Psychological and Personality Science, 7(4), 397–407.</li>
+<li><strong>Lee, J. C., Hall, D. L., &amp; Wood, W. (2018).</strong> <em>Experiential or material purchases? Social class determines purchase happiness.</em> Psychological Science, 29(7), 1031–1039.</li>
+<li><strong>Mani, A., Mullainathan, S., Shafir, E., &amp; Zhao, J. (2013).</strong> <em>Poverty impedes cognitive function.</em> Science, 341(6149), 976–980.</li>
+<li><strong>Kasser, T. (2002).</strong> <em>The High Price of Materialism.</em> MIT Press.</li>
+<li><strong>Frank, R. H. (1999).</strong> <em>Luxury Fever: Why Money Fails to Satisfy In An Era of Excess.</em> Free Press.</li>
+<li><strong>Malkoc, S. A. (2026).</strong> <em>From decision patience to process patience.</em> Journal of Consumer Psychology, 36(2), 281–287.</li>
+</ul>
+
+      </article>
+
+      <div class="doc-footer-nav"><button type="button" onclick="switchDoc('fun-guide')" class="footer-nav-btn"><span class="nav-direction">← سند قبلی</span><span class="nav-title">۲. تفریح (راهنمای خوانا و کاربردی)</span></button><button type="button" onclick="switchDoc('meaning-research')" class="footer-nav-btn" style="text-align:left"><span class="nav-direction">سند بعدی →</span><span class="nav-title">۴. پشتوانه‌ی پژوهشی پاکت معنا و نیکوکاری</span></button></div>
+    </div>
+    
+    <div class="doc-panel " id="panel-meaning-research">
+      <div class="doc-header-card" style="--doc-accent: #8b5cf6;">
+        <div class="doc-meta-row">
+          <span class="doc-badge">🤲 مبانی علمی</span>
+          <span class="doc-number">سند شماره‌ی ۴ از ۶</span>
+        </div>
+        <h1 class="doc-title">پشتوانه‌ی پژوهشی پاکت معنا و نیکوکاری</h1>
+        <p class="doc-subtitle">معنا چه چیزی را برای شخص تأمین می‌کند؟ (نسخه ۲ اصلاح‌شده — مدل سه‌بعدی 3DM)</p>
+        
+      </div>
+
+      <article class="prose">
+        <h1 id="meaning-research-معنا-چه-چیزی-را-برای-شخص-تأمین-میکند؟">«معنا» چه چیزی را برای شخص تأمین می‌کند؟</h1>
+<h3 id="meaning-research-پشتوانهی-پژوهشی-پاکت-نیکوکاری-۵٪-نسخهی-۲،-اصلاحشده">پشتوانه‌ی پژوهشی پاکت نیکوکاری (۵٪) — نسخه‌ی ۲، اصلاح‌شده</h3>
+<div class="callout callout-info"><div class="callout-icon">ℹ️</div><div class="callout-body"><p><strong>درباره‌ی این نسخه:</strong> نسخه‌ی اول این سند سه ایراد جدی داشت که در این نسخه اصلاح شده‌اند: (۱) نسبت دادن اشتباه یک مطالعه‌ی کلیدی، (۲) گزارش اعداد خام بدون قیدِ تعدیل آماری، (۳) پرش از «شواهد همبستگی» به «توصیه‌ی عددی ۵٪». تغییرات مهم در پایان سند فهرست شده است.</p></div></div>
+<hr />
+<h2 id="meaning-research-۰-اول-معنا-دقیقاً-یعنی-چه؟">۰. اول: معنا دقیقاً یعنی چه؟</h2>
+<p>پرکاربردترین چارچوب علمی امروز، <strong>مارتلا و اشتگر (۲۰۱۶)</strong> در <em>Journal of Positive Psychology</em> است که «معنا» را به سه وجه تفکیک می‌کند:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>وجه</th>
+  <th>تعریف</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>انسجام</strong> (Coherence)</td>
+  <td>زندگی‌ام برایم قابل فهم است و سر و ته دارد</td>
+</tr>
+<tr>
+  <td><strong>هدف</strong> (Purpose)</td>
+  <td>جهت و هدف‌های محوری دارم</td>
+</tr>
+<tr>
+  <td><strong>ارزشمندی</strong> (Significance)</td>
+  <td>زندگی من فی‌نفسه ارزش دارد و به زیستن می‌ارزد</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="rich-quote"><p>Martela, F., &amp; Steger, M. F. (2016). <em>Journal of Positive Psychology</em>, 11(5), 531–545.
+نسخه‌ی تکامل‌یافته‌ی همین چارچوب: Martela &amp; Steger (2023), مقیاس سه‌بعدی معنا (3DM).</p></blockquote>
+<p>میکائیل اشتگر سازنده‌ی <strong>پرسشنامه‌ی معنا در زندگی (MLQ)</strong> است — استانداردترین ابزار سنجش در این حوزه.</p>
+<p><strong>توجه:</strong> تقریباً همه‌ی مطالعات طول عمری که در ادامه می‌آید، وجه <strong>«هدف»</strong> را سنجیده‌اند (با مقیاس Ryff)، نه هر سه وجه را. یعنی وقتی می‌گوییم «معنا با طول عمر مرتبط است»، دقیق‌تر این است: <strong>«داشتن جهت و هدف»</strong> با طول عمر مرتبط است.</p>
+<hr />
+<h2 id="meaning-research-۱-معنا-با-خوشحالی-یکی-نیست-ولی-مقابل-آن-هم-نیست">۱. معنا با خوشحالی یکی نیست — ولی مقابل آن هم نیست</h2>
+<p>پژوهش کلیدی: <strong>باومایستر، ووس، آکر و گاربینسکی (۲۰۱۳)</strong> روی ۳۹۷ بزرگسال آمریکایی در سه مقطع زمانی.</p>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>قید روش‌شناختی که در نسخه‌ی اول نبود:</strong> در این مقاله، معنا و خوشحالی با هم <strong>r = ۰٫۶۳ تا ۰٫۷۰</strong> همبسته‌اند. یعنی این دو <strong>هم‌پوشان ولی تمایزپذیرند</strong> — نه متضاد. تمام اعداد زیر <strong>همبستگی جزئی</strong> (partial correlation) هستند: اثر هر یک پس از کنترل آماری دیگری.</p></div></div>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>یافته</th>
+  <th>عدد</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>ارضای خواسته‌ها و نیازها</td>
+  <td>خوشحالی را بالا می‌برد، اما بر معنا <strong>تقریباً بی‌اثر</strong> است</td>
+</tr>
+<tr>
+  <td>کمبود پول</td>
+  <td>۵٪ واریانس خوشحالی، در برابر ۰٫۲۵٪ واریانس معنا (<strong>۲۰ برابر</strong>)</td>
+</tr>
+<tr>
+  <td>«من بخشنده‌ام»</td>
+  <td>معنا r = +۰٫۳۲ / خوشحالی r = −۰٫۱۷ (جزئی)</td>
+</tr>
+<tr>
+  <td>«تلاش برای کمک به نیازمندان»</td>
+  <td>معنا r = +۰٫۲۳ (جزئی)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>تصحیح مهم نسبت به نسخه‌ی اول:</strong> همبستگی <strong>ساده</strong> («تلاش برای کمک») با خوشحالی <strong>مثبت و معنادار است (r = +۰٫۱۱)</strong>. عدد منفی تنها پس از کنترل آماریِ معنا ظاهر می‌شود و آنجا هم <strong>معنادار نیست (r = −۰٫۰۶، ns)</strong>.</p>
+<p><strong>تفسیر درست:</strong> بخشیدن خوشحالی را کم نمی‌کند. بخشیدن خوشحالی را <strong>از مسیر معنا</strong> بالا می‌برد؛ وقتی این مسیر را آماری حذف کنیم، چیزی باقی نمی‌ماند. خودِ نویسندگان همین را می‌گویند: <em>«کمک به دیگران زندگی کمک‌کننده را معنادار می‌کند و از این طریق خوشحالی را افزایش می‌دهد.»</em></p></div></div>
+<blockquote class="rich-quote"><p>Baumeister, R. F., Vohs, K. D., Aaker, J. L., &amp; Garbinsky, E. N. (2013). <em>Journal of Positive Psychology</em>, 8(6), 505–516.</p></blockquote>
+<p><strong>چرا این برای مفهوم‌سازی ما اهمیت دارد:</strong> سه پاکت اول کارشان ارضای نیاز و خواسته است — و این داده می‌گوید آن مسیر به معنا ختم نمی‌شود. <strong>پس سه پاکت اول، کارِ پاکت چهارم را انجام نمی‌دهند.</strong> (این با ادعای «نیکوکاری تنها مسیر معناست» فرق دارد — به بخش ۶ نگاه کنید.)</p>
+<hr />
+<h2 id="meaning-research-۲-معناهدف-چه-چیزی-تأمین-میکند؟-شواهد-کمّی،-با-قید">۲. معنا/هدف چه چیزی تأمین می‌کند؟ — شواهد کمّی، با قید</h2>
+<h3 id="meaning-research-الف-طول-عمر">الف) طول عمر</h3>
+<p><strong>بهترین برآورد موجود (۲۰۲۶):</strong></p>
+<p><strong>سوتین، زاوالا، میلاد، استفان، کاراکوزه، براون، تراچانو و لوچتی (۲۰۲۶)</strong>، <em>Psychological Medicine</em>, 56, e214.
+<strong>۴۸۸٬۷۶۵ نفر · ۴۸٬۹۲۸ مرگ · ۲۵ نمونه از آمریکا، اروپا و آسیا · تا ۳۲ سال پیگیری.</strong></p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>مدل</th>
+  <th>HR</th>
+  <th>تفسیر</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>خام</td>
+  <td><strong>۰٫۷۶</strong> (CI: ۰٫۷۰–۰٫۸۳)</td>
+  <td>~۳۰٪ کاهش خطر مرگ</td>
+</tr>
+<tr>
+  <td>+ کنترل عوامل رفتاری و بالینی</td>
+  <td><strong>۰٫۸۵</strong> (CI: ۰٫۸۲–۰٫۸۹)</td>
+  <td>اثر <strong>۳۸٪ تضعیف</strong> می‌شود</td>
+</tr>
+<tr>
+  <td>+ کنترل افسردگی</td>
+  <td><strong>~۰٫۹۱</strong></td>
+  <td>تضعیف بیشتر، ولی همچنان معنادار</td>
+</tr>
+<tr>
+  <td>فقط داده‌ی فردی (بدون ادبیات منتشرشده)</td>
+  <td><strong>۰٫۸۶</strong> (CI: ۰٫۸۱–۰٫۹۰)</td>
+  <td>سوگیری انتشار وجود دارد</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>نکات مهم این فراتحلیل:</strong></p>
+<ul>
+<li>در <strong>۲۱ از ۲۵</strong> نمونه معنادار بود؛ چهار نمونه‌ی باقی هم در همان جهت.</li>
+<li>اثر در <strong>ادبیات منتشرشده (۴۱٪)</strong> به‌مراتب بزرگ‌تر از <strong>داده‌ی فردی (۱۶٪)</strong> بود → نشانه‌ی روشن <strong>سوگیری انتشار</strong>.</li>
+<li><strong>پاسخ به ایراد تعمیم‌پذیری فرهنگی:</strong> وقتی معنا به‌صورت <strong>ایکیگای</strong> (نمونه‌های ژاپنی) سنجیده شد، HR = <strong>۰٫۶۳</strong> — یعنی <strong>قوی‌ترین اثر در کل فراتحلیل</strong>، نه ضعیف‌تر. این شاهد مستقیمی است که پدیده به فرهنگ غربی محدود نیست.</li>
+<li>این فراتحلیل <strong>جانشین کوهن و همکاران (۲۰۱۶)</strong> است: نمونه از ۱۳۶٬۲۶۵ به ۴۸۸٬۷۶۵ و پیگیری از ۱۴ به ۳۲ سال رسیده.</li>
+</ul>
+<p><strong>مطالعات منفرد — با قید دوبرابرشماری:</strong></p>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ بویل ۲۰۰۹، هیل و توریانو ۲۰۱۴، و آلیمیوجیانگ ۲۰۱۹ <strong>جزو همان ۲۵ نمونه‌ی فراتحلیل بالا هستند</strong>. آن‌ها را شواهد <em>مستقلِ اضافی</em> نشمارید؛ صرفاً برای نشان دادن جزئیات می‌آیند.</p></div></div>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>پژوهش</th>
+  <th>نوع شواهد</th>
+  <th>یافته‌ی خام</th>
+  <th>قید</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>آلیمیوجیانگ و همکاران (۲۰۱۹)</strong>، <em>JAMA Netw Open</em>، HRS، ۶٬۹۸۵ نفر</td>
+  <td>مشاهده‌ای</td>
+  <td>HR = <strong>۲٫۴۳</strong> (پایین‌ترین در برابر بالاترین گروه معنا)</td>
+  <td>با حذف مرگ‌های سال اول به <strong>۲٫۲۴</strong> می‌رسد</td>
+</tr>
+<tr>
+  <td><strong>بازتحلیل ۲۰۲۶</strong>، <em>PLOS ONE</em>، همان داده</td>
+  <td>مشاهده‌ای</td>
+  <td>—</td>
+  <td><strong>با کنترل دقیق‌ترِ سلامت پایه، شکاف مرگ‌ومیر دو گروه از ۴٫۹٪ به ۱٫۱٪ سقوط می‌کند</strong></td>
+</tr>
+<tr>
+  <td><strong>کیم و همکاران (۲۰۲۲)</strong>، HRS، ۱۳٬۱۵۹ نفر، پیگیری ۸ ساله</td>
+  <td>مشاهده‌ای</td>
+  <td>مرگ‌ومیر ۸ ساله: <strong>۱۵٫۲٪</strong> (معنای بالا) در برابر <strong>۳۶٫۵٪</strong> (معنای پایین)</td>
+  <td>اثر در گروه‌های با وضع اقتصادی پایین‌تر ضعیف‌تر بود</td>
+</tr>
+<tr>
+  <td><strong>بویل و همکاران (۲۰۰۹)</strong>، ۱٬۲۳۸ سالمند</td>
+  <td>مشاهده‌ای</td>
+  <td>HR = <strong>۰٫۶۰</strong> (CI: ۰٫۴۲–۰٫۸۷)</td>
+  <td>پس از کنترل افسردگی، ناتوانی، بیماری مزمن و <strong>درآمد</strong></td>
+</tr>
+<tr>
+  <td><strong>هیل و توریانو (۲۰۱۴)</strong>، <em>Psych Science</em>، MIDUS</td>
+  <td>مشاهده‌ای</td>
+  <td>اثر در <strong>تمام سنین بزرگسالی</strong>، نه فقط سالمندی</td>
+  <td>—</td>
+</tr>
+</tbody>
+</table></div>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>تصحیح نسبت به نسخه‌ی اول:</strong> اعداد ۱۵٫۲٪/۳۶٫۵٪ به آلیمیوجیانگ نسبت داده شده بود. اشتباه بود؛ این‌ها از مطالعه‌ی جداگانه‌ی کیم و همکاران با ۱۳٬۱۵۹ نفر است.</p></div></div>
+<p><strong>خلاصه‌ی صادقانه‌ی بخش طول عمر:</strong>
+عدد قابل‌دفاع، <strong>کاهش خطر حدود ۱۵ تا ۲۵ درصد پس از تعدیل</strong> است — نه «۲٫۴ برابر». و بخش قابل‌توجهی از همین مقدار هم احتمالاً از مسیر سلامت پایه و رفتارهای سلامت‌محور می‌گذرد، نه اثر مستقیم معنا.</p>
+<h3 id="meaning-research-ب-بدن-و-زیستشناسی">ب) بدن و زیست‌شناسی</h3>
+<p>سازوکارهای پیشنهادی (همگی <strong>مشاهده‌ای یا نمونه‌کوچک</strong>، هیچ‌کدام قطعی نیستند):</p>
+<ul>
+<li>کورتیزول پایین‌تر</li>
+<li>نشانگرهای التهابی کمتر (IL-6 و CRP)</li>
+<li>بار آلوستاتیک کمتر</li>
+</ul>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>ادعای حذف‌شده:</strong> در نسخه‌ی اول، «کاهش بیان ژن‌های پیش‌التهابی» (فردریکسون و همکاران) به‌عنوان سازوکار آورده شده بود. <strong>این ادعا مورد مناقشه‌ی جدی است:</strong> بازتحلیل ۲۰۱۴ (براون و همکاران) نشان داد نمونه تنها ۸۰ نفر بود، با یک پرسشنامه و یک نمونه‌ی خون، و ساختار یافته بازتولید نشد. <strong>نباید به آن استناد کرد.</strong></p></div></div>
+<h3 id="meaning-research-ج-ذهن-و-رفتار">ج) ذهن و رفتار</h3>
+<ul>
+<li>خواب بهتر، افسردگی کمتر، ایده‌پردازی خودکشی کمتر (اشاره‌شده در مقدمه‌ی مقالات HRS و در مرور MLQ)</li>
+<li>احتمال بیشتر رفتارهای سلامت‌محور (ورزش، تغذیه، مراجعه‌ی به‌موقع) — که خودِ فراتحلیل ۲۰۲۶ نشان داد <strong>بخش بزرگی از اثر طول عمر از همین مسیر می‌گذرد</strong></li>
+<li>ادعاهای مربوط به آلزایمر و سکته در نسخه‌ی اول بدون منبع اولیه بودند و تا یافتن ارجاع دقیق <strong>حذف شده‌اند</strong>.</li>
+</ul>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>نسخه‌ی اول این بخش را بدون ارجاع آورده بود.</strong> آنچه اینجا می‌ماند، تنها مواردی است که در منابع فهرست‌شده آمده‌اند:</p></div></div>
+<hr />
+<h2 id="meaning-research-۳-دادن-بهطور-خاص-چه-میکند؟-شواهد-متضاد">۳. «دادن» به‌طور خاص چه می‌کند؟ — شواهد متضاد</h2>
+<h3 id="meaning-research-دادن-مؤثرتر-از-گرفتن-است">دادن مؤثرتر از گرفتن است</h3>
+<p><strong>براون، نسی، وینوکور و اسمیت (۲۰۰۳)</strong>، <em>Psychological Science</em>, 14(4), 320–327 — <strong>«فراهم کردن حمایت اجتماعی ممکن است سودمندتر از دریافت آن باشد»</strong>: ارائه‌ی حمایت مرگ‌ومیر را کاهش داد؛ دریافت حمایت، نه.</p>
+<h3 id="meaning-research-اما-چقدر-اهمیت-دارد-و-اینجا-عدد-داریم">اما «چقدر» اهمیت دارد — و اینجا عدد داریم</h3>
+<p><strong>«تعادل دادن و گرفتنِ حمایت اجتماعی و مرگ‌ومیر»</strong> (۲۰۲۱)، <em>PNAS</em>, 118(24), e2024770118 — نمونه‌ی ملی آمریکا:</p>
+<ul>
+<li>رابطه <strong>U‑شکل</strong> است.</li>
+<li>بهینه: <strong>۲ تا ۱۵ ساعت در ماه</strong> حمایت ابزاری (کمک در جابه‌جایی، نگهداری بچه و…).</li>
+<li><strong>هم کمتر از ۲ ساعت و هم بیشتر از ۱۵ ساعت</strong>، خطر مرگ را بالا می‌برد.</li>
+<li>بهترین حالت، <strong>تعادل</strong> میان دادن و گرفتن است — نه بیشینه‌سازی دادن.</li>
+</ul>
+<p>مطالعه‌ی مکمل: <strong>واندروله و کیم و همکاران (۲۰۲۳)</strong>، <em>Int J Behav Med</em> — کمک غیررسمی <strong>≥۱۰۰ ساعت در سال</strong> (~۸ ساعت در ماه) با <strong>۳۲٪ کاهش خطر مرگ</strong> در پیگیری چهارساله همراه بود.</p>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>قیدی که نباید نادیده گرفت:</strong> هر دوی این‌ها درباره‌ی <strong>ساعت</strong> است، نه <strong>پول</strong>. سقف ۱۵ ساعت را نمی‌توان مستقیماً به «۵٪ درآمد» ترجمه کرد. این شواهد <strong>قاعده‌ی وقت</strong> را کمّی می‌کنند، نه قاعده‌ی پول را.</p></div></div>
+<h3 id="meaning-research-دادنِ-پول-شواهد-متناقضاند">دادنِ پول: شواهد <strong>متناقض‌اند</strong></h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>مطالعه</th>
+  <th>یافته</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>کو، کنرات و پولن (۲۰۲۰)</strong>، <em>Personality and Individual Differences</em>, 154, 109668 — Wisconsin Longitudinal Study، <strong>N = ۳٬۵۴۴</strong></td>
+  <td>رفتارهای <strong>وقت‌بخشی</strong> (مراقبت، داوطلبی، حمایت از دوستان) و صفات نوع‌دوستانه با مرگ‌ومیر کمتر مرتبط بودند — <strong>اما دادن پول، نه</strong></td>
+</tr>
+<tr>
+  <td><strong>چوی و کیم (۲۰۱۱)</strong>، <em>Ageing &amp; Society</em></td>
+  <td>داوطلبی متعادل (تا ~۱۰ ساعت در ماه) <strong>و هر مقدار اهدای خیریه</strong> با بهزیستی روانی بالاتر <strong>۹ سال بعد</strong> مرتبط بود — و <strong>اثر اهدای پول بزرگ‌تر از داوطلبی بود</strong></td>
+</tr>
+</tbody>
+</table></div>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>تصحیح دوگانه نسبت به نسخه‌ی اول:</strong></p>
+<ol>
+<li>مطالعه به «یونگ و همکاران ۲۰۱۹» نسبت داده شده بود. <strong>غلط بود</strong> — نویسندگان <strong>کو، کنرات و پولن</strong> و سال انتشار <strong>۲۰۲۰</strong> است.</li>
+<li>مهم‌تر: نسخه‌ی اول فقط یافته‌ی منفی را آورد و <strong>شاهد متضاد (چوی و کیم) را حذف کرد</strong> — در حالی که این شاهد در چکیده‌ی همان مقاله‌ی کو ذکر شده است.</li>
+</ol>
+<p><strong>وضعیت درست: شواهدِ اثرِ اهدای پول متناقض‌اند، نه منفی.</strong> یکی مرگ‌ومیر را سنجیده و اثری نیافته؛ دیگری بهزیستی را سنجیده و اثری قوی یافته.</p></div></div>
+<h3 id="meaning-research-آزمایشهای-خرج-کردن-نوعدوستانه">آزمایش‌های خرج کردن نوع‌دوستانه</h3>
+<p><strong>دان، اکنین و نورتون (۲۰۰۸)</strong>، <em>Science</em>, 319, 1687–1688: کسانی که به‌طور تصادفی موظف شدند ۵ یا ۲۰ دلار را برای دیگران خرج کنند، در پایان روز خوشحال‌تر بودند. مبلغ اهمیت نداشت؛ گیرنده اهمیت داشت.</p>
+<p>نکته‌ی جانبی ارزشمند همان مقاله: اکثریت مردم پیش‌بینی می‌کنند خرج کردن برای خود خوشحال‌ترشان می‌کند — یعنی <strong>شهود ما در این مورد سیستماتیک اشتباه است</strong>.</p>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>تناقض درونی نسخه‌ی اول:</strong> بخش ۱ استدلال می‌کرد که بحث بر سر <em>معنا</em> است نه <em>خوشحالی</em>؛ اما ستاره‌ی شواهد بخش ۳ (دان ۲۰۰۸) <strong>دقیقاً خوشحالی را می‌سنجد، نه معنا</strong>. برای حلقه‌ی «دادن → معنا» باید به منابع دیگری استناد کرد:</p>
+<p><strong>واینستاین و رایان (۲۰۱۰)</strong>، <em>JPSP</em>: رفتار نوع‌دوستانه بهزیستی کمک‌کننده را بالا می‌برد، <strong>و این اثر از مسیر خودمختاری (autonomy) می‌گذرد</strong> — یعنی وقتی کمک کردن <em>انتخابِ خود فرد</em> باشد، نه الزام. <strong>مارتلا و رایان (۲۰۱۶)</strong> نشان دادند این اثر حتی بدون تماس با دریافت‌کننده هم برقرار است. (مارتلا نویسنده‌ی همان چارچوب سه‌وجهی بخش ۰ است.)</p></div></div>
+<hr />
+<h2 id="meaning-research-۴-آنچه-شواهد-نمیگوید-صداقت-روششناختی">۴. آنچه شواهد <strong>نمی‌گوید</strong> — صداقت روش‌شناختی</h2>
+<p><strong>۱. آزمایش اصلی <em>Science</em> ۲۰۰۸ ضعیف بود.</strong> تنها ۴۶ دانشجو؛ توان آماری تخمینی <strong>زیر ۱۰٪</strong>. تکرار ثبت‌شده‌ی کیم و همکاران (۲۰۲۲، <em>PLoS ONE</em>، N=۱۳۳) با تحلیل اصلی <strong>به نتیجه‌ی معنادار نرسید</strong>. گزارش تکرار ثبت‌شده‌ی اکنین و همکاران (۲۰۲۰، <em>JPSP</em>) نتایج ضعیف‌تری داد. اندازه‌ی اثر واقعی حدود <strong>d ≈ ۰٫۲۱</strong> برآورد می‌شود — کوچک.</p>
+<p><strong>۲. حلقه‌ی واسط وجود ندارد.</strong> این مهم‌ترین اعتراف این سند است:</p>
+<pre><code>شواهد آزمایشی «دادن»  →  خوشحالیِ لحظه‌ای   (اثر کوچک، d ≈ 0.21)
+شواهد مشاهده‌ای «معنا» →  طول عمر            (اثر متوسط، تعدیل‌شده)
+                    ↓
+        هیچ مطالعه‌ای این را آزمایش نکرده:
+  «اهدای منظم ۵٪ درآمد» → معنا → سلامت/طول عمر
+</code></pre>
+<p>این دو حلقه <strong>هم‌جنس نیستند</strong>: یکی آزمایشی و درباره‌ی خوشحالیِ ساعتی است، دیگری مشاهده‌ای و درباره‌ی مرگ‌ومیرِ ده‌ساله. <strong>دوختن این دو به هم و نتیجه‌گیری سوم، از نظر روش‌شناختی مجاز نیست.</strong> آنچه می‌ماند یک <strong>فرضیه‌ی معقول</strong> است، نه یک یافته.</p>
+<p><strong>۳. تقریباً همه‌ی داده‌های طول عمر مشاهده‌ای‌اند.</strong> بازتحلیل ۲۰۲۶ در <em>PLOS ONE</em> نشان داد رابطه احتمالاً <strong>دوطرفه</strong> است: معنا سلامت می‌آورد، و سلامتِ بهتر هم باعث می‌شود آدم در پرسشنامه به معنا نمره‌ی بالاتری بدهد.</p>
+<p><strong>۴. سوگیری انتشار مستند شده است</strong> — فراتحلیل ۲۰۲۶ خودش نشان داد اثر در مقالات منتشرشده (۴۱٪) بیش از دو برابر داده‌ی خام فردی (۱۶٪) است.</p>
+<p><strong>۵. عدد ۵٪ هرگز آزمون نشده است.</strong> (بخش بعد)</p>
+<hr />
+<h2 id="meaning-research-۵-نتیجهگیری-برای-طراحی-پاکت-۵٪">۵. نتیجه‌گیری برای طراحی پاکت ۵٪</h2>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ <strong>تصحیح بنیادی نسبت به نسخه‌ی اول:</strong> آنجا نوشته شده بود قیدِ پست (۲۰۰۵) «یک اعتبارسنجی مستقیم برای عدد ۵٪» است. <strong>این اغراق بود.</strong> پست ۲۰۰۵ تنها یک قید کیفی دارد («مشروط بر آنکه زیر بار له نشوند») و هیچ عددی درباره‌ی ۵٪ ندارد.</p>
+<p><strong>جایگاه درست عدد ۵٪: یک انتخاب طراحیِ معقول و آزمون‌نشده است</strong> — نه یک یافته‌ی پژوهشی. معقول است چون: (الف) کمتر از «عشر» در سنت‌های دینی است، پس از نظر فرهنگی قابل اجراست؛ (ب) به‌اندازه‌ای کوچک است که با قید پایداریِ پست سازگار باشد؛ (ج) اگر با وقت همراه شود، در محدوده‌ی ۲–۱۵ ساعت ماهانه‌ی مطالعه‌ی PNAS می‌نشیند.</p></div></div>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>اصل طراحی</th>
+  <th>پشتوانه</th>
+  <th>قوت شواهد</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>۱. پول را با وقت و تماس همراه کن.</strong> حواله‌ی بی‌نام، ضعیف‌ترین شکل این پاکت است.</td>
+  <td>کو، کنرات و پولن (۲۰۲۰): وقت‌بخشی اثر داشت، پول‌بخشی نه — <strong>اما</strong> چوی و کیم (۲۰۱۱) خلافش را یافت</td>
+  <td><span class="pill pill-amber">🟡  </span><strong>متناقض</strong> — به‌عنوان توصیه‌ی محتاطانه، نه حکم</td>
+</tr>
+<tr>
+  <td><strong>۲. مقدار را متعادل نگه دار؛ بیشینه‌سازی نکن.</strong></td>
+  <td>PNAS ۲۰۲۱: رابطه‌ی U‑شکل، بهینه ۲–۱۵ ساعت در ماه</td>
+  <td><span class="pill pill-green">🟢  </span><strong>قوی</strong> (ولی درباره‌ی وقت، نه پول)</td>
+</tr>
+<tr>
+  <td><strong>۳. مکرر و کوچک، بهتر از نادر و بزرگ.</strong></td>
+  <td>واندروله و کیم (۲۰۲۳): ≥۱۰۰ ساعت در سال → ۳۲٪ کاهش خطر</td>
+  <td><span class="pill pill-amber">🟡 مشاهده‌ای</span></td>
+</tr>
+<tr>
+  <td><strong>۴. قاعده باشد — اما قاعده‌ی <em>قابل تنظیم</em>، نه الزام.</strong></td>
+  <td>دان (۲۰۰۸): شهود ما اشتباه می‌کند، پس قاعده لازم است. <strong>اما</strong> واینستاین و رایان (۲۰۱۰): سودِ کمک به <strong>اختیاری بودنش</strong> وابسته است</td>
+  <td><span class="pill pill-green">🟢 طراحی: </span><strong>مبلغ ثابت و خودکار، گیرنده و نحوه‌اش کاملاً آزاد</strong></td>
+</tr>
+<tr>
+  <td><strong>۵. گیرنده‌ی مشخص و اثر قابل مشاهده.</strong></td>
+  <td>اکنین و همکاران (۲۰۱۱): بیشترین اثر در بخشش به نزدیکان</td>
+  <td><span class="pill pill-amber">🟡  </span><strong>با یک تنش اخلاقی</strong> ↓</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="rich-quote"><p><strong>تنشی که باید دید:</strong> «به نزدیکان و گیرنده‌ی مشخص بده» <em>معنای بخشنده</em> را بیشینه می‌کند، ولی لزوماً <em>نفع دریافت‌کننده</em> را نه — این همان <strong>سوگیری قربانی شناسایی‌پذیر</strong> است. یک آدم با چهره، بیشتر از هزار آمار ما را تکان می‌دهد، حتی اگر آن هزار نفر نیازمندتر باشند. این دو هدف همیشه هم‌راستا نیستند و انتخاب میانشان یک تصمیم ارزشی است، نه علمی.</p></blockquote>
+<hr />
+<h2 id="meaning-research-۶-پاسخ-کوتاه-به-سؤال-اصلی">۶. پاسخ کوتاه به سؤال اصلی</h2>
+<p><strong>معنا برای شخص چه چیزی تأمین می‌کند؟</strong></p>
+<ol>
+<li><p><strong>چیزی که سه پاکت دیگر نمی‌سازند.</strong> ارضای نیاز و خواسته خوشحالی می‌سازد نه معنا (باومایستر ۲۰۱۳). این ادعا <strong>قابل دفاع</strong> است.</p>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ اما ادعای نسخه‌ی اول که «پاکت ۵٪ غیرقابل جایگزین است» <strong>بیش از حد بود</strong>. معنا از کار، فرزندپروری، دین، هنر و اجتماع هم می‌آید. ادعای درست: <strong>نیکوکاریِ قاعده‌مند، یک مسیرِ در دسترس و قابل اتکاست — نه تنها مسیر.</strong></p></div></div>
+</li>
+<li><p><strong>پایداری در برابر نوسان مالی.</strong> کمبود پول ۲۰ برابر بیشتر به خوشحالی آسیب می‌زند تا به معنا.</p>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ نسخه‌ی اول نوشته بود «تنها بُعدی که بحران اقتصادی نمی‌تواند بگیرد». <strong>این هم اغراق بود</strong> — داده درباره‌ی «کمبود پولِ ادراک‌شده» در یک نمونه‌ی آمریکایی است، نه مصونیت معنا از بحران اقتصادی. ادعای درست: معنا <strong>کم‌حساس‌تر</strong> به نوسان مالی است، نه <strong>مصون</strong>.</p></div></div>
+</li>
+<li><p><strong>اتصال زمانی.</strong> خوشحالی حال‌محور است؛ معنا گذشته، حال و آینده را به هم می‌دوزد — همان قابلیتی که پس‌انداز و پشتکار را ممکن می‌کند. (این یافته، معنا را مستقیماً به پاکت «آزادی مالی» هم وصل می‌کند.)</p>
+</li>
+<li><p><strong>سلامت و طول عمر.</strong> همبستگی مستحکم و تکرارشده در ۲۵ نمونه و سه قاره، با سازوکار زیستی معقول — <strong>اما اندازه‌ی واقعی پس از تعدیل، حدود ۱۵–۲۵٪ کاهش خطر است، و علیت اثبات نشده.</strong></p>
+</li>
+<li><p><strong>هویت.</strong> تعریفی از خود که مستقل از میزان دارایی است — این یک گزاره‌ی ارزشی است، نه یک یافته‌ی تجربی، و باید همین‌طور هم عرضه شود.</p>
+</li>
+</ol>
+<hr />
+<h2 id="meaning-research-۷-تنها-راه-پر-کردن-خلأ-شواهد">۷. تنها راه پر کردن خلأ شواهد</h2>
+<p>هیچ مطالعه‌ای «پاکت ۵٪» را آزمون نکرده و احتمالاً هم نخواهد کرد. اگر این چارچوب قرار است در یک اپلیکیشن اجرا شود، یک راه ارزان برای تولید شواهد اختصاصی وجود دارد:</p>
+<p><strong>سنجش MLQ (پرسشنامه‌ی ۱۰ سؤالی اشتگر) در کاربران، پیش از شروع و ۶ ماه پس از اجرای پاکت ۵٪.</strong></p>
+<p>با این کار، سند از سطح «مرور ادبیات دیگران» به سطح «شواهد اختصاصی» ارتقا می‌یابد — چیزی که هیچ رقیبی ندارد. حتی یک نمونه‌ی چندصد نفره‌ی درون‌فردی (pre-post) از هر استناد به Science 2008 ارزشمندتر خواهد بود.</p>
+<hr />
+<h2 id="meaning-research-فهرست-کامل-منابع">فهرست کامل منابع</h2>
+<p><strong>چارچوب مفهومی</strong></p>
+<ul>
+<li>Martela, F., &amp; Steger, M. F. (2016). <em>The three meanings of meaning in life.</em> Journal of Positive Psychology, 11(5), 531–545.</li>
+<li>Martela, F., &amp; Steger, M. F. (2023). <em>The role of significance relative to the other dimensions of meaning in life (3DM).</em> Journal of Positive Psychology, 18, 606–626.</li>
+<li>Baumeister, R. F., Vohs, K. D., Aaker, J. L., &amp; Garbinsky, E. N. (2013). <em>Some key differences between a happy life and a meaningful life.</em> Journal of Positive Psychology, 8(6), 505–516.</li>
+</ul>
+<p><strong>معنا و طول عمر</strong></p>
+<ul>
+<li><strong>Sutin, A., Zavala, D., Milad, E., Stephan, Y., Karakose, S., Brown, J., Terracciano, A., &amp; Luchetti, M. (2026).</strong> <em>Purpose in life and mortality: A meta-analysis... of 488,765 participants followed for up to 32 years.</em> Psychological Medicine, 56, e214. <strong>[برآورد مرجع]</strong></li>
+<li>Cohen, R., Bavishi, C., &amp; Rozanski, A. (2016). Psychosomatic Medicine. <em>(جانشین‌شده با مورد بالا)</em></li>
+<li>Alimujiang, A., et al. (2019). JAMA Network Open, 2(5), e194270.</li>
+<li>Kim, E. S., et al. (2022). <em>Purpose in life and 8-year mortality...</em> (HRS، N=13,159) — Preventive Medicine / Am J Prev Med.</li>
+<li>Boyle, P. A., Barnes, L. L., Buchman, A. S., &amp; Bennett, D. A. (2009). Psychosomatic Medicine, 71, 574–579.</li>
+<li>Hill, P. L., &amp; Turiano, N. A. (2014). Psychological Science, 25(7), 1482–1486.</li>
+<li><em>(بازتحلیل انتقادی)</em> (2026). <em>The importance of baseline health in linking life purpose to longevity.</em> PLOS ONE.</li>
+</ul>
+<p><strong>دادن، بخشش و سلامت</strong></p>
+<ul>
+<li>Brown, S. L., Nesse, R. M., Vinokur, A. D., &amp; Smith, D. M. (2003). Psychological Science, 14(4), 320–327.</li>
+<li><strong>Qu, H., Konrath, S., &amp; Poulin, M. (2020).</strong> <em>Which types of giving are associated with reduced mortality risk among older adults?</em> Personality and Individual Differences, 154, 109668.</li>
+<li>Choi, N., &amp; Kim, J. (2011). <em>The effect of time volunteering and charitable donations in later life on psychological wellbeing.</em> Ageing &amp; Society. <strong>[شاهد متضاد]</strong></li>
+<li><em>(2021).</em> <em>The balance of giving versus receiving social support and all-cause mortality in a US national sample.</em> PNAS, 118(24), e2024770118.</li>
+<li>VanderWeele, T. J., Kim, E. S., et al. (2023). <em>Informal Helping and Subsequent Health and Well-Being in Older U.S. Adults.</em> Int J Behav Med.</li>
+<li>Post, S. G. (2005). International Journal of Behavioral Medicine, 12(2), 66–77.</li>
+</ul>
+<p><strong>خرج کردن نوع‌دوستانه و خودمختاری</strong></p>
+<ul>
+<li>Dunn, E. W., Aknin, L. B., &amp; Norton, M. I. (2008). Science, 319(5870), 1687–1688.</li>
+<li>Aknin, L. B., Dunn, E. W., Proulx, J., Lok, I., &amp; Norton, M. I. (2020). JPSP, 119(2), e15–26. <em>(تکرار ثبت‌شده)</em></li>
+<li>Kim, G., et al. (2022). PLoS ONE, 17(9), e0272434. <em>(تکرار)</em></li>
+<li>Aknin, L. B., Dunn, E. W., &amp; Whillans, A. V. (2022). Current Directions in Psychological Science. <em>(دفاعیه)</em></li>
+<li>Aknin, L. B., Sandstrom, G. M., Dunn, E. W., &amp; Norton, M. I. (2011). <em>(گیرنده‌ی نزدیک)</em></li>
+<li>Weinstein, N., &amp; Ryan, R. M. (2010). <em>When helping helps: Autonomous motivation for prosocial behavior...</em> JPSP.</li>
+<li>Martela, F., &amp; Ryan, R. M. (2016). <em>(نوع‌دوستی و بهزیستی از مسیر خودمختاری)</em></li>
+</ul>
+<p><strong>ادعای حذف‌شده</strong></p>
+<ul>
+<li><del>Fredrickson, B. L., et al. — بیان ژن‌های پیش‌التهابی</del> — به‌دلیل شکست بازتولید در بازتحلیل ۲۰۱۴ (Brown و همکاران) <strong>حذف شد</strong>.</li>
+</ul>
+<hr />
+<h2 id="meaning-research-پیوست-فهرست-تغییرات-نسبت-به-نسخهی-اول">پیوست: فهرست تغییرات نسبت به نسخه‌ی اول</h2>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>#</th>
+  <th>نوع</th>
+  <th>تغییر</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>۱</td>
+  <td><strong>خطای ارجاع</strong></td>
+  <td>«یونگ و همکاران ۲۰۱۹» ← <strong>کو، کنرات و پولن (۲۰۲۰)</strong>، PID 154:109668، N=۳٬۵۴۴</td>
+</tr>
+<tr>
+  <td>۲</td>
+  <td><strong>خطای ارجاع</strong></td>
+  <td>اعداد ۱۵٫۲٪/۳۶٫۵٪ از آلیمیوجیانگ جدا و به <strong>کیم و همکاران (۲۰۲۲)، N=۱۳٬۱۵۹</strong> نسبت داده شد</td>
+</tr>
+<tr>
+  <td>۳</td>
+  <td><strong>افزوده</strong></td>
+  <td>فراتحلیل <strong>سوتین و همکاران (۲۰۲۶)</strong> به‌عنوان برآورد مرجع؛ جانشین کوهن ۲۰۱۶</td>
+</tr>
+<tr>
+  <td>۴</td>
+  <td><strong>تعدیل عدد</strong></td>
+  <td>«۲٫۴۳ برابر» ← <strong>کاهش خطر ~۱۵–۲۵٪ پس از تعدیل</strong>؛ افزودن سقوط ۴٫۹٪→۱٫۱٪</td>
+</tr>
+<tr>
+  <td>۵</td>
+  <td><strong>حذف</strong></td>
+  <td>ادعای بیان ژن‌های پیش‌التهابی (فردریکسون)</td>
+</tr>
+<tr>
+  <td>۶</td>
+  <td><strong>حذف</strong></td>
+  <td>ادعاهای بی‌منبع بخش ۲ج (آلزایمر، سکته)</td>
+</tr>
+<tr>
+  <td>۷</td>
+  <td><strong>تصحیح گزارش</strong></td>
+  <td>همبستگی <strong>ساده</strong>ی کمک با خوشحالی <strong>مثبت (+۰٫۱۱)</strong> است؛ منفیِ ns فقط جزئی است</td>
+</tr>
+<tr>
+  <td>۸</td>
+  <td><strong>تصحیح قطبیت</strong></td>
+  <td>افزودن r = ۰٫۶۳–۰٫۷۰ میان معنا و خوشحالی؛ «هم‌پوشان ولی تمایزشده»</td>
+</tr>
+<tr>
+  <td>۹</td>
+  <td><strong>افزوده — شاهد متضاد</strong></td>
+  <td><strong>چوی و کیم (۲۰۱۱)</strong>: اهدای پول اثر داشت و <strong>بزرگ‌تر از داوطلبی</strong> بود</td>
+</tr>
+<tr>
+  <td>۱۰</td>
+  <td><strong>افزوده</strong></td>
+  <td><strong>PNAS ۲۰۲۱</strong> رابطه‌ی U‑شکل، ۲–۱۵ ساعت در ماه — جایگزین کمّیِ قید کیفی پست ۲۰۰۵</td>
+</tr>
+<tr>
+  <td>۱۱</td>
+  <td><strong>افزوده</strong></td>
+  <td><strong>واینستاین و رایان (۲۰۱۰)</strong> و <strong>مارتلا و رایان (۲۰۱۶)</strong> برای حلقه‌ی «دادن → معنا»</td>
+</tr>
+<tr>
+  <td>۱۲</td>
+  <td><strong>تعدیل ادعا</strong></td>
+  <td>«اعتبارسنجی مستقیم عدد ۵٪» ← <strong>«انتخاب طراحیِ معقول و آزمون‌نشده»</strong></td>
+</tr>
+<tr>
+  <td>۱۳</td>
+  <td><strong>تعدیل ادعا</strong></td>
+  <td>«غیرقابل جایگزین» ← «یک مسیرِ در دسترس، نه تنها مسیر»</td>
+</tr>
+<tr>
+  <td>۱۴</td>
+  <td><strong>تعدیل ادعا</strong></td>
+  <td>«تنها بُعدی که بحران نمی‌تواند بگیرد» ← «کم‌حساس‌تر، نه مصون»</td>
+</tr>
+<tr>
+  <td>۱۵</td>
+  <td><strong>افزوده</strong></td>
+  <td>ستون «قوت شواهد» در جدول اصول طراحی؛ ستون «نوع شواهد» در جدول طول عمر</td>
+</tr>
+<tr>
+  <td>۱۶</td>
+  <td><strong>افزوده</strong></td>
+  <td>هشدار دوبرابرشماری (بویل، هیل-توریانو، آلیمیوجیانگ در فراتحلیل‌اند)</td>
+</tr>
+<tr>
+  <td>۱۷</td>
+  <td><strong>افزوده</strong></td>
+  <td>پاسخ به ایراد تعمیم‌پذیری: <strong>ایکیگای HR = ۰٫۶۳</strong>، قوی‌ترین اثر فراتحلیل</td>
+</tr>
+<tr>
+  <td>۱۸</td>
+  <td><strong>افزوده</strong></td>
+  <td>تصریح تناقض درونی: دان ۲۰۰۸ خوشحالی می‌سنجد نه معنا</td>
+</tr>
+<tr>
+  <td>۱۹</td>
+  <td><strong>افزوده</strong></td>
+  <td>نمودار «حلقه‌ی واسط غایب» و سوگیری انتشار (۴۱٪ در برابر ۱۶٪)</td>
+</tr>
+<tr>
+  <td>۲۰</td>
+  <td><strong>افزوده</strong></td>
+  <td>تنش اخلاقی سوگیری قربانی شناسایی‌پذیر</td>
+</tr>
+<tr>
+  <td>۲۱</td>
+  <td><strong>افزوده</strong></td>
+  <td>تصریح اینکه اصل ۴ باید <strong>پیش‌فرض قابل تنظیم</strong> باشد نه الزام</td>
+</tr>
+<tr>
+  <td>۲۲</td>
+  <td><strong>افزوده</strong></td>
+  <td>بخش ۷: پیشنهاد سنجش MLQ پیش/پس در کاربران</td>
+</tr>
+<tr>
+  <td>۲۳</td>
+  <td><strong>حذف</strong></td>
+  <td>فرانکل از فهرست منابع حذف شد — در متن به آن استناد نشده بود (منبع زینتی)</td>
+</tr>
+</tbody>
+</table></div>
+
+      </article>
+
+      <div class="doc-footer-nav"><button type="button" onclick="switchDoc('fun-research')" class="footer-nav-btn"><span class="nav-direction">← سند قبلی</span><span class="nav-title">۳. پشتوانه‌ی پژوهشی پاکت تفریح</span></button><button type="button" onclick="switchDoc('evidence-scorecard')" class="footer-nav-btn" style="text-align:left"><span class="nav-direction">سند بعدی →</span><span class="nav-title">۵. کارنامه‌ی شواهد و ارزیابی اعتبار</span></button></div>
+    </div>
+    
+    <div class="doc-panel " id="panel-evidence-scorecard">
+      <div class="doc-header-card" style="--doc-accent: #059669;">
+        <div class="doc-meta-row">
+          <span class="doc-badge">⚖️ اعتبارسنجی</span>
+          <span class="doc-number">سند شماره‌ی ۵ از ۶</span>
+        </div>
+        <h1 class="doc-title">کارنامه‌ی شواهد و ارزیابی اعتبار</h1>
+        <p class="doc-subtitle">ارزیابی لایه‌ی سوم: سنجش اعتبار خودِ شواهد، اندازه‌ی اثر و نقد روش‌شناختی</p>
+        
+      </div>
+
+      <article class="prose">
+        <h1 id="evidence-scorecard-کارنامهی-شواهد">کارنامه‌ی شواهد</h1>
+<h3 id="evidence-scorecard-ارزیابی-لایهی-سوم-نه-صحت-نقلقول،-بلکه-اعتبار-خودِ-شواهد">ارزیابی لایه‌ی سوم: نه صحت نقل‌قول، بلکه <strong>اعتبار خودِ شواهد</strong></h3>
+<div class="callout callout-info"><div class="callout-icon">ℹ️</div><div class="callout-body"><p><strong>سه لایه‌ی راستی‌آزمایی:</strong></p>
+<ol>
+<li>آیا منبع وجود دارد؟ (لایه‌ی اول)</li>
+<li>آیا درست نقل شده؟ (لایه‌ی دوم — سند معنا و تفریح، نسخه‌ی ۲)</li>
+<li><strong>آیا خودِ آن شواهد قابل اتکاست؟</strong> ← این سند</li>
+</ol></div></div>
+<hr />
+<h2 id="evidence-scorecard-۰-تشخیص-اصلی">۰. تشخیص اصلی</h2>
+<p><strong>کیفیت ژورنال‌ها A است. کیفیت اعداد C+ تا B.</strong></p>
+<p>و این دقیقاً وارونه‌ی تصویری است که برچسب‌های «<span class="pill pill-green">🟢 قوی» می‌سازند. سه چیز به هم گره خورده‌اند که مستقل‌اند:</span></p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th></th>
+  <th>تضمین‌شده؟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>منبع در ژورنال معتبر است</td>
+  <td>✅ بله</td>
+</tr>
+<tr>
+  <td>درست نقل شده</td>
+  <td>✅ بله (پس از نسخه‌ی ۲)</td>
+</tr>
+<tr>
+  <td><strong>شواهدش محکم است</strong></td>
+  <td>❌ <strong>نه لزوماً</strong></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="evidence-scorecard-۱-کارنامهی-خطبهخط">۱. کارنامه‌ی خط‌به‌خط</h2>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>خط پژوهشی</th>
+  <th>ژورنال</th>
+  <th>بزرگ‌ترین N</th>
+  <th>طرح</th>
+  <th>لنگر فراتحلیلی؟</th>
+  <th>تکرار مستقل؟</th>
+  <th>نمره</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>U وارونه‌ی زمان فراغت</strong><br>شریف ۲۰۲۱</td>
+  <td>JPSP · پرچم‌دار</td>
+  <td>۲۱٬۷۳۶ + ۱۳٬۶۳۹</td>
+  <td>مقطعی + سناریوی فرضی</td>
+  <td>❌</td>
+  <td>✅ تکرار درونی در دو مجموعه‌داده ملی</td>
+  <td><span class="badge-grade grade-a">A−</span></td>
+</tr>
+<tr>
+  <td><strong>بازیابی چهاروجهی</strong><br>سوننتاگ و فریتس ۲۰۰۷</td>
+  <td>JOHP · رده‌ی اول</td>
+  <td>—</td>
+  <td>پرسشنامه</td>
+  <td>✅ <strong>استید و همکاران ۲۰۲۱</strong>, <em>Journal of Management</em> 47(4), 867–897</td>
+  <td>✅ چند زبان، چند تیم</td>
+  <td><span class="badge-grade grade-a">A−</span></td>
+</tr>
+<tr>
+  <td><strong>بی‌قراری برای تجربه</strong><br>گودمن ۲۰۱۹</td>
+  <td>JCR · پرچم‌دار</td>
+  <td>۷۰۸ (مطالعه‌ی ۲)</td>
+  <td>۵ مطالعه؛ <strong>یکی پیامددار</strong>؛ سازوکار مستقیماً دستکاری‌شده؛ توضیح‌های بدیل رد شد</td>
+  <td>❌</td>
+  <td>❌ تک‌تیم (مالکوچ) · ✅ <strong>متن کامل خوانده شد</strong></td>
+  <td><span class="badge-grade grade-a">A−</span> طراحی<br><strong>اثر کوچک-متوسط</strong> (η²=۰٫۰۲–۰٫۱۰)</td>
+</tr>
+<tr>
+  <td><strong>تفکیک دو بی‌قراری</strong><br>مالکوچ ۲۰۲۶</td>
+  <td>JCP · رده‌ی اول</td>
+  <td>—</td>
+  <td><strong>تفسیر نظری، بدون داده‌ی جدید</strong></td>
+  <td>—</td>
+  <td>✅ متن کامل خوانده شد</td>
+  <td><span class="badge-grade grade-b">B+</span> به‌عنوان چارچوب</td>
+</tr>
+<tr>
+  <td><strong>تجربه &gt; کالا</strong><br>ون بوون ۲۰۰۳</td>
+  <td>JPSP · پرچم‌دار</td>
+  <td>—</td>
+  <td>آزمایشی کوچک</td>
+  <td>✅ <strong>واینگارتن و گودمن ۲۰۲۱</strong>, JCR: ۳۶۰ اندازه‌ی اثر</td>
+  <td>✅ <strong>تنها خط دارای ارزیابی مستقل</strong></td>
+  <td><span class="badge-grade grade-b">B+</span></td>
+</tr>
+<tr>
+  <td><strong>تفریح = اتلاف</strong><br>تونیتو ۲۰۲۱</td>
+  <td>JESP · رده‌ی دوم</td>
+  <td>۱٬۳۱۰ (کل ۴ مطالعه)</td>
+  <td>۲ مقطعی + ۲ آزمایشی</td>
+  <td>❌</td>
+  <td>❌ <strong>تک‌مقاله — تکرار مستقلی ندیده</strong></td>
+  <td><span class="badge-grade grade-b">B+</span> (لذت)<br><span class="badge-grade grade-c">C+</span> (سلامت روان)</td>
+</tr>
+<tr>
+  <td><strong>زمان‌بندی تفریح را می‌کشد</strong><br>تونیتو و مالکوچ ۲۰۱۶ / ۲۰۲۱</td>
+  <td>JMR · پرچم‌دار</td>
+  <td>۱۳ مطالعه</td>
+  <td>آزمایشگاهی</td>
+  <td>❌</td>
+  <td>❌ <strong>تک‌تیم</strong> (مدرسه‌ی مالکوچ)</td>
+  <td><span class="badge-grade grade-b">B+</span></td>
+</tr>
+<tr>
+  <td><strong>ارزش انتظار</strong><br>مرلو ۲۰۱۴</td>
+  <td>Psych Science · پرچم‌دار</td>
+  <td>۲٬۲۶۶</td>
+  <td>۲ آزمایش ۹۷نفره + نمونه‌گیری تجربه</td>
+  <td>❌</td>
+  <td><span class="pill pill-amber">🟡 تکرار </span><strong>درون‌آزمایشگاهی</strong> (PSPB)</td>
+  <td><span class="badge-grade grade-c">C+</span></td>
+</tr>
+<tr>
+  <td><strong>محوشدگی تعطیلات</strong><br>دی بلوم ۲۰۰۹</td>
+  <td>J Occup Health · متوسط</td>
+  <td>۷ مطالعه</td>
+  <td>فراتحلیل</td>
+  <td>✅ خودش فراتحلیل است</td>
+  <td>—</td>
+  <td><span class="badge-grade grade-c">C+</span></td>
+</tr>
+<tr>
+  <td><strong>تأخیر لذت را بالا می‌برد</strong><br>نولیس ۲۰۰۴</td>
+  <td>JCR · پرچم‌دار</td>
+  <td>کوچک</td>
+  <td>آزمایشگاهی</td>
+  <td>❌</td>
+  <td>❌</td>
+  <td><span class="badge-grade grade-c">C+</span></td>
+</tr>
+<tr>
+  <td><strong>هدف/معنا → مرگ‌ومیر</strong><br>سوتین ۲۰۲۶</td>
+  <td>Psych Medicine</td>
+  <td><strong>۴۸۸٬۷۶۵</strong></td>
+  <td>فراتحلیل داده‌ی فردی</td>
+  <td>✅ خودش</td>
+  <td>✅ ۲۵ نمونه، ۳ قاره</td>
+  <td><span class="badge-grade grade-a">A</span></td>
+</tr>
+<tr>
+  <td><strong>معنا ≠ خوشحالی</strong><br>باومایستر ۲۰۱۳</td>
+  <td>J Positive Psych · رده‌ی دوم</td>
+  <td>۳۹۷</td>
+  <td>مقطعی</td>
+  <td>❌</td>
+  <td>❌</td>
+  <td><span class="badge-grade grade-b">B−</span></td>
+</tr>
+<tr>
+  <td><strong>دادن پول → خوشحالی</strong><br>دان ۲۰۰۸</td>
+  <td>Science · پرچم‌دار</td>
+  <td>۴۶ (!)</td>
+  <td>آزمایشی</td>
+  <td>✅ تکرار ثبت‌شده</td>
+  <td>✅ <strong>و تکرار شکست خورد</strong></td>
+  <td><span class="badge-grade grade-c">C</span></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="evidence-scorecard-۲-دو-چیزی-که-در-متن-اصلی-پیدا-کردم-و-در-هیچ-نقدی-نبود">۲. دو چیزی که در متن اصلی پیدا کردم و در هیچ نقدی نبود</h2>
+<h3 id="evidence-scorecard-یافتهی-اول-منحنی-U-وارونهی-شریف،-۰٫۴٪-واریانس-توضیح-میدهد"><span class="pill pill-red">🔴 یافته‌ی اول: منحنی U وارونه‌ی شریف، </span><strong>۰٫۴٪ واریانس</strong> توضیح می‌دهد</h3>
+<p>متن کامل مقاله را از PDF رسمی APA خواندم. جدول رگرسیون مطالعه‌ی ۱:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>مدل</th>
+  <th>R²</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>فقط جمله‌ی خطی</td>
+  <td><strong>۰٫۰۰۲</strong></td>
+</tr>
+<tr>
+  <td>+ جمله‌ی درجه‌دوم (منحنی U)</td>
+  <td><strong>۰٫۰۰۴</strong></td>
+</tr>
+<tr>
+  <td>سهم خودِ جمله‌ی درجه‌دوم</td>
+  <td><strong>۰٫۰۰۲</strong> — یعنی <strong>دو دهم درصد</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>و منحنی واقعی (رضایت از زندگی روی مقیاس ۱ تا ۴):</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>ساعت فراغت</th>
+  <th>رضایت</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>۰</td>
+  <td>۳٫۱۸</td>
+</tr>
+<tr>
+  <td>۵</td>
+  <td>۳٫۳۳</td>
+</tr>
+<tr>
+  <td>۱۰</td>
+  <td>۳٫۳۳</td>
+</tr>
+<tr>
+  <td>۱۵</td>
+  <td>۳٫۲۰</td>
+</tr>
+<tr>
+  <td>۲۰</td>
+  <td>۲٫۹۰</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>تفسیر صادقانه:</strong> اثر <strong>واقعی و بسیار مستحکم</strong> است — در برابر حذف پرت‌ها، فاصله‌ی کوک، و آزمون دوخطی سیمونسون مقاومت کرد. اما <strong>بسیار کوچک</strong> است. کل فاصله‌ی صفر تا ۱۰ ساعت فراغت، ۰٫۱۵ نمره از ۴ است.</p>
+<div class="callout callout-warning"><div class="callout-icon">⚠️</div><div class="callout-body"><p>⚠️ و نکته‌ی مهم‌تر: <strong>افت جدی فقط بعد از ۱۵ ساعت در روز شروع می‌شود.</strong> «سقف ۵ ساعت» که در سند تفریح آمده، بیشتر نقطه‌ی پایان فلات است تا نقطه‌ی سقوط. برای یک آدم شاغل عادی، <strong>این منحنی عملاً هرگز به بخش نزولی‌اش نمی‌رسد.</strong></p></div></div>
+<p><strong>نتیجه برای طراحی:</strong> استدلال «پاکت تفریح باید سقف داشته باشد» را <strong>نمی‌توان</strong> روی این مطالعه سوار کرد. سقف ۱۵٪ توجیه‌های دیگری دارد (بودجه‌ی محدود، تقسیم متوازن)، اما «شواهد می‌گویند زیادی‌اش ضرر دارد» <strong>ادعای قابل‌دفاعی نیست</strong> برای کسی که روزی ۳ ساعت فراغت دارد.</p>
+<h3 id="evidence-scorecard-یافتهی-دوم-یکی-از-چهار-وجه-چارچوب-بازیابی،-ارزش-افزوده-ندارد"><span class="pill pill-red">🔴 یافته‌ی دوم: یکی از چهار وجه چارچوب بازیابی، ارزش افزوده ندارد</span></h3>
+<p>فراتحلیل <strong>هدریک و همکاران</strong> با بیش از <strong>۳۰۰ نمونه‌ی مستقل</strong>:</p>
+<blockquote class="rich-quote"><p>آرامش و چیرگی با پیامدهای کاری و شخصی رابطه‌ی مثبت دارند؛ گسست روانی پیامدهای منفی (فرسودگی) را کاهش می‌دهد؛ <strong>اما «کنترل» هیچ نفع افزوده‌ای فراتر از سه وجه دیگر فراهم نکرد.</strong></p></blockquote>
+<p><strong>نتیجه برای سند تفریح:</strong> آزمون سه‌سؤالی مرز تفریح/هدررفت که ساختیم، سؤال «کنترل» را دارد. طبق این فراتحلیل، آن سؤال احتمالاً <strong>اطلاعات مستقلی اضافه نمی‌کند</strong> — هرچند به‌عنوان یک پرسش تشخیصیِ کاربرپسند همچنان مفید است. باید به‌عنوان ابزار عملی نگهش داشت، نه به‌عنوان یک بُعد نظری مستقل.</p>
+<hr />
+<div class="callout callout-danger"><div class="callout-icon">🔴</div><div class="callout-body"><h3 id="evidence-scorecard-افزودهی-۲٫۲-یک-تعارض-باز-در-ادبیات"><span class="pill pill-red">🔴 افزوده‌ی ۲٫۲ — یک تعارض باز در ادبیات</span></h3>
+<p><strong>گودمن ۲۰۱۹</strong> (متن کامل خوانده شد — مردم برای تجربه بی‌قرارترند) و <strong>مرلو ۲۰۱۴</strong> (انتظار برای تجربه خوشایندتر است) در جهت مخالف‌اند. خودِ مالکوچ در <strong>ژانویه‌ی ۲۰۲۶</strong> این را «دو دسته یافته‌ی متناقض» می‌نامد و راه‌حلی پیشنهاد می‌کند (تفکیک بی‌قراری تصمیم از فرایند) که <strong>هنوز آزمون نشده است.</strong></p>
+<p><strong>درس:</strong> بخش ۴ سند تفریح تنها بخشی است که روی یک ادبیات <strong>فعالانه مورد مناقشه</strong> بنا شده. این از «اثر کوچک» بدتر است — یعنی حتی <strong>جهتش</strong> قطعی نیست.</p></div></div>
+<h2 id="evidence-scorecard-۳-پنج-الگوی-ساختاری">۳. پنج الگوی ساختاری</h2>
+<h3 id="evidence-scorecard-۱-پرستیژ-ژورنال-استحکام-شواهد">۱. پرستیژ ژورنال ≠ استحکام شواهد</h3>
+<p>عجیب‌ترین نکته: ضعیف‌ترین اعداد این مجموعه (مرلو با ۹۷ دانشجو، دان با <strong>۴۶</strong> نفر) در معتبرترین ژورنال‌های دنیا (<em>Psychological Science</em>، <em>Science</em>) منتشر شده‌اند. هر دو هم پیش از اصلاحات دوره‌ی بحران تکرارپذیری.</p>
+<h3 id="evidence-scorecard-۲-وابستگی-تکآزمایشگاهی-مهمترین-الگو">۲. وابستگی تک‌آزمایشگاهی — مهم‌ترین الگو</h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>خط</th>
+  <th>آزمایشگاه</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>انتظار + تجربه/کالا</td>
+  <td>مدرسه‌ی <strong>گیلوویچ</strong> (کرنل)</td>
+</tr>
+<tr>
+  <td>زمان‌بندی</td>
+  <td>مدرسه‌ی <strong>مالکوچ</strong> (OSU)</td>
+</tr>
+<tr>
+  <td>تفریح = اتلاف</td>
+  <td>همان تیم مالکوچ + نورتون</td>
+</tr>
+<tr>
+  <td>خرج نوع‌دوستانه</td>
+  <td>مدرسه‌ی <strong>دان/اکنین/نورتون</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>تنها خطی که ارزیابی واقعاً مستقل دیده، «تجربه &gt; کالا» است</strong> — و نتیجه‌ی آن ارزیابی این بود که اثر <strong>یک‌سوم کوچک‌تر</strong> از ادعای اولیه است. این یک درس تعمیم‌پذیر است: انتظار داشته باشید بقیه‌ی خطوط هم وقتی مستقلاً سنجیده شوند، کوچک شوند.</p>
+<h3 id="evidence-scorecard-۳-سوگیری-انتشار-حالا-کمّی-شده">۳. سوگیری انتشار — حالا کمّی شده</h3>
+<p>برای خط اصلی این حوزه، عدد داریم: <strong>حدود یک‌سوم اثر</strong>. یعنی <strong>هر عددی که از یک مقاله‌ی تک‌مطالعه‌ای در این حوزه می‌آید را ذهناً در ۰٫۷ ضرب کنید.</strong></p>
+<h3 id="evidence-scorecard-۴-شکاف-نسل-روششناختی">۴. شکاف نسل روش‌شناختی</h3>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>نسل</th>
+  <th>مشخصات</th>
+  <th>مقالات</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>۲۰۰۳–۲۰۱۶</strong></td>
+  <td>نمونه‌ی کوچک، بدون پیش‌ثبت، دانشجویی</td>
+  <td>ون بوون، دان ۲۰۰۸، نولیس، مرلو، زمان‌بندی ۲۰۱۶</td>
+</tr>
+<tr>
+  <td><strong>۲۰۲۱–۲۰۲۶</strong></td>
+  <td>داده‌ی ملی، فراتحلیل، تصحیح سوگیری</td>
+  <td>شریف، تونیتو، واینگارتن و گودمن، سوتین</td>
+</tr>
+</tbody>
+</table></div>
+<p>سند نسخه‌ی ۲ هر دو نسل را با یک متر می‌سنجید. <strong>نباید.</strong></p>
+<h3 id="evidence-scorecard-۵-همهی-پیامدها-کوتاهمدت-و-خودگزارشیاند">۵. همه‌ی پیامدها کوتاه‌مدت و خودگزارشی‌اند</h3>
+<p>هیچ‌یک از مطالعات حوزه‌ی <strong>تفریح</strong> پیامد بلندمدت نمی‌سنجد. سنجه‌ها: لذت همان جلسه، خلق همان لحظه، رضایت در یک پرسشنامه.</p>
+<p><strong>تضاد گویا:</strong> پاکت <strong>نیکوکاری</strong> پیامد ۳۲ ساله دارد (اما مشاهده‌ای). پاکت <strong>تفریح</strong> علیت واقعی دارد (اما پیامد چنددقیقه‌ای). <strong>هیچ‌کدام آنچه لازم داریم را ندارد: اثر علّیِ بلندمدت.</strong></p>
+<hr />
+<h2 id="evidence-scorecard-۴-بازرتبهبندی-نهایی-برچسبها">۴. بازرتبه‌بندی نهایی برچسب‌ها</h2>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>ادعای طراحی</th>
+  <th>برچسب نسخه‌ی ۲</th>
+  <th><strong>برچسب منصفانه</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>مرز هدررفت را باریک نگه دار</td>
+  <td><span class="pill pill-green">🟢 قوی</span></td>
+  <td><span class="pill pill-green">🟢  </span><strong>باقی می‌ماند</strong> — از بخش آزمایشی تونیتو، و کم‌هزینه‌ترین اصل</td>
+</tr>
+<tr>
+  <td><strong>تجربه‌ی کشیده نه متراکم</strong> (افزوده ۲٫۴)</td>
+  <td>—</td>
+  <td><span class="pill pill-green">🟢  </span><strong>قوی — تنها اصل با دستکاری آزمایشی مستقیمِ سازوکار</strong> (گودمن مطالعه‌ی ۵)</td>
+</tr>
+<tr>
+  <td>اجتماعی باشد</td>
+  <td><span class="pill pill-green">🟢 قوی، دو مسیر مستقل</span></td>
+  <td><span class="pill pill-green">🟢  </span><strong>باقی می‌ماند و قوی‌ترین اصل است</strong> — تنها اصلی با لنگر فراتحلیلی از دو حوزه</td>
+</tr>
+<tr>
+  <td>مبلغ دقیق، زمان آزاد</td>
+  <td><span class="pill pill-green">🟢 قوی</span></td>
+  <td><span class="pill pill-amber">🟡  </span><strong>تنزل</strong> — برنامه‌ی منظم ولی تک‌تیم، پیامد کوتاه‌مدت</td>
+</tr>
+<tr>
+  <td>سقف داشته باش</td>
+  <td><span class="pill pill-green">🟢 برای زمان</span></td>
+  <td><span class="pill pill-red">🔴  </span><strong>تنزل جدی</strong> — R²=۰٫۰۰۴؛ افت واقعی بعد از ۱۵ ساعت در روز</td>
+</tr>
+<tr>
+  <td>انباشت سه‌ماهه</td>
+  <td><span class="pill pill-amber">🟡 متوسط</span></td>
+  <td><span class="pill pill-amber">🟡  </span><strong>باقی می‌ماند</strong></td>
+</tr>
+<tr>
+  <td>تجربه &gt; کالا</td>
+  <td><span class="pill pill-amber">🟡 کوچک</span></td>
+  <td><span class="pill pill-amber">🟡  </span><strong>باقی می‌ماند</strong> (d≈۰٫۲۵ تعدیل‌شده)</td>
+</tr>
+<tr>
+  <td>پاکت را «نیاز» بنام</td>
+  <td><span class="pill pill-amber">🟡 فرضیه</span></td>
+  <td><span class="pill pill-amber">🟡  </span><strong>باقی می‌ماند</strong></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="evidence-scorecard-۵-پس-چه-چیزی-سرِ-پا-میماند؟">۵. پس چه چیزی سرِ پا می‌ماند؟</h2>
+<p>پس از سه لایه راستی‌آزمایی، <strong>دو</strong> اصل با پشتوانه‌ی واقعی باقی می‌ماند:</p>
+<h3 id="evidence-scorecard-اصل-اول-تفریح-را-اجتماعی-کن"><span class="pill pill-green">🟢 اصل اول: تفریح را اجتماعی کن</span></h3>
+<p>تنها اصلی که از <strong>دو حوزه‌ی مستقل</strong> و <strong>با لنگر فراتحلیلی</strong> پشتیبانی می‌شود:</p>
+<ul>
+<li>واینگارتن و گودمن ۲۰۲۱: راننده‌ی اصلی مزیت تجربه، <strong>ارتباط اجتماعی</strong> است نه «تجربه بودن»</li>
+<li>شریف ۲۰۲۱: فراغت زیاد فقط وقتی مضر بود که <strong>تنها</strong> گذرانده شود</li>
+</ul>
+<h3 id="evidence-scorecard-اصل-دوم-برچسب-هدررفت-را-باریک-نگه-دار"><span class="pill pill-green">🟢 اصل دوم: برچسب «هدررفت» را باریک نگه دار</span></h3>
+<p>از بخش آزمایشیِ تونیتو می‌آید (نه بخش همبستگی)، و <strong>نامتقارن است</strong>: خطای گشاد گرفتنِ مرز، هزینه‌ی مستند دارد؛ خطای باریک گرفتنش، هزینه‌ی مستندی ندارد. در شرایط عدم قطعیت، این اصل حتی اگر شواهد ضعیف‌تر هم بود، از نظر تصمیم‌گیری درست بود.</p>
+<h3 id="evidence-scorecard-و-بقیه؟">و بقیه؟</h3>
+<p>اصول ۳ تا ۷ <strong>معقول‌اند، نه مستند.</strong> باید با همین عنوان عرضه شوند: <strong>انتخاب‌های طراحی آگاهانه</strong> که با شواهد ناسازگار نیستند — نه نتایج پژوهشی.</p>
+<hr />
+<h2 id="evidence-scorecard-۶-نتیجهگیری-برای-کل-پروژه">۶. نتیجه‌گیری برای کل پروژه</h2>
+<blockquote class="rich-quote"><p>اعداد ۶۰/۲۰/۱۵/۵ <strong>هیچ‌کدام</strong> پشتوانه‌ی پژوهشی مستقیم ندارند و نخواهند داشت.</p>
+<p>آنچه پژوهش می‌تواند بدهد این است: <strong>کدام طراحی‌ها با شواهد موجود ناسازگارند.</strong> و بر این اساس، دو چیز را باید عوض کرد:</p>
+<ul>
+<li><strong>«سقف تفریح» را از یک ادعای علمی به یک انتخاب بودجه‌ای تنزل بدهید.</strong></li>
+<li><strong>«اجتماعی بودن» را به یک ویژگی درجه‌اول در پاکت تفریح ارتقا بدهید</strong> — مستندتر از خودِ «تجربه بودن».</li>
+</ul></blockquote>
+<p>و تنها راه پر کردن این خلأ، همان است که در بخش ۷ سند معنا آمد: <strong>سنجش پیش/پس روی کاربران واقعی.</strong> یک نمونه‌ی چندصد نفره‌ی درون‌فردی، از هر استنادی در این کارنامه ارزشمندتر خواهد بود — چون تنها چیزی است که حلقه‌ی واقعی را می‌سنجد: <strong>پاکت مالی → رفتار → پیامد.</strong></p>
+<hr />
+<h3 id="evidence-scorecard-منابع-افزوده-در-این-کارنامه">منابع افزوده در این کارنامه</h3>
+<ul>
+<li><strong>Steed, L. B., Swider, B. W., Keem, S., &amp; Liu, J. T. (2021).</strong> <em>Leaving work at work: A meta-analysis on employee recovery from work.</em> Journal of Management, 47(4), 867–897.</li>
+<li><strong>Headrick, L., et al.</strong> <em>(فراتحلیل بیش از ۳۰۰ نمونه‌ی مستقل تجربه‌های بازیابی)</em> — یافته‌ی «کنترل ارزش افزوده ندارد».</li>
+<li><strong>Sharif, M. A., Mogilner, C., &amp; Hershfield, H. E. (2021).</strong> JPSP, 121(4), 933–947 — <strong>متن کامل PDF رسمی APA خوانده شد</strong>؛ R² و جدول رگرسیون از آنجا.</li>
+<li><strong>Weingarten, E., &amp; Goodman, J. K. (2021).</strong> JCR, 47(6), 855–877.</li>
+</ul>
+
+      </article>
+
+      <div class="doc-footer-nav"><button type="button" onclick="switchDoc('meaning-research')" class="footer-nav-btn"><span class="nav-direction">← سند قبلی</span><span class="nav-title">۴. پشتوانه‌ی پژوهشی پاکت معنا و نیکوکاری</span></button><button type="button" onclick="switchDoc('taraz-review')" class="footer-nav-btn" style="text-align:left"><span class="nav-direction">سند بعدی →</span><span class="nav-title">۶. بررسی اپلیکیشن «تراز» در برابر چهار پاکت</span></button></div>
+    </div>
+    
+    <div class="doc-panel " id="panel-taraz-review">
+      <div class="doc-header-card" style="--doc-accent: #d97706;">
+        <div class="doc-meta-row">
+          <span class="doc-badge">📱 تطبیق محصول</span>
+          <span class="doc-number">سند شماره‌ی ۶ از ۶</span>
+        </div>
+        <h1 class="doc-title">بررسی اپلیکیشن «تراز» در برابر چهار پاکت</h1>
+        <p class="doc-subtitle">سنجش هم‌راستایی محصول، تحلیل شکاف‌های رفتاری و توصیه‌های طراحی (با شکاف ۸)</p>
+        
+      </div>
+
+      <article class="prose">
+        <h1 id="taraz-review-بررسی-اپلیکیشن-تراز-در-برابر-مفهومسازی-چهار-پاکت">بررسی اپلیکیشن «تراز» در برابر مفهوم‌سازی چهار پاکت</h1>
+<p>تاریخ بررسی: ۱۴۰۵/۰۷/۰۷ — نسخه‌ی ۲.۳۱.۱</p>
+<hr />
+<h2 id="taraz-review-جمعبندی-کوتاه">جمع‌بندی کوتاه</h2>
+<p>برنامه <strong>بسیار بیشتر از آنچه انتظار داشتم با مفهوم‌سازی ما هم‌راستاست</strong>. چند تصمیم طراحی در آن هست که دقیقاً همان نتیجه‌گیری‌هایی است که ما در این گفت‌وگو به آن رسیدیم — یعنی معماری‌اش درست است. شکاف‌ها عمدتاً در <strong>قواعد رفتاری</strong> است، نه در ساختار داده.</p>
+<hr />
+<h2 id="taraz-review-آنچه-درست-و-همراستاست">آنچه درست و هم‌راستاست</h2>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>مفهوم ما</th>
+  <th>پیاده‌سازی در تراز</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>پاکت پنجم: <strong>هدررفت</strong> با سهم صفر</td>
+  <td><code>waste</code> با <code>target: 0</code> — دقیقاً همین</td>
+</tr>
+<tr>
+  <td>هدررفت باید دیده و آگاه شود</td>
+  <td>یادداشت بازتابی «اگر این را خرج نمی‌کردی چه؟» — عالی</td>
+</tr>
+<tr>
+  <td>قرض دادن، خرج نیست</td>
+  <td>پاکت <code>loan</code> با <code>loan: true</code> که کاملاً بیرون از بودجه‌ی ماه است — تصمیم درستی است</td>
+</tr>
+<tr>
+  <td>بدهی را به پاکتِ منشأش برگردان</td>
+  <td>هر طرح اقساطی <code>cat</code> دارد (پیش‌فرض <code>need</code>) و قسط پرداختی در همان پاکت ثبت می‌شود — <strong>دقیقاً اصل «بدهی پاکت نیست»</strong></td>
+</tr>
+<tr>
+  <td>پاکت‌ها مهر و موم‌اند</td>
+  <td><code>computeMonths</code> مانده را <strong>به تفکیک پاکت</strong> منتقل می‌کند، نه یک‌کاسه. مانده‌ی آزادی مالی فقط سقف آزادی مالی ماه بعد را بالا می‌برد</td>
+</tr>
+<tr>
+  <td>درصدها</td>
+  <td><code>60 / 20 / 15 / 5</code> بدون تغییر</td>
+</tr>
+</tbody>
+</table></div>
+<p>نکته‌ی فنی که ارزش تحسین دارد: تابع <code>absorbDeficit</code> — وقتی پاکتی از سقفش رد می‌شود، کسری‌اش به تناسب سهم از مانده‌ی بقیه کم می‌شود. یعنی برنامه اجازه نمی‌دهد ولخرجی یک پاکت، مانده‌ی مجازی بسازد. این از نظر مفهومی درست است.</p>
+<hr />
+<h2 id="taraz-review-شکافها-به-ترتیب-اهمیت">شکاف‌ها — به ترتیب اهمیت</h2>
+<h3 id="taraz-review-۱-حوضچهی-درآمد-نامنظم-وجود-ندارد">۱. حوضچه‌ی درآمد نامنظم — وجود ندارد</h3>
+<p>هیچ نشانی از مفهوم «حقوق ثابت ماهانه» در کد نیست. بودجه‌ی ماه دستی و عددی است (<code>state.budgets[mk] = {amount}</code>).</p>
+<p>کاربر با درآمد نامنظم مجبور است هر ماه دستی حدس بزند بودجه چقدر باشد — و همین جا سیستم می‌شکند.</p>
+<p><strong>پیشنهاد:</strong> یک موجودیت <code>reservoir</code> با سه عدد: <code>baseSalary</code>، <code>capMonths</code> (پیش‌فرض ۶)، <code>balance</code>.</p>
+<ul>
+<li>درآمدها به‌جای بودجه، وارد حوضچه شوند.</li>
+<li>اول هر ماه، <code>baseSalary</code> به‌طور خودکار بودجه‌ی آن ماه شود.</li>
+<li>دکمه‌ی «حقوق پیشنهادی» = ۷۵٪ میانگین درآمد ۱۲ ماه گذشته (داده‌اش را دارید).</li>
+<li>هشدار وقتی حوضچه زیر ۲ ماه رفت، و پیشنهاد افزایش حقوق وقتی ۳ ماه پیاپی بالای سقف ماند.</li>
+</ul>
+<h3 id="taraz-review-۲-سقف-سهماههی-پاکت-تفریح-وجود-ندارد">۲. سقف سه‌ماهه‌ی پاکت تفریح — وجود ندارد</h3>
+<p>انتقال مانده در کد <strong>نامحدود</strong> است. مانده‌ی تفریح می‌تواند ۱۲ ماه انباشته شود، که طبق تعریف خودتان دیگر تفریح نیست.</p>
+<p><strong>پیشنهاد:</strong> فیلد <code>carryCapMonths</code> روی هر پاکت. برای <code>fun</code> مقدار ۳. وقتی رد شد، به کاربر اعلان: «پول تفریحت دارد می‌پوسد — خرجش کن.»</p>
+<h3 id="taraz-review-۳-ضروری-کف-است،-نه-سقف-منطق-فعلی-نامتقارن-نیست">۳. «ضروری کف است، نه سقف» — منطق فعلی نامتقارن نیست</h3>
+<p>گزارش فقط «از سهمش رد شد» را می‌فهمد. اما طبق مفهوم‌سازی ما، <strong>کمتر بودن</strong> پاکت ضروری هم یک سیگنال است: یعنی داری کیفیت زندگی‌ات را فدا می‌کنی.</p>
+<p><strong>پیشنهاد:</strong> جهت هشدار را برای هر پاکت جدا کنید:</p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>پاکت</th>
+  <th>جهت بد</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>ضروری</td>
+  <td>هم بالاتر، هم <strong>پایین‌تر</strong> (زیر ۵۰٪ → «کیفیت زندگی‌ات را ارتقا بده»)</td>
+</tr>
+<tr>
+  <td>آزادی مالی</td>
+  <td>فقط پایین‌تر</td>
+</tr>
+<tr>
+  <td>تفریح</td>
+  <td>بالاتر؛ و سه ماه پیاپی خرج‌نشده هم هشدار</td>
+</tr>
+<tr>
+  <td>نیکوکاری</td>
+  <td>فقط پایین‌تر</td>
+</tr>
+<tr>
+  <td>هدررفت</td>
+  <td>هر عددی بالای صفر</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="taraz-review-۴-اصل-سرمایه-در-برابر-سود-تفکیک-نشده">۴. اصل سرمایه در برابر سود — تفکیک نشده</h3>
+<p>بخش <code>investments</code> سود و زیان را حساب می‌کند، اما هیچ قاعده‌ای جلوی خرج کردن اصل سرمایه را نمی‌گیرد.</p>
+<p><strong>پیشنهاد:</strong> هنگام فروش یک دارایی، برنامه بپرسد «اصل یا سود؟» و اگر اصل بود، یک هشدار نرم بدهد. و یک شاخص روی داشبورد: <strong>«سود ماهانه‌ی دارایی‌ها ÷ خرج ضروری ماهانه»</strong> — درصد آزادی مالی. این تنها عددی است که کاربر واقعاً باید دنبالش بدود.</p>
+<h3 id="taraz-review-۵-حالت-نقاهت-دورهی-بدهی-وجود-ندارد">۵. حالت نقاهت (دوره‌ی بدهی) — وجود ندارد</h3>
+<p>درصدها در <code>CATS</code> هاردکد شده‌اند. برای کاربری که در بدهی است، نمی‌شود موقتاً ۶۰/۳۰/۵/۵ گذاشت.</p>
+<p><strong>پیشنهاد:</strong> پروفایل سهم‌ها با <strong>تاریخ پایان اجباری</strong>. بدون تاریخ پایان، حالت استثنایی به عادت تبدیل می‌شود.</p>
+<h3 id="taraz-review-۶-تفکیک-تفریح-از-هدررفت-در-لحظهی-ثبت">۶. تفکیک تفریح از هدررفت در لحظه‌ی ثبت</h3>
+<p>سخت‌ترین تصمیم کاربر همین است، و برنامه فقط دو دکمه می‌گذارد جلویش.</p>
+<p><strong>پیشنهاد:</strong> وقتی کاربر بین این دو مردد است، یک سؤال: <strong>«این را از قبل انتخاب کرده بودی، یا همان‌جا تصمیم گرفتی؟»</strong> — انتخاب قبلی = تفریح، تصمیم لحظه‌ای = هدررفت. این تنها معیار عملیاتی و قابل پاسخ است.</p>
+<h3 id="taraz-review-۷-یک-عدد-سرصفحهای-که-ندارد">۷. یک عدد سرصفحه‌ای که ندارد</h3>
+<p>کارت «قابل خرج امروز» خوب است، اما عدد هویتیِ این سیستم چیز دیگری است: <strong>هدررفت این ماه</strong>. پیشنهاد می‌کنم کنار آن بیاید، همراه «چند روز است بدون هدررفت».</p>
+<hr />
+<h2 id="taraz-review-سه-نکتهی-غیرمفهومی-که-به-چشمم-آمد">سه نکته‌ی غیرمفهومی که به چشمم آمد</h2>
+<ol>
+<li><strong>پیش‌فرض <code>cat: 'need'</code> برای طرح اقساطی</strong> — احتمالاً نیمی از اقساط کاربران بدهی بد است و در پاکت اشتباهی می‌نشیند. بهتر است پیش‌فرض نداشته باشد و کاربر مجبور به انتخاب شود.</li>
+<li><strong>رمزنگاری سرتاسری با عبارت بازیابی ۱۲ کلمه‌ای</strong> — تصمیم درستی است و مزیت رقابتی واقعی شماست؛ در صفحه‌ی اول بیشتر رویش تأکید کنید.</li>
+<li><strong>پوشه‌ی <code>test/</code> به‌عنوان کپی مستقل</strong> — برای پروژه‌ی شخصی کار می‌کند، اما با ۱۳ هزار خط کد، هم‌گام نگه‌داشتنش دستی دردسر می‌شود.</li>
+</ol>
+<hr />
+<h2 id="taraz-review-اولویت-پیشنهادی">اولویت پیشنهادی</h2>
+<ol>
+<li>حوضچه (بزرگ‌ترین شکاف کاربردی)</li>
+<li>سقف سه‌ماهه‌ی تفریح</li>
+<li>هشدار نامتقارن برای ضروری</li>
+<li>شاخص درصد آزادی مالی</li>
+<li>حالت نقاهت با تاریخ پایان</li>
+</ol>
+<hr />
+<h2 id="taraz-review-شکاف-۸-افزوده-شمارش-معکوسِ-هدف-تفریح-را-نگذارید"><span class="pill pill-red">🔴 شکاف ۸ (افزوده) — شمارش معکوسِ هدف تفریح را </span><strong>نگذارید</strong></h2>
+<p>برآمده از <strong>مالکوچ (۲۰۲۶)</strong>, <em>J Consumer Psychology</em> 36(2) — متن کامل خوانده شد.</p>
+<p>اگر سقف انباشت سه‌ماهه‌ی تفریح (شکاف ۲) پیاده شود، غریزه‌ی طراحی این است که نوار پیشرفت و «۴۷ روز مانده» نمایش داده شود. <strong>شواهد می‌گویند این کار انتظار را بدتر می‌کند:</strong></p>
+<ul>
+<li>ردیابی زمان روی <strong>بی‌قراری تصمیم اثری ندارد</strong> (تصمیم قبلاً گرفته شده) اما <strong>بی‌قراری فرایند را به‌شدت بالا می‌برد</strong></li>
+<li>«حذف امکان چک کردن زمان، بی‌قراری را به‌طور نظام‌مند کاهش می‌دهد» (سویینی و همکاران ۲۰۲۴)</li>
+<li>صبر یک <strong>مسیر</strong> است: خطر رهاکردنِ هدف با گذر زمان <strong>بزرگ‌تر</strong> می‌شود</li>
+</ul>
+<p><strong>پیاده‌سازی پیشنهادی:</strong></p>
+<div class="table-responsive"><table>
+<thead>
+<tr>
+  <th>✅ نشان بده</th>
+  <th>❌ نشان نده</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>مبلغ انباشته‌شده</td>
+  <td>روزهای باقی‌مانده</td>
+</tr>
+<tr>
+  <td>«آماده‌ی خرج شدن» وقتی به حد رسید</td>
+  <td>نوار پیشرفت درصدی</td>
+</tr>
+<tr>
+  <td>نوع تجربه‌ی هدف</td>
+  <td>اعلان دوره‌ای یادآور</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>و:</strong> پول انباشته‌ی تفریح نباید در UI شبیه «پول بلااستفاده» دیده شود — همان سازوکار «هدررفت‌انگاری» که لذت را می‌پراند، روی دوره‌ی انتظار هم عمل می‌کند.</p>
+
+      </article>
+
+      <div class="doc-footer-nav"><button type="button" onclick="switchDoc('evidence-scorecard')" class="footer-nav-btn"><span class="nav-direction">← سند قبلی</span><span class="nav-title">۵. کارنامه‌ی شواهد و ارزیابی اعتبار</span></button></div>
+    </div>
+    
+  </main>
+</div>
+
+
+<script>
+function switchDoc(docId) {
+  document.querySelectorAll('.doc-tab-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
+  var activeTab = document.getElementById('tab-btn-' + docId);
+  if (activeTab) activeTab.classList.add('active');
+  
+  document.querySelectorAll('.doc-panel').forEach(function(panel) {
+    panel.classList.remove('active');
+  });
+  var activePanel = document.getElementById('panel-' + docId);
+  if (activePanel) activePanel.classList.add('active');
+  
+  document.querySelectorAll('.toc-block').forEach(function(toc) {
+    toc.classList.remove('active');
+    toc.style.display = 'none';
+  });
+  var activeToc = document.getElementById('toc-block-' + docId);
+  if (activeToc) {
+    activeToc.classList.add('active');
+    activeToc.style.display = 'block';
+  }
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setupTocObserver();
+}
+
+window.addEventListener('scroll', function() {
+  var winScroll = document.documentElement.scrollTop;
+  var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  var scrolled = (winScroll / height) * 100;
+  var bar = document.getElementById('reading-progress');
+  if (bar) bar.style.width = scrolled + '%';
+});
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('doc_theme', theme);
+}
+
+function toggleTheme() {
+  var cur = document.documentElement.getAttribute('data-theme') || 'light';
+  var next = cur === 'light' ? 'dark' : (cur === 'dark' ? 'warm' : 'light');
+  setTheme(next);
+}
+
+var savedTheme = localStorage.getItem('doc_theme') || 'light';
+setTheme(savedTheme);
+
+var curFontSize = 16;
+function adjustFontSize(delta) {
+  curFontSize = Math.max(13, Math.min(22, curFontSize + delta));
+  document.documentElement.style.fontSize = curFontSize + 'px';
+  localStorage.setItem('doc_font_size', curFontSize);
+}
+
+var savedFontSize = localStorage.getItem('doc_font_size');
+if (savedFontSize) {
+  curFontSize = parseInt(savedFontSize);
+  document.documentElement.style.fontSize = curFontSize + 'px';
+}
+
+var currentObserver = null;
+function setupTocObserver() {
+  if (currentObserver) {
+    currentObserver.disconnect();
+  }
+  
+  currentObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        var id = entry.target.getAttribute('id');
+        if (id) {
+          document.querySelectorAll('.toc-block.active .toc-item').forEach(function(item) {
+            item.classList.remove('active');
+            if (item.querySelector('a[href="#' + id + '"]')) {
+              item.classList.add('active');
+            }
+          });
+        }
+      }
+    });
+  }, { rootMargin: '0px 0px -70% 0px' });
+
+  document.querySelectorAll('.doc-panel.active .prose h2, .doc-panel.active .prose h3').forEach(function(heading) {
+    currentObserver.observe(heading);
+  });
+}
+
+setupTocObserver();
+</script>
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a439c007ce6b2f7b',t:'MTc5MDgzOTcwMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
