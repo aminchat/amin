@@ -23,12 +23,39 @@ export function closeModal() {
   overlay.classList.remove('show');
 }
 
+// شیت دوم روی شیت اصلی (برای کارهای کوچک وسط یک فرم، مثل مدیریت زیرشاخه‌ها) — فرم زیرش دست‌نخورده می‌ماند
+let ov2 = null;
+export function openSubModal(html) {
+  if (!ov2) {
+    ov2 = document.createElement('div');
+    ov2.className = 'overlay sub';
+    ov2.innerHTML = '<div class="sheet" id="sheet2"></div>';
+    document.body.appendChild(ov2);
+    ov2.addEventListener('click', (e) => { if (e.target === ov2) closeSubModal(); });
+  }
+  const sh = ov2.firstElementChild;
+  sh.innerHTML = '<div class="handle"></div>' + html;
+  enhanceMoneyInputs(sh);
+  enhanceDateInputs(sh);
+  ov2.classList.add('show');
+}
+export function closeSubModal() {
+  if (!ov2) return;
+  ov2.classList.remove('show');
+  try { document.dispatchEvent(new CustomEvent('submodal:closed')); } catch (e) {}
+}
+export function subModalOpen() {
+  return !!(ov2 && ov2.classList.contains('show'));
+}
+
 overlay.addEventListener('click', (e) => {
   if (e.target === overlay) dismiss();
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && overlay.classList.contains('show')) dismiss();
+  if (e.key !== 'Escape') return;
+  if (subModalOpen()) { closeSubModal(); return; }
+  if (overlay.classList.contains('show')) dismiss();
 });
 
 export function askConfirm(msg, onYes) {

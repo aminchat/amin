@@ -522,6 +522,7 @@ export function googleSignOutDo(wipe) {
   if (wipe) {
     // همهٔ کلیدهای برنامه (وضعیت، پاکت رمز، پین، اثر انگشت، تنظیمات) پاک می‌شود و برنامه از نو بالا می‌آید
     try { store.clearAll(); } catch (e) {}
+    try { indexedDB.deleteDatabase('cap_scans'); } catch (e) {}
     location.reload();
     return;
   }

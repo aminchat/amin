@@ -15,7 +15,7 @@ import { openCatReport, openSubReport, openTitleItems,
   csDelete,
   csDelete2,
   csDelete3, openQuickCategorize, qcPick } from './subsui.js';
-import { closeModal, openModal } from './modal.js';
+import { closeModal, openModal, closeSubModal } from './modal.js';
 import { render, setRender } from './view.js';
 import { setOnSave, state, curStats } from './state.js';
 import { guideAfterRender } from './guide.js';
@@ -124,6 +124,7 @@ import {
   openPocketLedger,
   openBudgetForm,
   setBudgetAmount,
+  useScan, dropScan,
   openInvestForm,
   openRateEdit,
   openTransferForm,
@@ -375,8 +376,10 @@ Object.assign(window, {
   switchTab,
   setAssetTab,
   closeModal,
+  closeSubModal,
   openBudgetForm,
   setBudgetAmount,
+  useScan, dropScan,
   openTxForm,
   openQuickTx,
   qaKey,

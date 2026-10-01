@@ -1,7 +1,7 @@
 // ─── رابط زیرشاخه‌ها: گزارش سه‌سطحی، دسته‌بندی سریع، انتخاب زیرشاخه در فرم‌ها ────
 import { t as tr } from './i18n.js';
 import { state, catById, save, CATS } from './state.js';
-import { openModal, closeModal } from './modal.js';
+import { openModal, closeModal, openSubModal, closeSubModal } from './modal.js';
 import { icon } from './icons.js';
 import { esc, toast, fmt, fmtShort, toFa, haptic } from './utils.js';
 import { curMonthKey, monthLabel, fmtDate } from './jalali.js';
@@ -159,8 +159,8 @@ export function ndReattach(catId, sub, key, mk) {
 export function openCustomSubs(catId) {
   const c = catById(catId);
   const list = (state.customSubs || []).filter((x) => x.cat === catId);
-  openModal(`
-    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+  openSubModal(`
+    <button class="x" onclick="closeSubModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${tr('زیرشاخه‌های دلخواه')} <small class="muted" style="font-weight:400;font-size:var(--fs-sm)">· ${c ? esc(c.label) : ''}</small></h2>
     ${list.length ? `<div class="sgroup">${list.map((x) => `<div class="srow" style="cursor:default">
       <span class="smid"><span class="st1">${esc(x.label)}</span><span class="st2">${tr('{n} تراکنش', { n: toFa(countSubUse(x.id)) })}</span></span>
@@ -183,7 +183,7 @@ export function csDelete(id, catId) {
   const x = (state.customSubs || []).find((s) => s.id === id);
   if (!x) return;
   const n = countSubUse(id);
-  openModal(`
+  openSubModal(`
     <div style="text-align:center;padding:10px 4px">
       <span class="ib lg red" style="margin-bottom:12px">${icon('trash')}</span>
       <p style="font-size:15px;margin:0 0 6px">${tr('زیرشاخهٔ «{s}» حذف شود؟', { s: esc(x.label) })}</p>
@@ -197,7 +197,7 @@ export function csDelete(id, catId) {
 export function csDelete2(id, catId) {
   const x = (state.customSubs || []).find((s) => s.id === id);
   if (!x) return;
-  openModal(`
+  openSubModal(`
     <div style="text-align:center;padding:10px 4px">
       <span class="ib lg red" style="margin-bottom:12px">${icon('alert')}</span>
       <p style="font-size:15px;margin:0 0 6px"><b>${tr('مطمئنی؟ این کار غیرقابل برگشت است.')}</b></p>
@@ -214,3 +214,18 @@ export function csDelete3(id, catId) {
   toast(tr('حذف شد'));
   openCustomSubs(catId);
 }
+// بعد از بستن شیت زیرشاخه‌ها: چیپ‌های همان پاکت در فرم زیرین تازه می‌شوند (انتخاب فعلی اگر هنوز هست می‌ماند)
+document.addEventListener('submodal:closed', () => {
+  document.querySelectorAll('#sheet .subchips').forEach((wrap) => {
+    const add = wrap.querySelector('.chip[data-sub="__add"]');
+    const gear = wrap.querySelector('.chip[onclick^="openCustomSubs("]');
+    const call = (add && add.getAttribute('onclick')) || '';
+    const catId = gear ? (gear.getAttribute('onclick').match(/'([^']+)'/) || [])[1] : '';
+    if (!catId || !call) return;
+    const onPick = call.split('(')[0];
+    const extra = (call.match(/,'([^']+)'\)/) || [])[1];
+    const on = wrap.querySelector('.chip.on');
+    const sel = on && subsFor(catId).some((x) => x.id === on.dataset.sub) ? on.dataset.sub : '';
+    wrap.outerHTML = subChipsHtml(catId, sel, onPick, extra);
+  });
+});
