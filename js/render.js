@@ -37,6 +37,7 @@ import {
   accountCurrentToman,
   institutionOf, baseCur, currencyInfo, curName, setTargetMonth } from './state.js';
 import { reflectRow } from './reflect.js';
+import { cardHtml } from './cards.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
@@ -585,6 +586,12 @@ function acctRow(a) {
   const bal = accountCurrent(a);
   const isForeign = a.currency !== baseCur();
   const rate = rateOf(a.currency);
+  if (a.type === 'کارت بانکی' && a.last4) {
+    return `<div class="item bcard-item">
+      ${cardHtml({ last4: a.last4, name: a.name, bank: a.bank, bankId: a.bankId, compact: true, amount: (isForeign ? fmt(bal) : fmtShort(bal)) + (isForeign && rate ? ` <small>≈ ${fmtShort(bal * rate)}</small>` : ''), onclick: `openAccountLedger('${a.id}')` })}
+      <button class="btn sm bc-edit" onclick="openAccountForm(findAccount('${a.id}'))">${tr('act.edit')}</button>
+    </div>`;
+  }
   const cls = a.type === 'پول نقد' ? 'green' : a.type && a.type.includes('ارز') ? 'purple' : '';
   return `<div class="item">
     <div class="ib ${cls}" onclick="openAccountLedger('${a.id}')">${icon(accountIcon(a.type))}</div>

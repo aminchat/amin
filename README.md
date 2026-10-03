@@ -1,6 +1,6 @@
 # Taraz (تراز) — Personal Finance PWA
 
-[فارسی](./README.fa.md) · Live: <https://aminchat.github.io/amin/> · Test build: <https://aminchat.github.io/amin/test/>
+[فارسی](./README.fa.md) · Live: <https://aminchat.github.io/amin/>
 
 Taraz is an offline‑first personal budgeting app built as a static Progressive Web App. No backend, no accounts, no tracking: your data lives on your device (optionally end‑to‑end encrypted) and can be synced through your own Google Drive.
 
@@ -76,7 +76,7 @@ python3 -m http.server 8080
 # open http://localhost:8080
 ```
 
-The `test/` folder is an independent copy used for trying changes before they are ported to the root (different storage keys and Drive file name, no service worker).
+
 
 ## Project layout
 
@@ -108,7 +108,7 @@ All amounts are stored in the account’s own currency; the base currency is use
 
 ## Version
 
-Current: `2.34.0` (root) / `2.34.0-test` (test build). The version string is in `js/utils.js` (`APP_VERSION`) and shown in Settings → About.
+Current: `2.34.1` (root) / `2.34.1-test` (test build). The version string is in `js/utils.js` (`APP_VERSION`) and shown in Settings → About.
 
 ## License
 
