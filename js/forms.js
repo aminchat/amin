@@ -1375,7 +1375,7 @@ export function openQuickTx(opts) {
     </div>
     <div class="qa-amount">
       <div class="qa-expr" id="qaExpr"></div>
-      <div class="kbd-display empty" id="qaDisp">${toFa(0)}</div>
+      <div class="kbd-display zero" id="qaDisp">${toFa(0)}</div>
       <div class="qa-words" id="qaWords"></div>
       <div class="cur" id="qaCur">${esc(curName(cur))}</div>
     </div>
@@ -1470,7 +1470,7 @@ function qaPaint() {
     const [ip, dp] = qa.amount.split('.');
     disp.textContent = fmt(Number(ip)) + decSep() + toFa(dp);
   }
-  disp.classList.toggle('empty', !n);
+  disp.classList.toggle("zero", !n);
   if (words) words.textContent = amountWords(n).replace(/\s\S+$/, '');
   // عدد بلند: فقط فونت کوچک می‌شود؛ ارتفاع کادر ثابت است تا صفحه‌کلید زیر دست جابه‌جا نشود
   disp.style.fontSize = '';

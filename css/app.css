@@ -559,7 +559,7 @@ body.locked #bottomNav{display:none}
 .qa-amount{text-align:center;padding:var(--sp-2) 0 var(--sp-3)}
 .qa-amount .cur{font-size:var(--fs-sm);color:var(--muted);font-weight:600;height:20px;line-height:20px}
 .kbd-display{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:48px;height:48px;overflow:hidden;white-space:nowrap;direction:ltr;unicode-bidi:isolate}
-.kbd-display.empty{color:var(--faint)}
+.kbd-display.zero{color:var(--faint)}
 .kbd-display .cursor{display:inline-block;width:2px;height:.9em;background:var(--accent);vertical-align:-.1em;margin-inline-end:2px;animation:blink 1s steps(2) infinite}
 @keyframes blink{to{opacity:0}}
 .qa-words{font-size:var(--fs-xs);color:var(--muted);height:18px;line-height:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px}
