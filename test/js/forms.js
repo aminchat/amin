@@ -2,6 +2,7 @@ import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip,
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage, lastJpegB64 } from './scan.js';
 import { rememberScan, listScans, loadScan, deleteScan } from './scanhist.js';
+import { cardHtml, cardDigits, luhnOk, bankByBin, bankByName, fmtCardNo } from './cards.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, shiftMonth, bookNow, bookCalendar } from './jalali.js';
 import { jalaliMonths, gregMonths } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
@@ -1665,17 +1666,17 @@ export function openAccountForm(a, presetBank) {
     <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${isEdit && !a.__preset ? tr('ویرایش حساب') : tr('حساب جدید')}</h2>
     <div class="field"><label>${tr('بانک / صرافی / مؤسسه')}</label>
-      <input class="input" id="aBank" list="bankList" placeholder="${tr('مثلاً بانک ملت، نوبیتکس، نقد')}" value="${a ? esc(a.bank || '') : ''}" autocomplete="off">
+      <input class="input" id="aBank" list="bankList" placeholder="${tr('مثلاً بانک ملت، نوبیتکس، نقد')}" value="${a ? esc(a.bank || '') : ''}" autocomplete="off" oninput="this.dataset.auto='';acctCardPreview()">
       <datalist id="bankList">${[...new Set([...state.accounts.map((x) => x.bank).filter(Boolean), ...KNOWN_BANKS])]
         .map((b) => `<option value="${esc(b)}"></option>`)
         .join('')}</datalist>
       <div class="small muted" style="margin-top:6px">${tr('حساب‌های یک مؤسسه در صفحهٔ حساب‌ها یک‌کاسه نشان داده می‌شوند.')}</div>
     </div>
     <div class="field"><label>${tr('نام حساب / کارت')}</label>
-      <input class="input" id="aName" placeholder="${tr('مثلاً کارت حقوق، حساب پس‌انداز')}" value="${a ? esc(a.name) : ''}">
+      <input class="input" id="aName" placeholder="${tr('مثلاً کارت حقوق، حساب پس‌انداز')}" value="${a ? esc(a.name) : ''}" oninput="acctCardPreview()">
     </div>
     <div class="field"><label>${tr('نوع')}</label>
-      <select class="input" id="aType">
+      <select class="input" id="aType" onchange="acctCardPreview()">
         ${ACCT_TYPES.map((t) => `<option value="${t}" ${a && a.type === t ? 'selected' : ''}>${tr(t)}</option>`).join('')}
       </select>
     </div>
@@ -1688,8 +1689,10 @@ export function openAccountForm(a, presetBank) {
       <input class="input" id="aCurCustom" placeholder="${tr('مثلاً روبل، ین، بیت‌کوین')}">
       <div class="small muted" style="margin-top:6px">${tr('این واحد به لیست اضافه می‌شود و دفعه بعد در گزینه‌ها هست.')}</div>
     </div>
-    <div class="field"><label>${tr('۴ رقم آخر کارت (اختیاری)')}</label>
-      <input class="input" id="aLast4" inputmode="numeric" maxlength="4" placeholder="1234" value="${a ? esc(a.last4 || '') : ''}">
+    <div class="field"><label>${tr('شماره کارت (اختیاری)')} ${infoTip(tr('فقط برای تشخیص بانک و پیش‌نمایش کارت. شمارهٔ کامل ذخیره نمی‌شود؛ فقط ۴ رقم آخر و نام بانک می‌ماند.'))}</label>
+      <input class="input" id="aCard" inputmode="numeric" dir="ltr" autocomplete="off" maxlength="19" placeholder="${a && a.last4 ? '•••• •••• •••• ' + esc(a.last4) : '6037 9900 0000 0000'}" oninput="acctCardInput(this)">
+      <div class="small" id="aCardHint" style="margin-top:6px;min-height:1em"></div>
+      <div id="aCardPreview" style="margin-top:8px">${a && (a.last4 || a.type === 'کارت بانکی') ? cardHtml({ last4: a.last4, name: a.name, bank: a.bank, bankId: a.bankId }) : ''}</div>
     </div>
     <div class="field"><label>${tr('موجودی اولیه')}</label>
       <input class="input" id="aInit" type="number" step="any" inputmode="decimal" placeholder="${toFa(0)}" value="${a ? a.initial : ''}">
@@ -1699,6 +1702,33 @@ export function openAccountForm(a, presetBank) {
   `);
 }
 
+// شماره کارت: گروه‌بندی ۴تایی، تشخیص بانک از BIN، بررسی لون، پیش‌نمایش زنده
+export function acctCardInput(inp) {
+  const d = cardDigits(inp.value);
+  inp.value = d.replace(/(.{4})(?=.)/g, '$1 ');
+  const bankIn = document.getElementById('aBank');
+  const b = bankByBin(d);
+  if (b && bankIn && (!bankIn.value.trim() || bankIn.dataset.auto === '1')) { bankIn.value = b.name; bankIn.dataset.auto = '1'; }
+  const hint = document.getElementById('aCardHint');
+  if (hint) {
+    if (d.length === 16 && !luhnOk(d)) { hint.textContent = tr('این شماره معتبر به نظر نمی‌رسد؛ یک رقمش را چک کن.'); hint.style.color = 'var(--red)'; }
+    else if (d.length >= 6 && !b) { hint.textContent = tr('بانک این شماره را نمی‌شناسم؛ نام بانک را خودت بنویس.'); hint.style.color = 'var(--muted)'; }
+    else if (d.length === 16) { hint.textContent = '✓ ' + (b ? b.name : ''); hint.style.color = 'var(--green)'; }
+    else hint.textContent = '';
+  }
+  acctCardPreview();
+}
+export function acctCardPreview() {
+  const pv = document.getElementById('aCardPreview');
+  if (!pv) return;
+  const d = cardDigits((document.getElementById('aCard') || {}).value);
+  const name = (document.getElementById('aName') || {}).value || '';
+  const bank = (document.getElementById('aBank') || {}).value || '';
+  const type = (document.getElementById('aType') || {}).value;
+  const prevLast4 = (document.getElementById('aCard') || {}).placeholder.match(/\d{4}$/);
+  if (!d && type !== 'کارت بانکی' && !prevLast4) { pv.innerHTML = ''; return; }
+  pv.innerHTML = cardHtml(d ? { number: d, name, bank } : { last4: prevLast4 ? prevLast4[0] : '', name, bank });
+}
 export function saveAccount() {
   const name = document.getElementById('aName').value.trim();
   if (!name) {
@@ -1715,10 +1745,23 @@ export function saveAccount() {
     bank: (document.getElementById('aBank').value || '').trim(),
     type: document.getElementById('aType').value,
     currency,
-    last4: document.getElementById('aLast4').value.trim(),
     initial: parseFloat(document.getElementById('aInit').value) || 0,
     updatedAt: Date.now(),
   };
+  // شمارهٔ کامل ذخیره نمی‌شود: فقط ۴ رقم آخر + شناسهٔ بانک
+  const cd = cardDigits(document.getElementById('aCard').value);
+  if (cd) {
+    data.last4 = cd.slice(-4);
+    const b = bankByBin(cd) || bankByName(data.bank);
+    data.bankId = b ? b.id : '';
+  } else if (!editingAcctId) {
+    data.last4 = '';
+    const b = bankByName(data.bank);
+    data.bankId = b ? b.id : '';
+  } else {
+    const b = bankByName(data.bank);
+    if (b) data.bankId = b.id;
+  }
   if (editingAcctId) {
     Object.assign(accountById(editingAcctId), data);
   } else {
