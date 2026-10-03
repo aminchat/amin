@@ -37,7 +37,7 @@ import {
   accountCurrentToman,
   institutionOf, baseCur, currencyInfo, curName, setTargetMonth } from './state.js';
 import { reflectRow } from './reflect.js';
-import { cardHtml, bankOf } from './cards.js';
+import { cardHtml, bankOf, curIconHtml } from './cards.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
@@ -596,7 +596,7 @@ function acctRow(a) {
     <div class="ib ${cls}" onclick="openAccountLedger('${a.id}')">${icon(accountIcon(a.type))}</div>
     <div class="mid" onclick="openAccountLedger('${a.id}')">
       <div class="t1">${esc(a.name)}${a.last4 ? ` <span class="badge">•••• ${toFa(a.last4)}</span>` : ''}</div>
-      <div class="t2">${esc(tr(a.type))}${isForeign ? ` · <span class="badge">${esc(curName(a.currency))}</span>${rate ? ` <span class="faint">${tr('acc.rate', { r: fmtShort(rate) })}</span>` : ''}` : ''}</div>
+      <div class="t2">${esc(tr(a.type))}${isForeign ? ` · <span class="badge cur">${curIconHtml(a.currency)}${esc(curName(a.currency))}</span>${rate ? ` <span class="faint">${tr('acc.rate', { r: fmtShort(rate) })}</span>` : ''}` : ''}</div>
     </div>
     <div class="amt-col">
       <div class="amt ${bal >= 0 ? 'in' : 'out'}">${isForeign ? fmt(bal) : fmtShort(bal)}</div>
@@ -651,7 +651,9 @@ export function renderAccounts() {
         <button type="button" class="acct-group-head" onclick="toggleAcctGroup('${esc(k).replace(/'/g, '&#39;')}')">
           ${(() => { const b = k === '__none' ? null : bankOf(accts.find((x) => bankOf(x)) || accts[0]); return b
             ? `<span class="ib bank-ib">${b.logo ? `<img src="${b.logo}" alt="">` : icon('card')}</span>`
-            : `<span class="ib">${icon(k === '__none' ? 'folder' : institutionIconName(accts))}</span>`; })()}
+            : (() => { const cs = [...new Set(accts.map((x) => x.currency))]; return cs.length === 1 && cs[0] !== baseCur()
+              ? `<span class="ib bank-ib">${curIconHtml(cs[0])}</span>`
+              : `<span class="ib">${icon(k === '__none' ? 'folder' : institutionIconName(accts))}</span>`; })(); })()}
           <span style="flex:1;min-width:0;text-align:right">
             <span class="t1" style="font-size:14.5px;display:block">${esc(label)}</span>
             <span class="t2" style="display:block">${sub}</span>

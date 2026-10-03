@@ -12,6 +12,7 @@ import { state, replaceState, save, allCurrencies, rateOf, baseCur, currencyInfo
 import { profileFor } from './state.js';
 import { profileName, openProfileSettings } from './reflect.js';
 import { scanHistOn, setScanHistOn } from './scanhist.js';
+import { curIconHtml } from './cards.js';
 import * as sec from './securestore.js';
 import {
   newRecoveryPhrase,
@@ -1004,7 +1005,7 @@ export function openSettingsRates() {
   const used = usedCurrencies();
   const others = allCurrencies().filter((c) => c !== baseCur() && !used.includes(c));
   const row = (c) => `<div class="srow" style="cursor:default">
-      <span class="sic" style="background:${rateOf(c) ? '#0ea5e9' : '#f59e0b'}">${icon('coin')}</span>
+      <span class="sic" style="background:#fff;padding:4px;${rateOf(c) ? '' : 'opacity:.6'}">${curIconHtml(c)}</span>
       <span class="smid"><span class="st1">${esc(curName(c))}</span><span class="st2">${rateOf(c) ? (tr('هر واحد') + ' ') + toFaNum(rateOf(c)) + ' ' + curName(baseCur()) : tr('ثبت نشده')}</span></span>
       <input class="input" style="width:130px;min-height:38px;text-align:left;direction:ltr" id="rate_${esc(c)}" type="number" step="any" inputmode="decimal" value="${state.rates[c] || ''}" placeholder="${curName(baseCur())}" onchange="saveRateFrom('${esc(c)}')">
     </div>`;

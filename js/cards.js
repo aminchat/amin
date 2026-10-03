@@ -120,3 +120,13 @@ export function bankLogoHtml(b, cls) {
 export function allBanks() {
   return Object.keys(BANKS).map(bankById);
 }
+
+// آیکن واحد پول (icons/cur/<CODE>.svg)
+import { currencyInfo } from './state.js';
+export function curIconSrc(cur) {
+  const code = (currencyInfo(cur) || {}).code || '';
+  return 'icons/cur/' + (/^[A-Z]{3,4}$/.test(code) ? code : 'other') + '.svg';
+}
+export function curIconHtml(cur, cls) {
+  return `<img class="${cls || 'cur-ic'}" src="${curIconSrc(cur)}" alt="" onerror="this.src='icons/cur/other.svg'">`;
+}
