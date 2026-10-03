@@ -148,3 +148,43 @@ export function curIconHtml(cur, cls) {
   }
   return `<svg class="${cls || 'cur-ic'}" viewBox="0 0 64 64" aria-hidden="true">${inner}</svg>`;
 }
+
+// ── صرافی‌ها و کارگزاری‌ها ──
+// لوگوی واقعی فقط برای آن‌هایی که منبع آزاد (simple-icons, CC0) دارند؛ بقیه مونوگرام با رنگ برند
+// [نام فارسی, رنگ, حرف/حروف مونوگرام, فایل لوگو?]
+const EXCH = {
+  nobitex: ['نوبیتکس', '#5b3ea6', 'ن'], wallex: ['والکس', '#0a5cff', 'و'], tabdeal: ['تبدیل', '#00a693', 'ت'], ramzinex: ['رمزینکس', '#2c3e50', 'ر'],
+  exir: ['اکسیر', '#2ca58d', 'ا'], bitpin: ['بیت‌پین', '#0e7cff', 'ب'], ok_exchange: ['اوکی‌اکسچنج', '#1f4e79', 'OK'], arzpaya: ['ارزپایا', '#ff6a00', 'ا'],
+  coinex: ['کوینکس', '#17b7a6', 'CX'], binance: ['بایننس', '#f0b90b', 'B', 'binance.svg'], okx: ['اوکی‌اکس', '#000000', 'OKX', 'okx.svg'],
+  kucoin: ['کوکوین', '#01bc8d', 'K', 'kucoin.svg'], coinbase: ['کوین‌بیس', '#0052ff', 'C', 'coinbase.svg'], bybit: ['بای‌بیت', '#f7a600', 'BY'],
+  kraken: ['کراکن', '#5741d9', 'K'], mexc: ['مکسی', '#00b897', 'M'], gate: ['گیت', '#2354e6', 'G'], htx: ['اچ‌تی‌ایکس', '#008cd6', 'H'], bitget: ['بیت‌گت', '#00f0ff', 'BG'],
+  metamask: ['متامسک', '#f6851b', 'M'], trustwallet: ['تراست والت', '#3375bb', 'T'], ledger: ['لجر', '#000000', 'L'], trezor: ['ترزور', '#141609', 'T', 'trezor.svg'],
+  hardware: ['کیف پول سخت‌افزاری', '#334155', '🔐'],
+  mofid: ['کارگزاری مفید', '#0e4a99', 'م'], agah: ['کارگزاری آگاه', '#e31e26', 'آ'], farabi: ['کارگزاری فارابی', '#6a1b9a', 'ف'], hafez: ['کارگزاری حافظ', '#0d9488', 'ح'],
+  bourse_bime: ['کارگزاری بورس بیمه', '#1d4ed8', 'ب'], exir_broker: ['کارگزاری اکسیر', '#2ca58d', 'ا'], saham: ['سجام / بورس', '#0f766e', 'س'],
+  ibkr: ['اینتراکتیو بروکرز', '#d81222', 'IB'], robinhood: ['رابین‌هود', '#ccff00', 'R', 'robinhood.svg'], etoro: ['ای‌تورو', '#13c636', 'e'], tradingview: ['تریدینگ‌ویو', '#131622', 'TV', 'tradingview.svg'],
+  alpari: ['آلپاری', '#0066b3', 'A'], exness: ['اکسنس', '#ffde00', 'E'], litefinance: ['لایت‌فایننس', '#0a84ff', 'LF'], xm: ['XM', '#e4002b', 'XM'], amarkets: ['آمارکتس', '#1f8a4c', 'AM'],
+  paypal: ['پی‌پال', '#003087', 'P'], wise: ['وایز', '#9fe870', 'W'], revolut: ['رولوت', '#191c1f', 'R'],
+};
+const norm = (x) => String(x || '').toLowerCase().replace(/[\s\u200c\-_.]+/g, '').replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/^(صرافی|کارگزاری|بروکر)/, '');
+const EX_ALIAS = { nobitex: ['nobitex'], wallex: ['wallex'], tabdeal: ['tabdeal'], ramzinex: ['ramzinex'], exir: ['exir'], bitpin: ['bitpin'], coinex: ['coinex'], binance: ['binance'], okx: ['okx', 'okex'], kucoin: ['kucoin'], coinbase: ['coinbase'], bybit: ['bybit'], kraken: ['kraken'], mexc: ['mexc'], gate: ['gateio', 'gate'], htx: ['htx', 'huobi', 'هوبی'], bitget: ['bitget'], metamask: ['metamask'], trustwallet: ['trustwallet', 'تراستولت'], ledger: ['ledger'], trezor: ['trezor'], mofid: ['mofid', 'مفید'], agah: ['agah', 'آگاه'], farabi: ['farabi', 'فارابی'], hafez: ['hafez', 'حافظ'], ibkr: ['ibkr', 'interactivebrokers'], robinhood: ['robinhood'], etoro: ['etoro'], tradingview: ['tradingview'], alpari: ['alpari'], exness: ['exness'], litefinance: ['litefinance', 'liteforex'], xm: ['xm'], amarkets: ['amarkets'], paypal: ['paypal'], wise: ['wise', 'transferwise'], revolut: ['revolut'] };
+export function exchangeOf(name) {
+  const n = norm(name);
+  if (!n) return null;
+  for (const id of Object.keys(EXCH)) {
+    const e = EXCH[id];
+    if (n === norm(e[0]) || (EX_ALIAS[id] || []).some((a) => n === norm(a))) return { id, name: e[0], color: e[1], mono: e[2], logo: e[3] ? 'icons/ex/' + e[3] : '' };
+  }
+  return null;
+}
+export function allExchanges() {
+  return Object.keys(EXCH).map((id) => EXCH[id][0]);
+}
+export function exchangeIconHtml(e, cls) {
+  if (!e) return '';
+  if (e.logo) return `<img class="${cls || 'ex-ic'}" src="${e.logo}" alt="">`;
+  const r = parseInt(e.color.slice(1, 3), 16), g = parseInt(e.color.slice(3, 5), 16), b = parseInt(e.color.slice(5, 7), 16);
+  const fg = 0.299 * r + 0.587 * g + 0.114 * b > 170 ? '#111' : '#fff';
+  const fs = e.mono.length > 2 ? 22 : e.mono.length === 2 ? 28 : 34;
+  return `<svg class="${cls || 'ex-ic'}" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="${e.color}"/><text x="32" y="34" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-weight="800" fill="${fg}">${esc(e.mono)}</text></svg>`;
+}

@@ -987,3 +987,5 @@ a.btn.block{display:flex}
 .badge.cur{display:inline-flex;align-items:center;gap:2px}
 .bank-ib .cur-ic{width:100%;height:100%;margin:0}
 .sic .cur-ic{width:100%;height:100%;margin:0}
+.ex-ic{width:100%;height:100%;border-radius:10px}
+.bank-ib.ex{padding:0;background:transparent;box-shadow:none;overflow:hidden}

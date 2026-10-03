@@ -2,7 +2,7 @@ import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip,
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage, lastJpegB64 } from './scan.js';
 import { rememberScan, listScans, loadScan, deleteScan } from './scanhist.js';
-import { cardHtml, cardDigits, luhnOk, bankByBin, bankByName, fmtCardNo, allBanks } from './cards.js';
+import { cardHtml, cardDigits, luhnOk, bankByBin, bankByName, fmtCardNo, allBanks, allExchanges } from './cards.js';
 import { jalaliNow, monthOfISO, fmtDate, monthLabel, curMonthKey, shiftMonth, bookNow, bookCalendar } from './jalali.js';
 import { jalaliMonths, gregMonths } from './i18n.js';
 import { closeModal, openModal, askConfirm } from './modal.js';
@@ -1667,7 +1667,7 @@ export function openAccountForm(a, presetBank) {
     <h2>${isEdit && !a.__preset ? tr('ویرایش حساب') : tr('حساب جدید')}</h2>
     <div class="field"><label>${tr('بانک / صرافی / مؤسسه')}</label>
       <input class="input" id="aBank" list="bankList" placeholder="${tr('مثلاً بانک ملت، نوبیتکس، نقد')}" value="${a ? esc(a.bank || '') : ''}" autocomplete="off" oninput="this.dataset.auto='';acctCardPreview()">
-      <datalist id="bankList">${[...new Set([...state.accounts.map((x) => x.bank).filter(Boolean), ...allBanks().map((b) => b.name), ...KNOWN_BANKS])]
+      <datalist id="bankList">${[...new Set([...state.accounts.map((x) => x.bank).filter(Boolean), ...allBanks().map((b) => b.name), ...allExchanges(), ...KNOWN_BANKS])]
         .map((b) => `<option value="${esc(b)}"></option>`)
         .join('')}</datalist>
       <div class="small muted" style="margin-top:6px">${tr('حساب‌های یک مؤسسه در صفحهٔ حساب‌ها یک‌کاسه نشان داده می‌شوند.')}</div>

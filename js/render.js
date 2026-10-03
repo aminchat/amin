@@ -37,7 +37,7 @@ import {
   accountCurrentToman,
   institutionOf, baseCur, currencyInfo, curName, setTargetMonth } from './state.js';
 import { reflectRow } from './reflect.js';
-import { cardHtml, bankOf, curIconHtml } from './cards.js';
+import { cardHtml, bankOf, curIconHtml, exchangeOf, exchangeIconHtml } from './cards.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
@@ -651,7 +651,8 @@ export function renderAccounts() {
         <button type="button" class="acct-group-head" onclick="toggleAcctGroup('${esc(k).replace(/'/g, '&#39;')}')">
           ${(() => { const b = k === '__none' ? null : bankOf(accts.find((x) => bankOf(x)) || accts[0]); return b
             ? `<span class="ib bank-ib">${b.logo ? `<img src="${b.logo}" alt="">` : icon('card')}</span>`
-            : (() => { const cs = [...new Set(accts.map((x) => x.currency))]; return cs.length === 1 && cs[0] !== baseCur()
+            : (() => { const ex = k === '__none' ? null : exchangeOf(k); if (ex) return `<span class="ib bank-ib ex">${exchangeIconHtml(ex)}</span>`;
+              const cs = [...new Set(accts.map((x) => x.currency))]; return cs.length === 1 && cs[0] !== baseCur()
               ? `<span class="ib bank-ib">${curIconHtml(cs[0])}</span>`
               : `<span class="ib">${icon(k === '__none' ? 'folder' : institutionIconName(accts))}</span>`; })(); })()}
           <span style="flex:1;min-width:0;text-align:right">

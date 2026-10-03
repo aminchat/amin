@@ -1,4 +1,4 @@
-const CACHE = 'capital-app-v104';
+const CACHE = 'capital-app-v105';
 const ASSETS = [
   './',
   './index.html',
@@ -25,6 +25,13 @@ const ASSETS = [
   './js/notice.js',
   './js/scanhist.js',
   './js/cards.js',
+  './icons/ex/binance.svg',
+  './icons/ex/coinbase.svg',
+  './icons/ex/kucoin.svg',
+  './icons/ex/okx.svg',
+  './icons/ex/robinhood.svg',
+  './icons/ex/tradingview.svg',
+  './icons/ex/trezor.svg',
   './icons/banks/ansar.svg',
   './icons/banks/ayande.svg',
   './icons/banks/blu.svg',
