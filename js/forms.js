@@ -1391,7 +1391,7 @@ export function openQuickTx(opts) {
         if (typeof k === 'string') return `<button type="button" class="op" onclick="qaOp('${k}')">${k}</button>`;
         return `<button type="button" onclick="qaKey('${k}')">${toFa(k)}</button>`;
       }).join('')).join('')}
-      <button type="button" class="op eq" id="qaEq" onclick="qaEq()" style="display:none">=</button>
+      <button type="button" class="op eq off" id="qaEq" onclick="qaEq()">=</button>
     </div>
     <div class="qa-meta">
       <button type="button" class="btn sm" id="qaAcctBtn" onclick="qaPickAccount()">${icon('card')}<b id="qaAcctName">${acct ? esc(acctLabel(acct)) : '—'}</b></button>
@@ -1462,7 +1462,7 @@ function qaPaint() {
   const ex = document.getElementById('qaExpr');
   if (ex) ex.textContent = qa.expr ? qa.expr.replace(/[\d.]+/g, (n) => fmt(Number(n))) : '';
   const eq = document.getElementById('qaEq');
-  if (eq) eq.style.display = qa.expr ? '' : 'none';
+  if (eq) eq.classList.toggle('off', !qa.expr);
   const n = Number(qa.amount) || 0;
   disp.textContent = qa.amount ? fmt(n) + (qa.amount.endsWith('.') ? decSep() : /\.\d*0$/.test(qa.amount) ? '' : '') : toFa(0);
   if (qa.amount && /\.(\d*)$/.test(qa.amount) && !qa.amount.endsWith('.')) {
@@ -1472,6 +1472,10 @@ function qaPaint() {
   }
   disp.classList.toggle('empty', !n);
   if (words) words.textContent = amountWords(n).replace(/\s\S+$/, '');
+  // عدد بلند: فقط فونت کوچک می‌شود؛ ارتفاع کادر ثابت است تا صفحه‌کلید زیر دست جابه‌جا نشود
+  disp.style.fontSize = '';
+  let fs = 40, guard = 0;
+  while (disp.scrollWidth > disp.clientWidth + 1 && fs > 20 && guard++ < 20) { fs -= 2; disp.style.fontSize = fs + 'px'; }
 }
 
 export function qaKey(k) {

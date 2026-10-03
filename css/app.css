@@ -557,12 +557,12 @@ body.locked #bottomNav{display:none}
 
 /* ═══ ثبت سریع ═══ */
 .qa-amount{text-align:center;padding:var(--sp-2) 0 var(--sp-3)}
-.qa-amount .cur{font-size:var(--fs-sm);color:var(--muted);font-weight:600}
-.kbd-display{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1.1;min-height:48px;direction:ltr;unicode-bidi:isolate}
+.qa-amount .cur{font-size:var(--fs-sm);color:var(--muted);font-weight:600;height:20px;line-height:20px}
+.kbd-display{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:48px;height:48px;overflow:hidden;white-space:nowrap;direction:ltr;unicode-bidi:isolate}
 .kbd-display.empty{color:var(--faint)}
 .kbd-display .cursor{display:inline-block;width:2px;height:.9em;background:var(--accent);vertical-align:-.1em;margin-inline-end:2px;animation:blink 1s steps(2) infinite}
 @keyframes blink{to{opacity:0}}
-.qa-words{font-size:var(--fs-xs);color:var(--muted);min-height:18px;margin-top:2px}
+.qa-words{font-size:var(--fs-xs);color:var(--muted);height:18px;line-height:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px}
 .kbd{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2);direction:ltr;margin:var(--sp-2) 0}
 .kbd button{min-height:52px;border-radius:var(--r-md);background:var(--card2);font-size:22px;font-weight:700;color:var(--text);transition:background .1s,transform .1s;font-variant-numeric:tabular-nums}
 .kbd button:active{background:var(--border);transform:scale(.97)}
@@ -925,7 +925,8 @@ body.onboarding{overflow:hidden}
 .kbd.calc{grid-template-columns:repeat(4,1fr)}
 .kbd button.op{background:color-mix(in srgb,var(--accent) 12%,var(--card2));color:var(--accent);font-size:24px}
 .kbd button.eq{grid-column:1 / -1;background:var(--accent);color:#fff;min-height:44px}
-.qa-expr{min-height:20px;font-size:var(--fs-sm);color:var(--muted);direction:ltr;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.kbd button.eq.off{visibility:hidden;pointer-events:none}
+.qa-expr{height:20px;line-height:20px;overflow:hidden;white-space:nowrap;font-size:var(--fs-sm);color:var(--muted);direction:ltr;font-variant-numeric:tabular-nums;letter-spacing:.3px}
 input.money.calc{font-family:inherit;letter-spacing:.5px;color:var(--accent)}
 .money-words.calc{color:var(--accent);font-weight:700}
 
