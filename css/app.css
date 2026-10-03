@@ -983,7 +983,7 @@ a.btn.block{display:flex}
 .bc-bank{display:inline-flex;align-items:center;gap:8px}
 .bc-logo{width:28px;height:28px;object-fit:contain;background:#fff;border-radius:7px;padding:3px}
 .bcard.compact .bc-logo{width:24px;height:24px}
-.cur-ic{width:16px;height:16px;vertical-align:-3px;margin-inline-end:4px;border-radius:50%}
+.cur-ic{width:16px;height:16px;vertical-align:-3px;margin-inline-end:4px;border-radius:50%;font-family:inherit}
 .badge.cur{display:inline-flex;align-items:center;gap:2px}
 .bank-ib .cur-ic{width:100%;height:100%;margin:0}
 .sic .cur-ic{width:100%;height:100%;margin:0}

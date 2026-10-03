@@ -121,12 +121,30 @@ export function allBanks() {
   return Object.keys(BANKS).map(bankById);
 }
 
-// آیکن واحد پول (icons/cur/<CODE>.svg)
+// آیکن واحد پول: SVG درون‌خطی (نه <img>) تا نماد از فونت صفحه رندر شود و «مربع خالی» نشود
 import { currencyInfo } from './state.js';
-export function curIconSrc(cur) {
-  const code = (currencyInfo(cur) || {}).code || '';
-  return 'icons/cur/' + (/^[A-Z]{3,4}$/.test(code) ? code : 'other') + '.svg';
-}
+const CUR_ICONS = {
+  TMN: ['#0f766e', 'ت', 34], IRR: ['#0e7490', '﷼', 26], USD: ['#15803d', '$', 36], EUR: ['#1d4ed8', '€', 34], GBP: ['#7e22ce', '£', 34],
+  AED: ['#b45309', 'د.إ', 22], TRY: ['#b91c1c', '₺', 34], JPY: ['#be123c', '¥', 34], CNY: ['#dc2626', '¥', 34, '#fde047'], RUB: ['#1e40af', '₽', 32],
+  INR: ['#ea580c', '₹', 32], CAD: ['#dc2626', 'C$', 24], AUD: ['#0e7490', 'A$', 24], CHF: ['#dc2626', 'Fr', 24], IQD: ['#166534', 'ع.د', 20],
+  AFN: ['#0f766e', '؋', 32], AZN: ['#1d4ed8', '₼', 30], AMD: ['#ea580c', '֏', 30], OMR: ['#991b1b', 'ر.ع', 20], QAR: ['#7f1d1d', 'ر.ق', 20],
+  SAR: ['#166534', 'ر.س', 20], KWD: ['#1e3a8a', 'د.ك', 20], USDT: ['#26a17b', '₮', 36],
+};
+// نمادهایی که فونت‌ها اغلب ندارند، با مسیر کشیده می‌شوند
+const CUR_PATHS = {
+  BTC: '<circle cx="32" cy="32" r="30" fill="#f7931a"/><g fill="#fff"><path d="M27 15h4v5h3v-5h4v5.3c4.6.6 7.6 2.9 7.6 7 0 2.9-1.6 4.9-3.9 5.8 3.1.8 5.1 3.1 5.1 6.6 0 4.9-3.7 7.6-9 8.1V49h-4v-5h-3v5h-4v-5h-6l.8-4.7h2.4c.9 0 1.4-.5 1.4-1.4V26.1c0-.9-.5-1.4-1.4-1.4h-3.2V20h6z"/></g><g fill="#f7931a"><path d="M30 24.5v6.8h4.4c2.6 0 4-1.3 4-3.4 0-2.2-1.5-3.4-4.3-3.4z"/><path d="M30 35.2v7.4h5.2c3 0 4.6-1.3 4.6-3.7 0-2.4-1.7-3.7-4.9-3.7z"/></g>',
+  ETH: '<circle cx="32" cy="32" r="30" fill="#627eea"/><path fill="#fff" fill-opacity=".6" d="M32 10v16.3l13.8 6.2z"/><path fill="#fff" d="M32 10 18.2 32.5 32 26.3z"/><path fill="#fff" fill-opacity=".6" d="M32 42.6V54l13.8-19.1z"/><path fill="#fff" d="M32 54V42.6L18.2 34.9z"/><path fill="#fff" fill-opacity=".2" d="m32 40 13.8-7.5L32 26.3z"/><path fill="#fff" fill-opacity=".6" d="m18.2 32.5 13.8 7.5V26.3z"/>',
+  XAU: '<circle cx="32" cy="32" r="30" fill="#b45309"/><path fill="#fbbf24" d="M14 44h18l-3-12H17z"/><path fill="#f59e0b" d="M32 44h18l-3-12H35z"/><path fill="#fcd34d" d="M23 30h18l-3-12H26z"/>',
+  USDT: '<circle cx="32" cy="32" r="30" fill="#26a17b"/><path fill="#fff" d="M18 17h28v7H36v4.2c7.6.4 13 1.9 13 3.8s-5.4 3.4-13 3.8V49h-8V35.8c-7.6-.4-13-1.9-13-3.8s5.4-3.4 13-3.8V24H18zm10 10.7v3.1c1.3.1 2.6.1 4 .1s2.7 0 4-.1v-3.1c-1.3-.1-2.6-.1-4-.1s-2.7 0-4 .1z"/>',
+  other: '<circle cx="32" cy="32" r="30" fill="#64748b"/><circle cx="32" cy="32" r="14" fill="none" stroke="#fff" stroke-width="5"/>',
+};
 export function curIconHtml(cur, cls) {
-  return `<img class="${cls || 'cur-ic'}" src="${curIconSrc(cur)}" alt="" onerror="this.src='icons/cur/other.svg'">`;
+  const code = (currencyInfo(cur) || {}).code || '';
+  let inner = CUR_PATHS[code];
+  if (!inner) {
+    const c = CUR_ICONS[code];
+    if (c) inner = `<circle cx="32" cy="32" r="30" fill="${c[0]}"/><text x="32" y="33" text-anchor="middle" dominant-baseline="central" font-size="${c[2]}" font-weight="700" fill="${c[3] || '#fff'}">${c[1]}</text>`;
+    else inner = CUR_PATHS.other;
+  }
+  return `<svg class="${cls || 'cur-ic'}" viewBox="0 0 64 64" aria-hidden="true">${inner}</svg>`;
 }
