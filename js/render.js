@@ -650,7 +650,7 @@ export function renderAccounts() {
       html += `<div class="card acct-group ${open ? 'open' : ''}" style="padding:0;overflow:hidden">
         <button type="button" class="acct-group-head" onclick="toggleAcctGroup('${esc(k).replace(/'/g, '&#39;')}')">
           ${(() => { const b = k === '__none' ? null : bankOf(accts.find((x) => bankOf(x)) || accts[0]); return b
-            ? `<span class="ib bank-ib" style="background:linear-gradient(135deg,${b.dark},${b.light});color:#fff">${icon('card')}</span>`
+            ? `<span class="ib bank-ib">${b.logo ? `<img src="${b.logo}" alt="">` : icon('card')}</span>`
             : `<span class="ib">${icon(k === '__none' ? 'folder' : institutionIconName(accts))}</span>`; })()}
           <span style="flex:1;min-width:0;text-align:right">
             <span class="t1" style="font-size:14.5px;display:block">${esc(label)}</span>
