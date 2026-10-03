@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دفتر مادرخرج گروهی</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#273449; --line:#334155;
+    --text:#e2e8f0; --muted:#94a3b8;
+    --green:#22c55e; --green-bg:rgba(34,197,94,.15);
+    --red:#ef4444; --red-bg:rgba(239,68,68,.15);
+    --accent:#38bdf8; --accent-bg:rgba(56,189,248,.15);
+    --amber:#f59e0b; --amber-bg:rgba(245,158,11,.15);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:system-ui,"Segoe UI",Tahoma,"Vazirmatn",sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+    padding:24px 16px 60px;line-height:1.6;
+  }
+  .wrap{max-width:920px;margin:0 auto}
+  header{text-align:center;margin-bottom:20px}
+  header h1{font-size:26px;font-weight:800}
+  header p{color:var(--muted);font-size:13px;margin-top:4px}
+  header p .date{color:var(--accent)}
+
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .card .label{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .card .value{font-size:20px;font-weight:800}
+  .card .value small{font-size:11px;font-weight:400;color:var(--muted)}
+  .card.balance .value{color:var(--accent)}
+  .card.dep .value{color:var(--green)}
+  .card.exp .value{color:var(--red)}
+  .card.mem .value{color:var(--amber)}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:18px}
+  .panel h2{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .panel h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+  /* members */
+  .member-add{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .member-add input{flex:1;min-width:140px}
+  .member-list{display:flex;flex-direction:column;gap:8px}
+  .member{
+    display:flex;align-items:center;gap:10px;
+    background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:10px 14px;
+  }
+  .member .avatar{
+    width:38px;height:38px;border-radius:10px;background:var(--accent-bg);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:var(--accent);flex-shrink:0;
+  }
+  .member .m-info{flex:1;min-width:0}
+  .member .m-name{font-weight:700;font-size:14px}
+  .member .m-sub{font-size:11px;color:var(--muted)}
+  .member.left{opacity:.6}
+  .badge{font-size:10px;padding:2px 9px;border-radius:999px;font-weight:700}
+  .badge.active{background:var(--green-bg);color:var(--green)}
+  .badge.left{background:var(--red-bg);color:var(--red)}
+  .mini-btn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;
+    padding:5px 10px;font-size:11px;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap}
+  .mini-btn:hover{color:var(--text);border-color:var(--muted)}
+  .mini-btn.danger:hover{color:var(--red);border-color:var(--red)}
+  .member.edit-row{flex-wrap:wrap}
+  .member .edit-fields{display:flex;gap:8px;flex:1;flex-wrap:wrap}
+  .member .edit-fields input{flex:1;min-width:130px;padding:7px 10px;font-size:13px}
+
+  /* form */
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--card2);border-radius:10px;padding:4px;margin-bottom:14px}
+  .seg button{border:none;background:transparent;color:var(--muted);cursor:pointer;padding:9px;border-radius:8px;font-size:14px;font-weight:700;font-family:inherit;transition:.15s}
+  .seg button.active-exp{background:var(--red);color:#fff}
+  .seg button.active-dep{background:var(--green);color:#04120a}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+  .field label{font-size:12px;color:var(--muted);font-weight:600}
+  input,select{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:10px;
+    padding:10px 12px;font-size:14px;font-family:inherit;width:100%;outline:none;transition:border-color .15s}
+  input:focus,select:focus{border-color:var(--accent)}
+  input::placeholder{color:var(--muted)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:6px 14px;
+    font-size:13px;cursor:pointer;color:var(--muted);transition:.15s;user-select:none}
+  .chip.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+
+  .hint{font-size:11px;color:var(--muted);background:var(--card2);border-radius:8px;padding:8px 12px;margin-bottom:12px;border:1px dashed var(--line)}
+  .hint b{color:var(--amber)}
+
+  .btn{border:none;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn.primary{background:var(--accent);color:#04121f;width:100%}
+  .btn.primary:hover{filter:brightness(1.08)}
+
+  /* report table */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-size:11px;font-weight:700}
+  td.num{text-align:left;font-variant-numeric:tabular-nums;font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  .net-badge{padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+  .net-badge.pos{background:var(--green-bg)} .net-badge.neg{background:var(--red-bg)}
+
+  .settle{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .settle-item{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);
+    border-radius:10px;padding:10px 14px;font-size:13px}
+  .settle-item .arrow{color:var(--accent);font-size:16px}
+  .settle-item .amt{font-weight:800;margin-right:auto;color:var(--amber)}
+
+  /* tx list */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .filters select,.filters input{width:auto;flex:1;min-width:120px}
+  .tx-list{display:flex;flex-direction:column;gap:8px}
+  .tx{display:flex;align-items:center;gap:12px;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px 14px}
+  .tx .ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .tx.dep .ic{background:var(--green-bg)} .tx.exp .ic{background:var(--red-bg)}
+  .tx .info{flex:1;min-width:0}
+  .tx .info .d{font-weight:700;font-size:13.5px}
+  .tx .info .m{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tx .amt{font-weight:800;font-size:14px;white-space:nowrap}
+  .tx.dep .amt{color:var(--green)} .tx.exp .amt{color:var(--red)}
+  .tx .del{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:6px;border-radius:8px}
+  .tx .del:hover{color:var(--red);background:var(--red-bg)}
+  .empty{text-align:center;color:var(--muted);padding:34px 10px;font-size:13.5px}
+
+  .tag{font-size:10px;padding:2px 8px;border-radius:999px;background:var(--card);color:var(--muted);border:1px solid var(--line)}
+
+  footer{text-align:center;color:var(--muted);font-size:11px;margin-top:24px;line-height:1.8}
+  @media(max-width:600px){
+    .summary{grid-template-columns:1fr 1fr}
+    .grid{grid-template-columns:1fr}
+    .filters select,.filters input{min-width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>👥 دفتر مادرخرج گروهی</h1>
+    <p>مدیریت خرج مشترک سفر — امروز: <span class="date" id="todayLabel"></span></p>
+  </header>
+
+  <div class="summary">
+    <div class="card balance"><div class="label">موجودی صندوق</div><div class="value" id="sBalance">۰ <small>تومان</small></div></div>
+    <div class="card dep"><div class="label">کل واریزی</div><div class="value" id="sDep">۰ <small>تومان</small></div></div>
+    <div class="card exp"><div class="label">کل خرج</div><div class="value" id="sExp">۰ <small>تومان</small></div></div>
+    <div class="card mem"><div class="label">مجموع نفرات (با ضریب)</div><div class="value" id="sMem">۰ <small>نفر</small></div></div>
+  </div>
+
+  <!-- ================= اعضا ================= -->
+  <div class="panel">
+    <h2><span class="dot"></span> اعضای گروه</h2>
+    <div class="member-add">
+      <div class="field" style="flex:2;min-width:150px;margin-bottom:0">
+        <label>نام عضو</label>
+        <input type="text" id="memName" placeholder="مثلاً علی">
+      </div>
+      <div class="field" style="flex:1.2;min-width:140px;margin-bottom:0">
+        <label>تاریخ ورود به گروه</label>
+        <input type="date" id="memJoin">
+      </div>
+      <div class="field" style="flex:0.8;min-width:90px;margin-bottom:0">
+        <label>تعداد / ضریب</label>
+        <input type="number" id="memWeight" value="1" step="0.1" min="0.1" title="مثلاً زوج=2، بچه‌ی کوچک=0.5">
+      </div>
+      <button class="btn primary" style="width:auto;padding:10px 18px;align-self:flex-end" id="addMemBtn">➕ افزودن</button>
+    </div>
+    <div class="member-list" id="memberList"></div>
+    <div class="hint" style="margin-top:12px">
+      📅 <b>تاریخ ورود خیلی مهمه:</b> هر عضو فقط در خرج‌هایی شریک می‌شه که <b>بعد از تاریخ ورودش</b> اتفاق افتاده باشه.
+      پس اگه کسی <b>وسط سفر</b> اومده، تاریخ ورودش رو همون روزِ واقعیِ ورود بذار تا خرج‌های قبلی به حسابش نیاد.
+      اگه اشتباه وارد کردی، با دکمهٔ «ویرایش» اصلاحش کن.
+      <br>⚠️ <b>خروج وسط سفر:</b> با دکمهٔ «خروج» حسابش <b>منجمد</b> می‌شه و از اون تاریخ به بعد در خرج‌ها شریک نیست.
+      <br>👥 <b>تعداد / ضریب:</b> می‌تونی چند نفر رو به‌عنوان یک عضو در نظر بگیری. مثلاً <b>زوج = 2</b> (هزینه دوبرابر)، یا <b>بچهٔ کوچک = 0.5</b> (نصف هزینه). سهم هر نفر بر اساس همین ضریب محاسبه می‌شه.
+    </div>
+  </div>
+
+  <!-- ================= ثبت ================= -->
+  <div class="panel">
+    <h2><span class="dot"></span> ثبت تراکنش</h2>
+    <div class="seg">
+      <button id="segExp" class="active-exp">💸 خرج</button>
+      <button id="segDep">💰 واریز به صندوق</button>
+    </div>
+
+    <!-- خرج -->
+    <div id="expForm">
+      <div class="grid">
+        <div class="field"><label>مبلغ (تومان)</label><input type="text" id="expAmount" inputmode="numeric" placeholder="مثلاً 250000"></div>
+        <div class="field"><label>تاریخ</label><input type="date" id="expDate"></div>
+      </div>
+      <div class="field"><label>دسته‌بندی</label><div class="chips" id="catChips"></div></div>
+      <div class="field"><label>چه کسی پرداخت کرد؟</label><select id="expPayer"></select></div>
+      <div class="field"><label>شرح (اختیاری)</label><input type="text" id="expDesc" placeholder="مثلاً ناهار، بنزین..."></div>
+      <div class="hint" id="splitHint"></div>
+      <button class="btn primary" id="addExpBtn">➕ ثبت خرج</button>
+    </div>
+
+    <!-- واریز -->
+    <div id="depForm" style="display:none">
+      <div class="grid">
+        <div class="field"><label>مبلغ (تومان)</label><input type="text" id="depAmount" inputmode="numeric" placeholder="مثلاً 500000"></div>
+        <div class="field"><label>تاریخ</label><input type="date" id="depDate"></div>
+      </div>
+      <div class="field"><label>چه کسی واریز کرد؟</label><select id="depMember"></select></div>
+      <div class="field"><label>شرح (اختیاری)</label><input type="text" id="depDesc" placeholder="مثلاً سهم اولیه"></div>
+      <button class="btn primary" id="addDepBtn">➕ ثبت واریز</button>
+    </div>
+  </div>
+
+  <!-- ================= گزارش ================= -->
+  <div class="panel">
+    <h2><span class="dot"></span> گزارش و تسویهٔ نهایی</h2>
+    <div id="reportBody"></div>
+  </div>
+
+  <!-- ================= تراکنش‌ها ================= -->
+  <div class="panel">
+    <h2><span class="dot"></span> تراکنش‌ها</h2>
+    <div class="filters">
+      <select id="fType">
+        <option value="all">همهٔ انواع</option>
+        <option value="exp">فقط خرج</option>
+        <option value="dep">فقط واریز</option>
+      </select>
+      <select id="fMember"><option value="all">همهٔ اعضا</option></select>
+      <input type="text" id="fSearch" placeholder="جستجو در شرح...">
+    </div>
+    <div class="tx-list" id="txList"></div>
+  </div>
+
+  <!-- ================= پشتیبان‌گیری ================= -->
+  <div class="panel">
+    <h2><span class="dot"></span> پشتیبان‌گیری (بکاپ)</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      داده‌هایت فقط داخل همین مرورگر ذخیره می‌شوند و با پاک‌شدن حافظهٔ مرورگر از بین می‌روند.
+      برای اینکه از دستشان ندهی، یک نسخهٔ بکاپ (فایل HTML کامل شامل همهٔ داده‌ها) دانلود کن و جایی امن نگه دار.
+      برای بازیابی، فقط همان فایل را باز کن و ادامه بده.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <button class="btn primary" id="exportBtn" style="width:auto">⬇️ دانلود بکاپ (HTML)</button>
+      <span id="backupStatus" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div class="hint" id="backupWarn" style="display:none;margin-bottom:0">
+      ⚠️ <b>بعد از آخرین بکاپ، تغییری داده‌ای.</b> قبل از بستن صفحه، یک بکاپ جدید بگیر تا چیزی از دست نرود.
+    </div>
+  </div>
+
+  <footer>هر خرج به‌طور خودکار بین اعضای حاضر در همان تاریخ تقسیم می‌شود. · داده‌ها روی همین مرورگر (localStorage) ذخیره می‌شوند.</footer>
+</div>
+
+<script>
+/* ================= تقویم شمسی ================= */
+function toJalali(gy,gm,gd){
+  const g_d_m=[0,31,59,90,120,151,181,212,243,273,304,334];
+  let jy = (gy<=1600)?0:979; gy -= (gy<=1600)?621:1600;
+  const gy2 = (gm>2)?(gy+1):gy;
+  let days = (365*gy) + Math.floor((gy2+3)/4) - Math.floor((gy2+99)/100)
+           + Math.floor((gy2+399)/400) - 80 + gd + g_d_m[gm-1];
+  jy += 33*Math.floor(days/12053); days %= 12053;
+  jy += 4*Math.floor(days/1461); days %= 1461;
+  if(days>365){ jy += Math.floor((days-1)/365); days = (days-1)%365; }
+  const jm = (days<186)? 1+Math.floor(days/31) : 7+Math.floor((days-186)/30);
+  const jd = 1+((days<186)? (days%31) : ((days-186)%30));
+  return {jy,jm,jd};
+}
+function toGregorian(jy,jm,jd){
+  jy += 1595;
+  let days = -355668 + (365*jy) + (Math.floor(jy/33)*8)
+           + Math.floor(((jy%33)+3)/4) + jd + ((jm<7)? (jm-1)*31 : ((jm-7)*30)+186);
+  let gy = 400*Math.floor(days/146097); days %= 146097;
+  if(days>36524){ gy += 100*Math.floor(--days/36524); days %= 36524; if(days>=365)days++; }
+  gy += 4*Math.floor(days/1461); days %= 1461;
+  if(days>365){ gy += Math.floor((days-1)/365); days = (days-1)%365; }
+  let gd = days+1;
+  const sal_a=[0,31,((gy%4==0&&gy%100!=0)||(gy%400==0))?29:28,31,30,31,30,31,31,30,31,30,31];
+  let gm = 0;
+  while(gm<13 && gd>sal_a[gm]){ gd -= sal_a[gm]; gm++; }
+  return {gy,gm,gd};
+}
+const JMONTHS = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+const JWEEK = ["یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه","شنبه"];
+function fmt(n){ return Math.round(n).toLocaleString("fa-IR"); }
+function fmtJalali(jy,jm,jd){ return jd + " " + JMONTHS[jm-1] + " " + jy; }
+function todayISO(){ const t=new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`; }
+function isoToJalali(iso){ if(!iso) return null; const [gy,gm,gd]=iso.split("-").map(Number); return toJalali(gy,gm,gd); }
+function fmtJalaliFromISO(iso){ const j=isoToJalali(iso); return j?fmtJalali(j.jy,j.jm,j.jd):""; }
+
+/* ================= داده ================= */
+const STORAGE_KEY = "madarkharj_group_v1";
+const EXPENSE_CATS = [
+  {id:"food",label:"🍔 خوراک"},{id:"home",label:"🏠 مسکن"},{id:"transport",label:"🚗 حمل‌ونقل"},
+  {id:"health",label:"💊 درمان"},{id:"clothes",label:"👕 پوشاک"},{id:"edu",label:"📚 آموزش"},
+  {id:"fun",label:"🎮 تفریح"},{id:"bill",label:"🧾 قبوض"},{id:"other",label:"📦 متفرقه"},
+];
+const $ = id => document.getElementById(id);
+
+let members = [];   // {id, name, joinedDate, leftDate}
+let txs = [];       // {id, kind:"exp"|"dep", amount, date, cat?, desc, payerId?, memberId?}
+let mode = "exp";
+let selectedCat = "food";
+let dirty = false;   // آیا از آخرین بکاپ، تغییری داده شده؟
+const BACKUP_KEY = "madarkharj_last_backup";
+
+function load(){
+  // اگر فایل خروجی (exported) باز شده، داده‌ها را یک بار از داخل فایل بذرگذاری کن
+  if(!localStorage.getItem(STORAGE_KEY)){
+    const el = document.getElementById("appData");
+    if(el && el.textContent){
+      try{ localStorage.setItem(STORAGE_KEY, el.textContent); }catch(e){}
+    }
+  }
+  try{ const raw=localStorage.getItem(STORAGE_KEY); if(raw){ const d=JSON.parse(raw); members=d.members||[]; txs=d.txs||[]; } }catch(e){}
+}
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({members, txs})); }catch(e){}
+  dirty = true;
+}
+
+/* ================= منطق ================= */
+function isActive(m){ return !m.leftDate; }
+function presentOn(dateISO){
+  return members.filter(m => {
+    // اگر تاریخ ورود ثبت نشده، فرض می‌کنیم از ابتدای سفر حاضر بوده
+    const joined = m.joinedDate || "0000-01-01";
+    // حاضر است اگر: قبل از تاریخِ موردنظر وارد شده باشد و (هنوز خارج نشده یا بعد از آن تاریخ خارج شده)
+    return joined <= dateISO && (!m.leftDate || dateISO < m.leftDate);
+  });
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function weightOf(m){ const w = parseFloat(m.weight); return (isFinite(w) && w > 0) ? w : 1; }
+
+function compute(){
+  const map = {};
+  members.forEach(m => map[m.id] = {id:m.id, name:m.name, weight:weightOf(m), dep:0, paid:0, share:0, active:!m.leftDate, leftDate:m.leftDate, joinedDate:m.joinedDate});
+  txs.forEach(t=>{
+    if(t.kind==="dep"){
+      if(map[t.memberId]) map[t.memberId].dep += t.amount;
+    } else { // exp
+      const present = presentOn(t.date);
+      if(present.length===0) return;
+      const totalWeight = present.reduce((s,m)=> s + weightOf(m), 0);
+      if(totalWeight <= 0) return;
+      present.forEach(m => { if(map[m.id]) map[m.id].share += t.amount * weightOf(m) / totalWeight; });
+      if(map[t.payerId]) map[t.payerId].paid += t.amount;
+    }
+  });
+  Object.values(map).forEach(v => v.net = v.dep + v.paid - v.share);
+  return Object.values(map);
+}
+
+function settlement(){
+  const rows = compute();
+  const creditors = rows.filter(r=>r.net > 0.009).map(r=>({name:r.name, net:r.net}));
+  const debtors = rows.filter(r=>r.net < -0.009).map(r=>({name:r.name, net:-r.net}));
+  creditors.sort((a,b)=>b.net-a.net);
+  debtors.sort((a,b)=>b.net-a.net);
+  const tr=[]; let i=0,j=0;
+  while(i<creditors.length && j<debtors.length){
+    const c=creditors[i], d=debtors[j];
+    const amt=Math.min(c.net, d.net);
+    if(amt>0.009){ tr.push({from:d.name, to:c.name, amt:Math.round(amt)}); }
+    c.net-=amt; d.net-=amt;
+    if(c.net<0.009)i++; if(d.net<0.009)j++;
+  }
+  return tr;
+}
+
+/* ================= رندر: اعضا ================= */
+let editingId = null;
+
+function renderMembers(){
+  const list = $("memberList");
+  if(members.length===0){
+    list.innerHTML = '<div class="empty">هنوز عضوی اضافه نشده. اول اعضای گروه رو وارد کن 👆</div>';
+    editingId = null;
+  } else {
+    list.innerHTML = members.map(m=>{
+      const left = !!m.leftDate;
+      if(editingId === m.id){
+        return `
+      <div class="member edit-row">
+        <div class="avatar">${esc(m.name.trim().charAt(0)) || "؟"}</div>
+        <div class="edit-fields">
+          <input type="text" data-e="name" value="${esc(m.name)}" placeholder="نام">
+          <input type="date" data-e="joined" value="${m.joinedDate||''}" title="تاریخ ورود">
+          <input type="number" data-e="weight" value="${weightOf(m)}" step="0.1" min="0.1" title="تعداد / ضریب">
+          ${left ? `<input type="date" data-e="left" value="${m.leftDate||''}" title="تاریخ خروج">` : ''}
+        </div>
+        <button class="mini-btn" data-act="save" data-id="${m.id}">ذخیره ✓</button>
+        <button class="mini-btn" data-act="cancel">انصراف</button>
+      </div>`;
+      }
+      const sub = (m.joinedDate ? `ورود: ${fmtJalaliFromISO(m.joinedDate)}` : "⚠️ بدون تاریخ ورود")
+        + (left ? ` · خروج: ${fmtJalaliFromISO(m.leftDate)}` : "");
+      const badge = left ? '<span class="badge left">منجمد (خارج شده)</span>' : '<span class="badge active">حاضر</span>';
+      return `
+      <div class="member ${left?'left':''}">
+        <div class="avatar">${m.name.trim().charAt(0) || "؟"}</div>
+        <div class="m-info">
+          <div class="m-name">${m.name} ${badge} <span class="tag">ضریب ${fmtWeight(weightOf(m))}</span></div>
+          ${sub?`<div class="m-sub">${sub}</div>`:""}
+        </div>
+        ${!left
+          ? `<button class="mini-btn danger" data-act="leave" data-id="${m.id}">خروج 🚪</button>`
+          : `<button class="mini-btn" data-act="rejoin" data-id="${m.id}">برگشت ↩️</button>`}
+        <button class="mini-btn" data-act="edit" data-id="${m.id}">ویرایش ✏️</button>
+        <button class="mini-btn" data-act="del" data-id="${m.id}">حذف</button>
+      </div>`;
+    }).join("");
+  }
+  // رویدادها
+  list.querySelectorAll("button[data-act]").forEach(b=>{
+    b.onclick = ()=>{
+      const id = Number(b.dataset.id);
+      const act = b.dataset.act;
+      const m = members.find(x=>x.id===id);
+      if(act==="leave"){
+        if(confirm(`«${m.name}» از گروه خارج می‌شود؟\nحسابش منجمد می‌شود و از این پس در خرج‌ها شریک نیست.`)){
+          m.leftDate = todayISO();
+          save(); refresh();
+        }
+      } else if(act==="rejoin"){
+        m.leftDate = null;
+        save(); refresh();
+      } else if(act==="edit"){
+        editingId = id;
+        renderMembers();
+      } else if(act==="cancel"){
+        editingId = null;
+        renderMembers();
+      } else if(act==="save"){
+        const row = b.closest(".member");
+        const nameInp = row.querySelector('[data-e="name"]');
+        const joinInp = row.querySelector('[data-e="joined"]');
+        const weightInp = row.querySelector('[data-e="weight"]');
+        const leftInp = row.querySelector('[data-e="left"]');
+        const newName = nameInp.value.trim();
+        if(!newName){ alert("نام نمی‌تواند خالی باشد."); return; }
+        const w = parseFloat(weightInp.value);
+        if(!isFinite(w) || w <= 0){ alert("ضریب باید عددی بزرگ‌تر از صفر باشد."); return; }
+        m.name = newName;
+        m.joinedDate = joinInp.value || m.joinedDate;
+        m.weight = w;
+        if(leftInp) m.leftDate = leftInp.value || null;
+        editingId = null;
+        save(); refresh();
+      } else if(act==="del"){
+        if(confirm(`«${m.name}» حذف شود؟ (تراکنش‌هایش حذف نمی‌شود)`)){
+          members = members.filter(x=>x.id!==id);
+          save(); refresh();
+        }
+      }
+    };
+  });
+  refreshSelects();
+}
+
+function refreshSelects(){
+  const opts = members.map(m=>`<option value="${m.id}">${m.name}${m.leftDate?" (خارج شده)":""}</option>`).join("");
+  $("expPayer").innerHTML = opts || '<option value="">— عضوی وجود ندارد —</option>';
+  $("depMember").innerHTML = opts || '<option value="">— عضوی وجود ندارد —</option>';
+  const fM = $("fMember");
+  const cur = fM.value;
+  fM.innerHTML = '<option value="all">همهٔ اعضا</option>' + members.map(m=>`<option value="${m.id}">${m.name}</option>`).join("");
+  if(members.some(m=>String(m.id)===cur)) fM.value = cur;
+}
+
+/* ================= رندر: فرم ================= */
+function renderChips(){
+  const el = $("catChips");
+  el.innerHTML = EXPENSE_CATS.map(c=>
+    `<button type="button" class="chip ${c.id===selectedCat?'on':''}" data-cat="${c.id}">${c.label}</button>`
+  ).join("");
+  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ selectedCat=b.dataset.cat; renderChips(); });
+}
+
+function fmtWeight(w){
+  w = Math.round(w * 10) / 10;
+  return (w % 1 === 0) ? String(w) : w.toLocaleString("fa-IR");
+}
+
+function updateSplitHint(){
+  const d = $("expDate").value;
+  if(!d){ $("splitHint").innerHTML = "تاریخ را انتخاب کنید."; return; }
+  const present = presentOn(d);
+  if(present.length===0){
+    $("splitHint").innerHTML = '<b>هیچ عضوی در این تاریخ حاضر نبوده.</b> تاریخ یا تاریخ ورود/خروج اعضا را بررسی کنید.';
+  } else {
+    const totalW = present.reduce((s,m)=> s + weightOf(m), 0);
+    const names = present.map(m=> `${m.name} (ضریب ${fmtWeight(weightOf(m))})`).join("، ");
+    $("splitHint").innerHTML = `این خرج بین <b>${present.length} عضو</b> با مجموع وزن <b>${fmtWeight(totalW)}</b> تقسیم می‌شود: ${names}`;
+  }
+}
+
+/* ================= رندر: گزارش ================= */
+function renderReport(){
+  const rows = compute();
+  const body = $("reportBody");
+  const totalDep = txs.filter(t=>t.kind==="dep").reduce((s,t)=>s+t.amount,0);
+  const totalExp = txs.filter(t=>t.kind==="exp").reduce((s,t)=>s+t.amount,0);
+  const activeWeight = members.filter(isActive).reduce((s,m)=> s + weightOf(m), 0);
+
+  $("sBalance").innerHTML = fmt(totalDep-totalExp)+' <small>تومان</small>';
+  $("sDep").innerHTML = fmt(totalDep)+' <small>تومان</small>';
+  $("sExp").innerHTML = fmt(totalExp)+' <small>تومان</small>';
+  $("sMem").innerHTML = fmtWeight(activeWeight)+' <small>نفر</small>';
+
+  if(rows.length===0){
+    body.innerHTML = '<div class="empty">برای دیدن گزارش، ابتدا اعضا و تراکنش‌ها را وارد کنید.</div>';
+    return;
+  }
+
+  let html = `
+  <table>
+    <thead><tr>
+      <th>عضو</th><th>ضریب</th><th>وضعیت</th><th>واریزی</th><th>پرداخت خرج</th><th>سهم از خرج‌ها</th><th>خالص</th>
+    </tr></thead>
+    <tbody>`;
+  rows.forEach(r=>{
+    const netCls = r.net > 0.009 ? "pos" : (r.net < -0.009 ? "neg" : "");
+    const netTxt = r.net > 0.009 ? `+${fmt(r.net)}` : (r.net < -0.009 ? `−${fmt(Math.abs(r.net))}` : "۰");
+    const netLabel = r.net > 0.009 ? "طلبکار" : (r.net < -0.009 ? "بدهکار" : "تسویه");
+    html += `<tr>
+      <td><b>${r.name}</b>${r.joinedDate ? `<div style="font-size:10px;color:var(--muted)">ورود: ${fmtJalaliFromISO(r.joinedDate)}${r.leftDate?` · خروج: ${fmtJalaliFromISO(r.leftDate)}`:""}</div>` : ''}</td>
+      <td class="num">${fmtWeight(r.weight)}</td>
+      <td>${r.active?'<span class="badge active">حاضر</span>':'<span class="badge left">منجمد</span>'}</td>
+      <td class="num">${fmt(r.dep)}</td>
+      <td class="num">${fmt(r.paid)}</td>
+      <td class="num">${fmt(r.share)}</td>
+      <td class="num ${netCls}"><span class="net-badge ${netCls}">${netLabel} ${netTxt}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+
+  // تسویه
+  const tr = settlement();
+  if(tr.length>0){
+    html += `<h2 style="margin-top:18px;font-size:14px">💱 تسویهٔ نهایی (کمترین تعداد پرداخت)</h2><div class="settle">`;
+    tr.forEach(t=>{
+      html += `<div class="settle-item">
+        <span>${t.from}</span><span class="arrow">← بدهد به ←</span><span>${t.to}</span>
+        <span class="amt">${fmt(t.amt)} تومان</span>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="hint" style="margin-top:16px">✅ همهٔ حساب‌ها تسویه است؛ هیچ‌کس به کسی بدهی ندارد.</div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+/* ================= رندر: تراکنش‌ها ================= */
+function renderTxs(){
+  const fType=$("fType").value, fMember=$("fMember").value, fSearch=$("fSearch").value.trim();
+  const list=$("txList");
+  let filtered = txs.filter(t=>{
+    if(fType!=="all" && t.kind!==fType) return false;
+    const mid = t.kind==="dep" ? t.memberId : t.payerId;
+    if(fMember!=="all" && String(mid)!==fMember) return false;
+    if(fSearch && !(t.desc||"").includes(fSearch)) return false;
+    return true;
+  });
+  filtered.sort((a,b)=>{
+    if(a.date!==b.date) return a.date<b.date?1:-1;
+    return b.id-a.id;
+  });
+
+  const mname = id => { const m=members.find(x=>x.id===id); return m?m.name:"؟"; };
+
+  if(filtered.length===0){
+    list.innerHTML='<div class="empty">تراکنشی ثبت نشده.</div>'; return;
+  }
+  list.innerHTML = filtered.map(t=>{
+    if(t.kind==="dep"){
+      return `<div class="tx dep">
+        <div class="ic">💰</div>
+        <div class="info">
+          <div class="d">واریز ${mname(t.memberId)} ${t.desc?`— ${t.desc}`:""}</div>
+          <div class="m">${fmtJalaliFromISO(t.date)}</div>
+        </div>
+        <div class="amt">+${fmt(t.amount)}</div>
+        <button class="del" data-id="${t.id}">🗑️</button>
+      </div>`;
+    } else {
+      const cat = EXPENSE_CATS.find(c=>c.id===t.cat);
+      return `<div class="tx exp">
+        <div class="ic">💸</div>
+        <div class="info">
+          <div class="d">${t.desc || (cat?cat.label:"خرج")} <span class="tag">${cat?cat.label:""}</span></div>
+          <div class="m">${fmtJalaliFromISO(t.date)} · پرداخت: ${mname(t.payerId)}</div>
+        </div>
+        <div class="amt">−${fmt(t.amount)}</div>
+        <button class="del" data-id="${t.id}">🗑️</button>
+      </div>`;
+    }
+  }).join("");
+
+  list.querySelectorAll(".del").forEach(b=>{
+    b.onclick=()=>{
+      const id=Number(b.dataset.id);
+      if(confirm("این تراکنش حذف شود؟")){
+        txs=txs.filter(t=>t.id!==id);
+        save(); refresh();
+      }
+    };
+  });
+}
+
+/* ================= رویدادها ================= */
+$("addMemBtn").onclick=()=>{
+  const name=$("memName").value.trim();
+  if(!name){ alert("نام عضو را وارد کنید."); $("memName").focus(); return; }
+  const joinedDate=$("memJoin").value || todayISO();
+  const w = parseFloat($("memWeight").value);
+  const weight = (isFinite(w) && w > 0) ? w : 1;
+  members.push({id:Date.now(), name, joinedDate, leftDate:null, weight});
+  $("memName").value="";
+  $("memWeight").value="1";
+  save(); refresh();
+};
+
+$("segExp").onclick=()=>setMode("exp");
+$("segDep").onclick=()=>setMode("dep");
+function setMode(m){
+  mode=m;
+  $("segExp").className = m==="exp"?"active-exp":"";
+  $("segDep").className = m==="dep"?"active-dep":"";
+  $("expForm").style.display = m==="exp"?"block":"none";
+  $("depForm").style.display = m==="dep"?"block":"none";
+}
+
+// فرمت عدد
+[["expAmount"],["depAmount"]].forEach(([id])=>{
+  $(id).addEventListener("input",e=>{
+    let v=e.target.value.replace(/[^0-9]/g,"");
+    if(v) e.target.value=Number(v).toLocaleString("en-US");
+  });
+});
+
+function parseAmount(el){
+  const raw=el.value.replace(/[^0-9]/g,"");
+  return Number(raw);
+}
+
+$("addExpBtn").onclick=()=>{
+  const amount=parseAmount($("expAmount"));
+  const date=$("expDate").value;
+  const payerId=Number($("expPayer").value);
+  const desc=$("expDesc").value.trim();
+  if(!amount||amount<=0){ alert("مبلغ را وارد کنید."); return; }
+  if(!date){ alert("تاریخ را انتخاب کنید."); return; }
+  if(!payerId){ alert("ابتدا یک عضو اضافه کنید و پرداخت‌کننده را انتخاب کنید."); return; }
+  if(presentOn(date).length===0){ alert("هیچ عضوی در این تاریخ حاضر نیست؛ تاریخ را بررسی کنید."); return; }
+  txs.push({id:Date.now(), kind:"exp", amount, date, cat:selectedCat, desc, payerId});
+  save();
+  $("expAmount").value=""; $("expDesc").value="";
+  refresh();
+};
+
+$("addDepBtn").onclick=()=>{
+  const amount=parseAmount($("depAmount"));
+  const date=$("depDate").value;
+  const memberId=Number($("depMember").value);
+  const desc=$("depDesc").value.trim();
+  if(!amount||amount<=0){ alert("مبلغ را وارد کنید."); return; }
+  if(!date){ alert("تاریخ را انتخاب کنید."); return; }
+  if(!memberId){ alert("ابتدا یک عضو اضافه کنید."); return; }
+  txs.push({id:Date.now(), kind:"dep", amount, date, desc, memberId});
+  save();
+  $("depAmount").value=""; $("depDesc").value="";
+  refresh();
+};
+
+$("expDate").onchange=updateSplitHint;
+$("fType").onchange=renderTxs;
+$("fMember").onchange=renderTxs;
+$("fSearch").oninput=renderTxs;
+
+/* ================= شروع ================= */
+function initHeader(){
+  const now=new Date();
+  const j=toJalali(now.getFullYear(), now.getMonth()+1, now.getDate());
+  $("todayLabel").textContent = JWEEK[now.getDay()] + "، " + fmtJalali(j.jy,j.jm,j.jd);
+}
+
+function refresh(){
+  renderMembers();
+  renderChips();
+  updateSplitHint();
+  renderReport();
+  renderTxs();
+  renderBackupStatus();
+}
+
+/* ================= پشتیبان‌گیری ================= */
+function exportHTML(){
+  // escape کردن کاراکتر کوچکتر-از تا رشته داده، تگ اسکریپت را در خروجی نشکند
+  const data = JSON.stringify({members, txs}).replace(/</g, "\\u003c");
+
+  // داده‌ها را داخل یک تگ script نوع application/json قرار بده تا در خروجی جاسازی شود
+  let dataEl = document.getElementById("appData");
+  if(!dataEl){
+    dataEl = document.createElement("script");
+    dataEl.id = "appData";
+    dataEl.type = "application/json";
+    document.head.appendChild(dataEl);
+  }
+  dataEl.textContent = data;
+
+  // کل سند را به صورت HTML سریال کن (شامل استایل، مارک‌آپ و اسکریپت + دادهٔ جاسازی‌شده)
+  const html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+
+  const blob = new Blob([html], {type:"text/html;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "madarkharj-backup.html";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  // داده‌ها را از هد پاک کن تا در نسخهٔ اصلی خودت، load از localStorage بخواند
+  if(dataEl) dataEl.remove();
+
+  // ثبت زمان آخرین بکاپ
+  dirty = false;
+  try{ localStorage.setItem(BACKUP_KEY, String(Date.now())); }catch(e){}
+  renderBackupStatus();
+}
+
+function renderBackupStatus(){
+  const el = $("backupStatus");
+  const warn = $("backupWarn");
+  if(!el) return;
+  let last = null;
+  try{ const v = localStorage.getItem(BACKUP_KEY); if(v) last = Number(v); }catch(e){}
+  if(!last){
+    el.textContent = "هنوز بکاپ نگرفته‌ای.";
+  } else {
+    const d = new Date(last);
+    const j = toJalali(d.getFullYear(), d.getMonth()+1, d.getDate());
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mm = String(d.getMinutes()).padStart(2,"0");
+    el.textContent = "آخرین بکاپ: " + fmtJalali(j.jy,j.jm,j.jd) + " ساعت " + hh + ":" + mm;
+  }
+  if(warn) warn.style.display = dirty ? "block" : "none";
+}
+
+$("exportBtn").onclick = ()=> exportHTML();
+
+// یادآوری خودکار موقع بستن/رفرش صفحه اگر تغییری ذخیره نشده (بکاپ گرفته نشده) باشد
+window.addEventListener("beforeunload", (e)=>{
+  if(dirty){
+    e.preventDefault();
+    e.returnValue = "تغییرات ذخیره نشده است. قبل از بستن، یک بکاپ بگیرید.";
+    return e.returnValue;
+  }
+});
+
+load();
+const _today = todayISO();
+$("memJoin").value=_today;
+$("expDate").value=_today;
+$("depDate").value=_today;
+setMode("exp");
+initHeader();
+refresh();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a44dc4bf0fe23cf8',t:'MTc5MTA0OTYxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
