@@ -116,6 +116,9 @@ import {
 } from './sync.js';
 import {
   delAccount,
+  archiveAccount,
+  openRenameInstitution,
+  saveRenameInstitution,
   delInvest,
   delTx,
   editInvestPrice,
@@ -433,6 +436,9 @@ Object.assign(window, {
   openPocketLedger,
   saveAccount,
   delAccount,
+  archiveAccount,
+  openRenameInstitution,
+  saveRenameInstitution,
   openInvestForm,
   saveInvest,
   delInvest,

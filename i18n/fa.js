@@ -185,6 +185,8 @@ export default {
   'acc.ofTotal': '{pct}٪ از کل',
   'acc.newIn': 'حساب جدید در {name}',
   'acc.thisGroup': 'این گروه',
+  'acc.archived': '{n} حساب بایگانی‌شده',
+  'acc.archivedSub': 'در فهرست‌ها و جمع ثروت نیستند؛ تاریخچه‌شان مانده',
   'acc.noRate': 'بدون نرخ',
   'acc.rate': 'نرخ {r}',
   'acc.missingRate': 'نرخ {curs} ثبت نشده؛ این حساب‌ها در جمع کل نیستند.',

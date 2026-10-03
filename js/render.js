@@ -607,15 +607,17 @@ function acctRow(a) {
 }
 
 export function renderAccounts() {
-  const foreign = [...new Set(state.accounts.map((a) => a.currency).filter((c) => c !== baseCur()))];
+  const active = state.accounts.filter((a) => !a.archived);
+  const archived = state.accounts.filter((a) => a.archived);
+  const foreign = [...new Set(active.map((a) => a.currency).filter((c) => c !== baseCur()))];
   let html = '';
 
-  if (state.accounts.length === 0) {
+  if (active.length === 0) {
     html += `<div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('acc.empty')}<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button></div>`;
   } else {
     // گروه‌بندی بر اساس مؤسسه
     const groups = new Map();
-    for (const a of state.accounts) {
+    for (const a of active) {
       const k = institutionOf(a) || '__none';
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(a);
@@ -633,7 +635,7 @@ export function renderAccounts() {
     html += `<div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('bank')} ${tr('acc.total')}</div>
       <div class="hero-num">${fmtShort(total)}</div>
-      <div class="sub">${tr('acc.summary', { n: toFa(state.accounts.length), g: toFa(keys.length) })}</div></div>
+      <div class="sub">${tr('acc.summary', { n: toFa(active.length), g: toFa(keys.length) })}</div></div>
       <span class="ib lg">${icon('card')}</span>
     </div>`;
 
@@ -667,10 +669,31 @@ export function renderAccounts() {
           <span class="pocket-chev" style="margin-right:6px;display:flex">${icon(open ? 'chevD' : 'chevL')}</span>
         </button>
         ${open ? `<div class="acct-group-body">${accts.map(acctRow).join('')}
-          <button class="btn sm block ghost" style="margin:0 0 2px" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">${icon('plus')} ${tr('acc.newIn', { name: k === '__none' ? tr('acc.thisGroup') : esc(label) })}</button>
+          <div class="row" style="gap:6px;margin:0 0 2px">
+            <button class="btn sm block ghost" style="flex:1;margin:0" onclick="openAccountForm(null,'${k === '__none' ? '' : esc(k).replace(/'/g, '&#39;')}')">${icon('plus')} ${tr('acc.newIn', { name: k === '__none' ? tr('acc.thisGroup') : esc(label) })}</button>
+            ${k === '__none' ? '' : `<button class="btn sm ghost" style="margin:0" onclick="openRenameInstitution('${esc(k).replace(/'/g, '&#39;')}')" aria-label="${tr('ویرایش نام مؤسسه')}">${icon('edit')} ${tr('نام مؤسسه')}</button>`}
+          </div>
         </div>` : ''}
       </div>`;
     }
+  }
+
+  if (archived.length) {
+    const open = openGroups.has('__archived');
+    html += `<div class="card acct-group ${open ? 'open' : ''}" style="padding:0;overflow:hidden;opacity:.8">
+      <button type="button" class="acct-group-head" onclick="toggleAcctGroup('__archived')">
+        <span class="ib muted">${icon('archive')}</span>
+        <span style="flex:1;min-width:0;text-align:right"><span class="t1" style="font-size:14.5px;display:block">${tr('acc.archived', { n: toFa(archived.length) })}</span>
+        <span class="t2" style="display:block">${tr('acc.archivedSub')}</span></span>
+        <span class="pocket-chev" style="margin-right:6px;display:flex">${icon(open ? 'chevD' : 'chevL')}</span>
+      </button>
+      ${open ? `<div class="acct-group-body">${archived.map((a) => `<div class="item">
+        <div class="ib muted" onclick="openAccountLedger('${a.id}')">${icon(accountIcon(a.type))}</div>
+        <div class="mid" onclick="openAccountLedger('${a.id}')"><div class="t1">${esc(a.name)}</div><div class="t2">${esc(institutionOf(a) || tr(a.type))}${a.currency !== baseCur() ? ' · ' + esc(curName(a.currency)) : ''}</div></div>
+        <div class="amt-col"><div class="amt muted">${a.currency !== baseCur() ? fmt(accountCurrent(a)) : fmtShort(accountCurrent(a))}</div>
+          <button class="btn sm" style="margin-top:6px" onclick="archiveAccount('${a.id}')">${tr('بازگرداندن')}</button></div>
+      </div>`).join('')}</div>` : ''}
+    </div>`;
   }
 
   const missingRate = foreign.filter((c) => !rateOf(c));

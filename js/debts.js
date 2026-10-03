@@ -95,7 +95,8 @@ function dueLabel(dueISO) {
 function lastDebtAccountId() {
   const withAcc = allDebts().filter((x) => x.accountId).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   if (withAcc.length && accountById(withAcc[0].accountId)) return withAcc[0].accountId;
-  return state.accounts.length ? state.accounts[0].id : '';
+  const act = state.accounts.filter((x) => !x.archived);
+  return act.length ? act[0].id : '';
 }
 
 function accountOptionsHtml(selectedId) {

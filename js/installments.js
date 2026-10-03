@@ -234,13 +234,14 @@ export function openPlanForm(p) {
   editingId = p ? p.id : null;
   plSub = p ? p.sub || '' : '';
   window.plFirstTouched = false;
-  if (!state.accounts.length) {
+  const act = state.accounts.filter((x) => !x.archived);
+  if (!act.length) {
     toast(tr('اول یک حساب بساز'));
     return;
   }
   F.kind = p ? p.kind : 'loan';
   F.mode = p ? p.mode || 'equal' : 'equal';
-  const acc = p ? p.accountId : state.accounts[0].id;
+  const acc = p ? p.accountId : act[0].id;
   openModal(`
     <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2>${p ? tr('ویرایش مشخصات') : tr('قسط جدید')}</h2>

@@ -29,7 +29,7 @@ import {
   save,
   sortTxs,
   state,
-  accountGroups,
+  accountGroups, activeAccounts, archivedAccounts,
   accountOptGroups,
   institutionOf, baseCur, rateOf, incomeIn } from './state.js';
 import { t as tr } from './i18n.js';
@@ -45,7 +45,8 @@ function rememberAccount(id) {
 function lastAccountId() {
   const id = store.get(LAST_ACCT_KEY);
   if (id && accountById(id)) return id;
-  return state.accounts[0] ? state.accounts[0].id : '';
+  const act = activeAccounts();
+  return act[0] ? act[0].id : '';
 }
 
 const CUSTOM_CUR = '__custom__';
@@ -219,7 +220,7 @@ export function openTxForm(tx, opts) {
     }
   }
 
-  if (state.accounts.length === 0) {
+  if (activeAccounts().length === 0) {
     openModal(`
       <h2>${tr('ابتدا یک حساب بساز')}</h2>
       <div class="empty"><span class="ib lg muted">${icon('card')}</span>${tr('برای ثبت تراکنش باید حداقل یک حساب یا کارت تعریف کنی.')}</div>
@@ -843,7 +844,7 @@ export function syncLineReflect(id) {
 let lastScanFile = null;
 // از تب تراکنش‌ها: فرم کامل باز شود و مستقیم انتخاب دوربین/گالری نشان داده شود
 export function openScanFromList() {
-  if (state.accounts.length === 0) {
+  if (activeAccounts().length === 0) {
     toast(tr('اول یک حساب بساز'));
     return;
   }
@@ -896,7 +897,7 @@ export async function useScan(id, again) {
   lastScanFile = rec.jpegBlob;
   toast(tr('در حال خواندن عکس…'));
   try {
-    const res = await readAnyImage(rec.jpegBlob, state.accounts.map((a) => a.name));
+    const res = await readAnyImage(rec.jpegBlob, activeAccounts().map((a) => a.name));
     rememberScan(res, lastJpegB64(), rec.jpegBlob);
     applyScanResult(res);
   } catch (e) {
@@ -927,7 +928,7 @@ export async function onScanPhoto(inp) {
   lastScanFile = file;
   toast(tr('در حال خواندن عکس…'));
   try {
-    const res = await readAnyImage(file, state.accounts.map((a) => a.name));
+    const res = await readAnyImage(file, activeAccounts().map((a) => a.name));
     rememberScan(res, lastJpegB64(), file);
     if (res.kind === 'invoice') {
       applyInvoiceScan(res.invoice);
@@ -954,7 +955,7 @@ export async function rescanAs(kind) {
       applyInvoiceScan(data);
       scanVerdict('invoice');
     } else {
-      const rows = await readPaperTxImage(lastScanFile, state.accounts.map((a) => a.name));
+      const rows = await readPaperTxImage(lastScanFile, activeAccounts().map((a) => a.name));
       applyPaperRows(rows);
       openPaperReview('invoice');
     }
@@ -1545,7 +1546,7 @@ export function qaSetCat(id) {
 
 export function qaPickAccount() {
   // چرخش بین حساب‌ها اگر کم باشند؛ در غیر این صورت انتخاب از لیست
-  const list = state.accounts;
+  const list = activeAccounts();
   if (list.length <= 1) return;
   const wrap = document.getElementById('qaAcctBtn');
   const row = (a) => `<button type="button" class="srow" style="min-height:44px" onclick="qaChooseAccount('${a.id}')">
@@ -1698,8 +1699,82 @@ export function openAccountForm(a, presetBank) {
       <input class="input" id="aInit" type="number" step="any" inputmode="decimal" placeholder="${toFa(0)}" value="${a ? a.initial : ''}">
     </div>
     <button class="btn primary block" onclick="saveAccount()">${isEdit && !a.__preset ? tr('ذخیره') : tr('افزودن حساب')}</button>
-    ${isEdit && !a.__preset ? `<button class="btn danger block" style="margin-top:8px" onclick="delAccount('${a.id}')">${tr('حذف این حساب')}</button>` : ''}
+    ${isEdit && !a.__preset ? `<div class="row" style="margin-top:8px;gap:8px">
+      <button class="btn block" style="flex:1;margin:0" onclick="archiveAccount('${a.id}')">${icon(a.archived ? 'refresh' : 'archive')} ${a.archived ? tr('بازگرداندن از بایگانی') : tr('بایگانی')}</button>
+      <button class="btn danger block" style="flex:1;margin:0" onclick="delAccount('${a.id}')">${tr('حذف این حساب')}</button>
+    </div>` : ''}
   `);
+}
+
+// بایگانی: حساب از فهرست‌ها و انتخاب‌گرها کنار می‌رود، اما تراکنش‌ها و گزارش‌های گذشته دست‌نخورده می‌مانند
+export function archiveAccount(id, force) {
+  const a = accountById(id);
+  if (!a) return;
+  if (a.archived) {
+    a.archived = false;
+    a.updatedAt = Date.now();
+    save();
+    closeModal();
+    render();
+    toast(tr('حساب برگشت'));
+    return;
+  }
+  const bal = accountCurrent(a);
+  if (Math.abs(bal) > 1e-9 && !force) {
+    openModal(`
+      <div style="text-align:center;padding:10px 4px">
+        <span class="ib lg" style="margin-bottom:12px;color:var(--orange)">${icon('archive')}</span>
+        <p style="font-size:15px;margin:0 0 6px">${tr('این حساب هنوز {m} مانده دارد.', { m: fmt(bal) + ' ' + esc(curName(a.currency)) })}</p>
+        <p class="small muted" style="margin:0 0 18px">${tr('حساب بایگانی‌شده در جمع ثروت حساب نمی‌شود. بهتر است اول مانده را به حساب دیگری منتقل کنی.')}</p>
+        <div class="row">
+          <button class="btn" style="flex:1" onclick="openAccountForm(findAccount('${id}'))">${tr('انصراف')}</button>
+          <button class="btn primary" style="flex:1" onclick="archiveAccount('${id}',1)">${tr('با همین مانده بایگانی شود')}</button>
+        </div>
+      </div>`);
+    return;
+  }
+  a.archived = true;
+  a.updatedAt = Date.now();
+  save();
+  closeModal();
+  render();
+  toast(tr('بایگانی شد'));
+}
+
+// تغییر نام مؤسسه برای همهٔ حساب‌های یک گروه (اگر با گروه دیگری هم‌نام شود، ادغام می‌شوند)
+export function openRenameInstitution(key) {
+  const accts = state.accounts.filter((a) => institutionOf(a) === key);
+  if (!accts.length) return;
+  openModal(`
+    <button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
+    <h2>${tr('نام مؤسسه')}</h2>
+    <div class="field">
+      <input class="input" id="riName" list="bankList" value="${esc(key)}" autocomplete="off">
+      <datalist id="bankList">${[...new Set([...state.accounts.map((x) => x.bank).filter(Boolean), ...allBanks().map((b) => b.name), ...allExchanges(), ...KNOWN_BANKS])]
+        .map((b) => `<option value="${esc(b)}"></option>`)
+        .join('')}</datalist>
+      <div class="small muted" style="margin-top:6px">${tr('روی {n} حساب این گروه اعمال می‌شود.', { n: toFa(accts.length) })}</div>
+    </div>
+    <button class="btn primary block" onclick="saveRenameInstitution('${esc(key).replace(/'/g, '&#39;')}')">${tr('ذخیره')}</button>
+  `);
+  const inp = document.getElementById('riName');
+  if (inp) { inp.focus(); try { inp.select(); } catch (e) {} }
+}
+export function saveRenameInstitution(key) {
+  const name = ((document.getElementById('riName') || {}).value || '').trim();
+  if (!name) { toast(tr('نام مؤسسه را بنویس')); return; }
+  if (name === key) { closeModal(); return; }
+  const now = Date.now();
+  for (const a of state.accounts) {
+    if (institutionOf(a) !== key) continue;
+    a.bank = name;
+    if (!a.last4) { const b = bankByName(name); a.bankId = b ? b.id : ''; }
+    a.updatedAt = now;
+  }
+  save();
+  closeModal();
+  render();
+  toast(tr('ذخیره شد'));
 }
 
 // شماره کارت: گروه‌بندی ۴تایی، تشخیص بانک از BIN، بررسی لون، پیش‌نمایش زنده
@@ -2153,7 +2228,8 @@ export function saveRateFrom(cur) {
 }
 
 export function openTransferForm(tx) {
-  if (state.accounts.length < 2) {
+  const act = activeAccounts();
+  if (act.length < 2) {
     toast(tr('برای انتقال، حداقل دو حساب بساز'));
     return;
   }
@@ -2161,10 +2237,10 @@ export function openTransferForm(tx) {
   const out = pair ? state.transactions.find((t) => t.pair === pair && t.type === 'transferOut') : null;
   const inn = pair ? state.transactions.find((t) => t.pair === pair && t.type === 'transferIn') : null;
   editingTransferPair = pair;
-  const fromId = out ? out.accountId : state.accounts[0].id;
+  const fromId = out ? out.accountId : act[0].id;
   const toId = inn
     ? inn.accountId
-    : state.accounts.find((a) => a.id !== fromId)?.id || state.accounts[1].id;
+    : act.find((a) => a.id !== fromId)?.id || act[1].id;
   transferStoredRates = {};
   if (out) {
     const fa = accountById(out.accountId);

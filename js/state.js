@@ -90,8 +90,16 @@ export const KNOWN_BANKS = [
 ];
 
 // حساب‌ها گروه‌بندی‌شده بر اساس مؤسسه: [{key,label,accts}] (بدون مؤسسه در آخر)
+// حساب‌های فعال (بایگانی‌نشده) — فهرست‌ها و انتخاب‌گرها فقط این‌ها را نشان می‌دهند
+export function activeAccounts() {
+  return state.accounts.filter((a) => !a.archived);
+}
+export function archivedAccounts() {
+  return state.accounts.filter((a) => a.archived);
+}
+
 export function accountGroups(list) {
-  const accts = list || state.accounts;
+  const accts = list || activeAccounts();
   const groups = new Map();
   for (const a of accts) {
     const k = institutionOf(a) || '__none';
@@ -109,6 +117,8 @@ export function accountGroups(list) {
 // <option>های select حساب، دسته‌بندی‌شده با <optgroup> بر اساس مؤسسه
 export function accountOptGroups(selectedId, list) {
   const escq = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  // حساب بایگانی‌شده فقط اگر همین الان انتخاب‌شده باشد (ویرایش تراکنش قدیمی) در فهرست می‌ماند
+  if (!list && selectedId) { const sel = accountById(selectedId); if (sel && sel.archived) list = [...activeAccounts(), sel]; }
   const gs = accountGroups(list);
   if (gs.length <= 1 && gs[0] && gs[0].key === '__none') {
     return gs[0].accts
@@ -363,7 +373,7 @@ export function accountCurrentToman(a) {
 }
 
 export function cashTotal() {
-  return state.accounts.reduce((s, a) => s + accountCurrentToman(a), 0);
+  return activeAccounts().reduce((s, a) => s + accountCurrentToman(a), 0);
 }
 
 export function investValue(inv) {
