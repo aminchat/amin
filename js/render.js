@@ -37,7 +37,7 @@ import {
   accountCurrentToman,
   institutionOf, baseCur, currencyInfo, curName, setTargetMonth } from './state.js';
 import { reflectRow } from './reflect.js';
-import { cardHtml } from './cards.js';
+import { cardHtml, bankOf } from './cards.js';
 
 export let txMonth = curMonthKey();
 export let repMonth = curMonthKey();
@@ -574,7 +574,6 @@ export function renderInvest() {
 }
 
 const openGroups = new Set();
-let groupsInit = false;
 
 export function toggleAcctGroup(key) {
   if (openGroups.has(key)) openGroups.delete(key);
@@ -628,12 +627,8 @@ export function renderAccounts() {
       const ty = groups.get(y).reduce((s, a) => s + accountCurrentToman(a), 0);
       return ty - tx;
     });
-    if (!groupsInit) {
-      groupsInit = true;
-      // پیش‌فرض: گروه‌های تک‌حسابی باز، بقیه بسته (اگر فقط یک گروه هست، باز)
-      if (keys.length === 1) openGroups.add(keys[0]);
-      else for (const k of keys) if (groups.get(k).length === 1) openGroups.add(k);
-    }
+    // پیش‌فرض: همهٔ مؤسسه‌ها بسته؛ کاربر هر کدام را خواست باز می‌کند
+
     const total = cashTotal();
     html += `<div class="hero">
       <div style="min-width:0"><div class="lbl">${icon('bank')} ${tr('acc.total')}</div>
@@ -654,7 +649,9 @@ export function renderAccounts() {
       const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((sum / total) * 100))) : 0;
       html += `<div class="card acct-group ${open ? 'open' : ''}" style="padding:0;overflow:hidden">
         <button type="button" class="acct-group-head" onclick="toggleAcctGroup('${esc(k).replace(/'/g, '&#39;')}')">
-          <span class="ib">${icon(k === '__none' ? 'folder' : institutionIconName(accts))}</span>
+          ${(() => { const b = k === '__none' ? null : bankOf(accts.find((x) => bankOf(x)) || accts[0]); return b
+            ? `<span class="ib bank-ib" style="background:linear-gradient(135deg,${b.dark},${b.light});color:#fff">${icon('card')}</span>`
+            : `<span class="ib">${icon(k === '__none' ? 'folder' : institutionIconName(accts))}</span>`; })()}
           <span style="flex:1;min-width:0;text-align:right">
             <span class="t1" style="font-size:14.5px;display:block">${esc(label)}</span>
             <span class="t2" style="display:block">${sub}</span>

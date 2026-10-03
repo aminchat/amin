@@ -978,3 +978,4 @@ a.btn.block{display:flex}
 .bcard.compact .bc-chip{display:none}
 .bcard-item{display:block;position:relative;padding:8px 0}
 .bcard-item .bc-edit{position:absolute;top:14px;left:14px;background:rgba(255,255,255,.18);color:#fff;border-color:transparent;backdrop-filter:blur(4px)}
+.bank-ib{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
