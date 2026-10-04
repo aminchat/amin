@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/ping", "destination": "/api/ping" },
+    { "source": "/health", "destination": "/api/ping" },
+    { "source": "/auth/start", "destination": "/api/auth-start" },
+    { "source": "/auth/callback", "destination": "/api/auth-callback" },
+    { "source": "/token/refresh", "destination": "/api/token-refresh" },
+    { "source": "/token/revoke", "destination": "/api/token-revoke" }
+  ]
+}
