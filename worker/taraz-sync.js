@@ -9,7 +9,7 @@
 //   GET  /health                         → ok
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.file openid email profile';
-const ALLOWED_APPS = ['https://aminchat.github.io', 'http://localhost', 'http://127.0.0.1'];
+const ALLOWED_APPS = ['https://taraz-app.github.io', 'http://localhost', 'http://127.0.0.1'];
 // مسیرهای مجاز برای بازگشت روی دامنهٔ عمومی (روی localhost هر مسیری آزاد است)
 const ALLOWED_PATH = /^\/amin(\/|$)/;
 
