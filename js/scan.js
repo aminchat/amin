@@ -84,8 +84,9 @@ const INVOICE_PROMPT = `این یک عکس فاکتور یا رسید خرید �
 مبالغ را به تومان بده (اگر روی فاکتور ریال بود تقسیم بر ۱۰ کن).
 اگر مقدار یا قیمت واحد نبود، مقدار را ۱ و قیمت واحد را برابر مبلغ همان قلم بگذار.
 تاریخ را اگر خواندی به صورت YYYY-MM-DD میلادی بده، وگرنه null.
+ساعت را اگر روی فاکتور هست (چاپی یا دست‌نویس، مثل ۱۴:۳۵ یا ۲:۳۵ ب.ظ) به صورت ۲۴ساعته HH:MM در time بده، وگرنه null.
 شکل JSON:
-{"store":"نام فروشگاه یا خالی","total":0,"date":null,"lines":[{"name":"نام کالا","qty":1,"unit":"عدد","unitPrice":0,"amount":0}]}`;
+{"store":"نام فروشگاه یا خالی","total":0,"date":null,"time":null,"lines":[{"name":"نام کالا","qty":1,"unit":"عدد","unitPrice":0,"amount":0}]}`;
 
 function paperPrompt(accountNames) {
   const accts = (accountNames || []).filter(Boolean).join('، ') || 'نامشخص';
@@ -107,10 +108,11 @@ qty و unit را از دست‌نویس بردار (بسته، لیتر، عدد
 پاکت cat: ضروری/ضروریات=need ، سرمایه=invest ، تفریح=fun ، نیکوکاری=charity ، هدررفت=waste
 type فقط in یا out. برداشت بانک = out. واریز = in.
 date شمسی همان ردیف مثل 1405/06/17.
+time ساعت همان ردیف اگر نوشته شده (چاپی فیش بانک یا دست‌نویس)، ۲۴ساعته HH:MM؛ وگرنه null.
 account نام حساب؛ حساب‌های موجود: ${accts}
 
 شکل JSON:
-{"transactions":[{"type":"out","kind":"simple","note":"نان تست","account":"ملت 6395","date":"1405/06/17","cat":"need","qty":2,"unit":"بسته","writtenToman":160000,"bankRial":1600000,"store":"","lines":[]},{"type":"out","kind":"invoice","note":"فاکتور","store":"نام فروشگاه","account":"ملت 6395","date":"1405/06/16","cat":"fun","qty":0,"unit":"","writtenToman":0,"bankRial":10585000,"lines":[{"name":"بستنی","qty":1,"unit":"کیلو","writtenToman":248000,"cat":"fun"}]}]}`;
+{"transactions":[{"type":"out","kind":"simple","note":"نان تست","account":"ملت 6395","date":"1405/06/17","time":"14:35","cat":"need","qty":2,"unit":"بسته","writtenToman":160000,"bankRial":1600000,"store":"","lines":[]},{"type":"out","kind":"invoice","note":"فاکتور","store":"نام فروشگاه","account":"ملت 6395","date":"1405/06/16","time":null,"cat":"fun","qty":0,"unit":"","writtenToman":0,"bankRial":10585000,"lines":[{"name":"بستنی","qty":1,"unit":"کیلو","writtenToman":248000,"cat":"fun"}]}]}`;
 }
 
 function parseModelJson(text) {
@@ -345,8 +347,27 @@ function normalizeScan(raw) {
     store: String(raw.store || raw.shop || '').trim(),
     total,
     date,
+    time: parseTimeHM(raw.time),
     lines,
   };
+}
+
+// ساعت از خروجی مدل: «14:35»، «۱۴:۳۵»، «2:35 PM»، «۲:۳۵ ب.ظ»، «1435» → «HH:MM» یا ''
+export function parseTimeHM(v) {
+  if (v == null || v === '') return '';
+  let s = String(v).trim().replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  const pm = /pm|p\.m|ب\.?\s?ظ|عصر|شب|بعدازظهر|بعد از ظهر/i.test(s);
+  const am = /am|a\.m|ق\.?\s?ظ|صبح/i.test(s);
+  let m = s.match(/(\d{1,2})\s*[:：٫.]\s*(\d{2})/);
+  if (!m) m = s.match(/^(\d{2})(\d{2})$/);
+  if (!m) return '';
+  let h = parseInt(m[1], 10);
+  const mi = parseInt(m[2], 10);
+  if (isNaN(h) || isNaN(mi) || mi > 59 || h > 24) return '';
+  if (pm && h < 12) h += 12;
+  if (am && h === 12) h = 0;
+  if (h === 24) h = 0;
+  return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
 }
 
 function pick(row, keys) {
@@ -503,6 +524,7 @@ function normalizePaper(raw) {
     const parsed = parseAppDate(dateRaw);
     const date = parsed || lastDate;
     if (parsed) lastDate = parsed;
+    const time = parseTimeHM(pick(row, ['time', 'ساعت']));
     const account = String(pick(row, ['account', 'accountName', 'حساب'])).trim() || lastAccount;
     if (account) lastAccount = account;
     const cat = type === 'in' ? null : mapCat(pick(row, ['cat', 'category', 'پاکت', 'دسته']) || note);
@@ -558,6 +580,7 @@ function normalizePaper(raw) {
         note: store || cleanTitle(note) || 'فاکتور',
         account,
         date,
+        time,
         qty: 0,
         unit: '',
         unitPrice: 0,
@@ -577,6 +600,7 @@ function normalizePaper(raw) {
       note: cleanTitle(note) || store || 'خرج',
       account,
       date,
+      time,
       qty: qu.qty,
       unit: qu.unit,
       unitPrice: qu.unitPrice,

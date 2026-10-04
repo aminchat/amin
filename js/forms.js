@@ -972,6 +972,7 @@ function applyPaperRows(rows) {
     note: r.note || '',
     accountId: matchAccountId(r.account) || lastAccountId(),
     dateISO: r.date || todayISO(),
+    time: r.time || '',
     kind: r.kind === 'invoice' ? 'invoice' : '',
     qty: r.qty || 0,
     unit: r.unit || '',
@@ -1134,6 +1135,7 @@ export function savePaperTxs() {
       accountId: r.accountId,
       note: r.note || '',
       dateISO,
+      time: r.time || nowHM(),
       type,
       cat: invoice ? null : type === 'out' ? r.cat || 'need' : null,
       reflect: '',
@@ -1176,6 +1178,8 @@ export function applyInvoiceScan(data) {
   if (note && data.store && !note.value) note.value = data.store;
   const dateEl = document.getElementById('txDate');
   if (dateEl && data.date) dateEl.value = data.date;
+  const timeEl = document.getElementById('txTime');
+  if (timeEl && data.time) timeEl.value = data.time;
   renderTxLines();
 }
 
