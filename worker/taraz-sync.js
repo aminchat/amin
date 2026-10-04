@@ -1,6 +1,7 @@
 // taraz-sync — Cloudflare Worker: تمدید بی‌صدای توکن گوگل‌درایو برای «تراز»
 // بی‌حافظه: هیچ‌چیز ذخیره نمی‌کند. refresh token با SEAL_KEY رمز می‌شود و روی گوشی کاربر می‌ماند.
 // Secrets لازم: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SEAL_KEY
+// متغیر اختیاری: ALLOWED_APP — مبدأ مجاز برنامه (پیش‌فرض: https://taraz-app.github.io)
 // مسیرها:
 //   GET  /start?app=<origin+path>&n=<nonce> → هدایت به صفحهٔ رضایت گوگل (nonce در بازگشت برمی‌گردد)
 //   GET  /callback?code=…&state=…        → مبادلهٔ code، مهر کردن refresh token، برگشت به اپ با #… در URL
@@ -9,17 +10,19 @@
 //   GET  /health                         → ok
 
 const SCOPE = 'https://www.googleapis.com/auth/drive.file openid email profile';
-const ALLOWED_APPS = ['https://taraz-app.github.io', 'http://localhost', 'http://127.0.0.1'];
-// مسیرهای مجاز برای بازگشت روی دامنهٔ عمومی (روی localhost هر مسیری آزاد است)
-const ALLOWED_PATH = /^\/amin(\/|$)/;
+// مبدأ مجاز برنامه — بدون اسلش انتهایی؛ مقایسه فقط روی مبدأ (بی‌توجه به مسیر)
+const DEFAULT_APP = 'https://taraz-app.github.io';
+function allowedApp(env) {
+  return String((env && env.ALLOWED_APP) || DEFAULT_APP).replace(/\/+$/, '');
+}
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
-    if (!env.SEAL_KEY || env.SEAL_KEY.length < 16 || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET)
-      return json({ error: 'misconfigured' }, corsHeaders(req.headers.get('Origin') || ''), 500);
     const origin = req.headers.get('Origin') || '';
-    const cors = corsHeaders(origin);
+    const cors = corsHeaders(origin, env);
+    if (!env.SEAL_KEY || env.SEAL_KEY.length < 16 || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET)
+      return json({ error: 'misconfigured' }, cors, 500);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     try {
       if (url.pathname === '/health') return json({ ok: true }, cors);
@@ -34,10 +37,11 @@ export default {
   },
 };
 
-function corsHeaders(origin) {
-  const ok = ALLOWED_APPS.some((a) => origin === a || origin.startsWith(a + ':'));
+function corsHeaders(origin, env) {
+  const allow = allowedApp(env);
+  const o = String(origin || '').replace(/\/+$/, '');
   return {
-    'Access-Control-Allow-Origin': ok ? origin : ALLOWED_APPS[0],
+    'Access-Control-Allow-Origin': o === allow ? o : allow,
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
@@ -48,14 +52,11 @@ function corsHeaders(origin) {
 function json(obj, headers, status) {
   return new Response(JSON.stringify(obj), { status: status || 200, headers: Object.assign({ 'Content-Type': 'application/json' }, headers || {}) });
 }
-function appAllowed(app) {
+function appAllowed(app, env) {
   try {
     const u = new URL(app);
     if (u.hash || u.search) return false;
-    const ok = ALLOWED_APPS.some((a) => u.origin === a || u.origin.startsWith(a + ':'));
-    if (!ok) return false;
-    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return true;
-    return ALLOWED_PATH.test(u.pathname);
+    return u.origin === allowedApp(env); // مسیر مهم نیست؛ فقط مبدأ
   } catch (e) {
     return false;
   }
@@ -64,7 +65,7 @@ function appAllowed(app) {
 // ── شروع: هدایت به گوگل ──
 async function start(url, env) {
   const app = url.searchParams.get('app') || '';
-  if (!appAllowed(app)) return new Response('bad app', { status: 400 });
+  if (!appAllowed(app, env)) return new Response('bad app', { status: 400 });
   const cn = (url.searchParams.get('n') || '').slice(0, 64); // nonce کلاینت برای جلوگیری از login-CSRF
   const state = await seal(env, JSON.stringify({ app, cn, t: Date.now() }));
   const p = new URLSearchParams({
@@ -93,7 +94,7 @@ async function callback(url, env) {
   } catch (e) {
     return new Response('bad state', { status: 400 });
   }
-  if (!appAllowed(st.app) || Date.now() - st.t > 15 * 60000) return new Response('state expired', { status: 400 });
+  if (!appAllowed(st.app, env) || Date.now() - st.t > 15 * 60000) return new Response('state expired', { status: 400 });
   const back = (frag) => Response.redirect(st.app + '#' + frag + (st.cn ? '&n=' + encodeURIComponent(st.cn) : ''), 302);
   if (err || !code) return back('gerr=' + encodeURIComponent(err || 'no_code'));
 

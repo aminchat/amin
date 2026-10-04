@@ -366,7 +366,7 @@ function tokenErrorHint() {
 // ── ورود از طریق Worker ──
 const NONCE_KEY = (SEALED_KEY.indexOf('t_') === 0 ? 't_' : '') + 'capital_app_g_nonce';
 function startWorkerLogin() {
-  const app = location.origin + location.pathname;
+  const app = location.origin; // مبدأ اپ — Worker فقط همین را با مقدار مجاز مقایسه می‌کند
   let n = '';
   try {
     const a = crypto.getRandomValues(new Uint8Array(12));
