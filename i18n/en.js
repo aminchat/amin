@@ -193,6 +193,7 @@ export default {
   'acc.ofTotal': '{pct}% of total',
   'acc.newIn': 'New account in {name}',
   'acc.thisGroup': 'this group',
+  'تخفیف ٪': 'Discount %', 'تخفیف': 'Discount', 'تخفیف {d} = {a} · نهایی {n}': 'Discount {d} = {a} · net {n}',
   'acc.archived': '{n} archived accounts',
   'acc.archivedSub': 'Hidden from lists and totals; history kept',
   'بایگانی': 'Archive', 'بازگرداندن از بایگانی': 'Unarchive', 'بازگرداندن': 'Restore', 'بایگانی شد': 'Archived', 'حساب برگشت': 'Account restored',

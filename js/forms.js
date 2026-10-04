@@ -240,7 +240,7 @@ export function openTxForm(tx, opts) {
   const presetCat = !tx && (pre.cat || (opts && opts.cat)) ? pre.cat || opts.cat : null;
 
   txMode = tx && isInvoice(tx) ? 'invoice' : 'simple';
-  draftLines = tx && isInvoice(tx) ? tx.lines.map((l) => Object.assign({}, l)) : [];
+  draftLines = tx && isInvoice(tx) ? tx.lines.map((l) => Object.assign({}, l, { amount: l.disc > 0 && l.gross > 0 ? l.gross : l.amount })) : [];
   txSub = tx && !isInvoice(tx) ? tx.sub || '' : (pre.sub || '');
   txTags = tx && Array.isArray(tx.tags) ? tx.tags.slice() : [];
 
@@ -648,14 +648,41 @@ function readDraftLinesFromDom() {
     if (rf) l.reflect = rf.value;
     const amtIn = document.getElementById('lnAmt_' + l.id);
     if (amtIn) l.amount = parseFloat(amtIn.value) || 0;
+    const dc = document.getElementById('lnDisc_' + l.id);
+    if (dc) l.disc = dc.value;
     const p = parseFloat(l.unitPrice) || 0;
     const q = parseFloat(l.qty) || 0;
     if (p > 0 && q > 0 && !(l.amount > 0)) l.amount = Math.round(p * q * 100) / 100;
   });
 }
 
+// تخفیف لایهٔ جدا بعد از «مقدار × فی = ناخالص» است: مبلغ نهایی = ناخالص × (۱ − ٪)
+function discPct(l) {
+  const d = parseFloat(l && l.disc);
+  return d > 0 && d <= 100 ? d : 0;
+}
+function lineNet(l) {
+  const gross = Number(l.amount) || 0;
+  const d = discPct(l);
+  return d ? Math.round(gross * (1 - d / 100) * 100) / 100 : gross;
+}
 function lineSum() {
-  return draftLines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  return draftLines.reduce((s, l) => s + lineNet(l), 0);
+}
+export function toggleLineDisc(id) {
+  readDraftLinesFromDom();
+  const l = draftLines.find((x) => x.id === id);
+  if (!l) return;
+  l._discOpen = !(l._discOpen || discPct(l) > 0);
+  if (!l._discOpen) l.disc = '';
+  renderTxLines();
+  if (l._discOpen) { const el = document.getElementById('lnDisc_' + id); if (el) el.focus(); }
+}
+function discHint(l) {
+  const d = discPct(l);
+  const gross = Number(l.amount) || 0;
+  if (!d || !gross) return '';
+  return tr('تخفیف {d} = {a} · نهایی {n}', { d: toFa(d) + '٪', a: fmt(gross - lineNet(l)), n: fmt(lineNet(l)) });
 }
 
 function updateInvoiceRemain() {
@@ -711,8 +738,14 @@ export function renderTxLines() {
             <input class="input${l._calc === 'a' ? ' calc' : ''}" id="lnAmt_${l.id}" type="number" step="any" inputmode="decimal" min="0" value="${amt || ''}" oninput="syncTxLine('${l.id}','a')">
           </div>
         </div>
+        ${l._discOpen || discPct(l) > 0 ? `<div class="row"><div class="col field"><label>${tr('تخفیف ٪')}</label>
+            <input class="input" id="lnDisc_${l.id}" type="number" step="any" inputmode="decimal" min="0" max="100" dir="ltr" value="${discPct(l) || ''}" oninput="syncTxLine('${l.id}')"></div>
+          <div class="col small muted" id="lnDiscHint_${l.id}" style="align-self:center;padding-top:14px">${discHint(l)}</div></div>` : ''}
         <div id="lnTitles_${l.id}" style="margin-top:-2px;margin-bottom:8px">${l.name ? '' : titleChipsHtml(cat, 'pickLineTitle_' + l.id)}</div>
-        <button type="button" class="btn sm danger block" onclick="removeTxLine('${l.id}')">${tr('حذف این قلم')}</button>
+        <div class="row" style="gap:8px">
+          <button type="button" class="btn sm ${discPct(l) > 0 ? 'primary' : ''}" style="margin:0" onclick="toggleLineDisc('${l.id}')">٪ ${discPct(l) > 0 ? tr('تخفیف') + ' ' + toFa(discPct(l)) + '٪' : tr('تخفیف')}</button>
+          <button type="button" class="btn sm danger" style="margin:0;flex:1" onclick="removeTxLine('${l.id}')">${tr('حذف این قلم')}</button>
+        </div>
       </div>`;
     })
     .join('');
@@ -753,6 +786,8 @@ export function syncTxLine(id, src) {
   if (qty) l.qty = qty.value;
   if (unit) l.unit = unit.value;
   if (amtIn) l.amount = parseFloat(amtIn.value) || 0;
+  const dc = document.getElementById('lnDisc_' + id);
+  if (dc) l.disc = dc.value;
   l._touched = l._touched || [];
   if (src === 'p' || src === 'q' || src === 'a') touch(l._touched, src);
   const rf = document.getElementById('lnReflect_' + id);
@@ -775,6 +810,8 @@ export function syncTxLine(id, src) {
     if (el && String(el.value) !== String(r.value)) el.value = String(r.value);
     markCalc(['lnAmt_' + id, 'lnPrice_' + id, 'lnQty_' + id], el ? el.id : '');
   }
+  const dh = document.getElementById('lnDiscHint_' + id);
+  if (dh) dh.textContent = discHint(l);
   updateInvoiceRemain();
 }
 
@@ -816,7 +853,8 @@ export function lineCatsExpand(lineId) {
 // صفحهٔ ۲ فاکتور: هر قلم فقط با نامش؛ اول پاکت، بعد زیرشاخه
 function lineCardHtml(l) {
   const c = l.cat ? CATS.find((x) => x.id === l.cat) : null;
-  const amt = (parseFloat(l.unitPrice) || 0) * (parseFloat(l.qty) || 0) || Number(l.amount) || 0;
+  const g = (parseFloat(l.unitPrice) || 0) * (parseFloat(l.qty) || 0) || Number(l.amount) || 0;
+  const amt = discPct(l) ? Math.round(g * (1 - discPct(l) / 100) * 100) / 100 : g;
   return `<div class="line-card" id="lnCard_${l.id}">
     <div class="lc-head"><span class="lc-name">${esc(l.name || tr('قلم'))}</span><span class="lc-amt">${fmt(amt)}</span></div>
     <div class="chips ${l.cat ? 'picked' : ''}" id="lnCats_${l.id}">${catChipsHtml(l.cat || null, 'setLineCat', l.id)}<button type="button" class="chip change" onclick="lineCatsExpand('${l.id}')">${icon('edit')} ${tr('تغییر')}</button></div>
@@ -1124,7 +1162,9 @@ export function savePaperTxs() {
           unitPrice: Number(l.unitPrice) || Number(l.amount) || 0,
           qty: Number(l.qty) || 1,
           unit: String(l.unit || tr('عدد')).trim() || tr('عدد'),
-          amount: (Number(l.unitPrice) || Number(l.amount) || 0) * (Number(l.qty) || 1),
+          amount: lineNet({ amount: (Number(l.unitPrice) || Number(l.amount) || 0) * (Number(l.qty) || 1), disc: l.disc }),
+          gross: (Number(l.unitPrice) || Number(l.amount) || 0) * (Number(l.qty) || 1),
+          disc: discPct(l),
           cat: l.cat || 'need',
         }))
       : [];
@@ -1166,6 +1206,7 @@ export function applyInvoiceScan(data) {
     qty: l.qty,
     unit: l.unit || tr('عدد'),
     amount: l.amount,
+    disc: l.disc || '',
     cat: l.cat || 'need',
   }));
   document.querySelectorAll('#txModeSeg button').forEach((b) => {
@@ -1250,12 +1291,14 @@ export function saveTx() {
       unitPrice: parseFloat(l.unitPrice),
       qty: parseFloat(l.qty),
       unit: String(l.unit || '').trim(),
-      amount: parseFloat(l.unitPrice) * parseFloat(l.qty),
+      amount: lineNet({ amount: parseFloat(l.unitPrice) * parseFloat(l.qty), disc: l.disc }),
+      gross: parseFloat(l.unitPrice) * parseFloat(l.qty),
+      disc: discPct(l),
       cat: l.cat || 'need',
       sub: l.sub || '',
       reflect: (l.cat || 'need') === 'waste' ? String(l.reflect || '').trim() : '',
     }));
-    for (const l of lines) learnTitle(l.name, l.cat, l.sub, l.unitPrice);
+    for (const l of lines) learnTitle(l.name, l.cat, l.sub, l.qty > 0 ? l.amount / l.qty : l.unitPrice);
   } else {
     const p = parseFloat((document.getElementById('txUnitPrice') || {}).value) || 0;
     const q = parseFloat((document.getElementById('txQty') || {}).value) || 0;

@@ -328,6 +328,11 @@ function normalizeScan(raw) {
     if (!amount && unitPrice) amount = unitPrice * qty;
     if (!unitPrice && amount && qty) unitPrice = amount / qty;
     if (!name || !amount) continue;
+    // تخفیف قلم: درصد یا مبلغ (مبلغ → درصد نسبت به ناخالص)
+    let disc = num(row.discountPct != null ? row.discountPct : row.discount_pct);
+    const dAmt = num(row.discountAmount != null ? row.discountAmount : row.discount);
+    if (!disc && dAmt > 0 && dAmt < amount) disc = (dAmt / amount) * 100;
+    if (disc > 100 || disc < 0) disc = 0;
     lines.push({
       id: uid(),
       name,
@@ -335,12 +340,21 @@ function normalizeScan(raw) {
       unit: String(row.unit || 'عدد').trim() || 'عدد',
       unitPrice,
       amount,
+      disc: disc ? Math.round(disc * 100) / 100 : 0,
       cat: 'need',
     });
   }
+  // تخفیف سرجمع پای فاکتور: به‌نسبت ناخالص بین اقلامِ بدون تخفیف پخش می‌شود
+  const dTot = num(raw.discountTotal);
+  const gross = lines.reduce((s, l) => s + l.amount, 0);
+  if (dTot > 0 && gross > dTot) {
+    const open = lines.filter((l) => !l.disc);
+    const base = open.reduce((s, l) => s + l.amount, 0) || gross;
+    for (const l of open.length ? open : lines) l.disc = Math.round((dTot / base) * 10000) / 100;
+  }
   let total = num(raw.total);
-  const sum = lines.reduce((s, l) => s + l.amount, 0);
-  if (!total && sum) total = sum;
+  const net = lines.reduce((s, l) => s + (l.disc ? l.amount * (1 - l.disc / 100) : l.amount), 0);
+  if (!total && net) total = Math.round(net);
   let date = raw.date ? String(raw.date).slice(0, 10) : '';
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = '';
   return {
