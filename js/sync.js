@@ -13,7 +13,7 @@ import * as sec from './securestore.js';
 import { showLockForRemote, unlockApp, clearBioRecord } from './prefs.js';
 import { t as tr } from './i18n.js';
 
-export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID = '802769209005-a06b9ksp00sbm22hslhdbsumk8j6hmhm.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILENAME = 'capital-app-data.json';
 const DRIVE_FILE_KEY = 'capital_app_drive_file_id';
