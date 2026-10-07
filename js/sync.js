@@ -1076,6 +1076,36 @@ async function handleRemoteEnvelope(env, fileId) {
   }
 }
 
+// آیا نسخهٔ گوگل با کلید/رمز دیگری در انتظار یکی‌شدن است؟ (برای هدایت ورود از قفل)
+export function hasPendingRemote() {
+  return !!pendingRemoteEnv;
+}
+export function openRemotePassModalNow() {
+  if (pendingRemoteEnv) openRemotePassModal();
+}
+
+// اگر روی درایو پاکت رمزشده‌ای هست و این دستگاه هنوز رمزنگاری ندارد: همان را بپذیر
+// تا کلید انشعابی تازه ساخته نشود. اگر چیزی نبود یا خطا بود → cb(false)
+export async function adoptRemoteEncryptionIfAny(cb) {
+  try {
+    if (sec.isEncrypted()) return cb(false);
+    const f = await driveFindFile();
+    if (!f) return cb(false);
+    const text = await driveRead(f.id);
+    let remote;
+    try {
+      remote = JSON.parse(text);
+    } catch (e) {
+      return cb(false);
+    }
+    if (!(remote && remote.v === 2 && remote.wraps && remote.data)) return cb(false);
+    await handleRemoteEnvelope(remote, f.id); // مسیر بدون رمزنگاری محلی: پذیرش پاکت + نمایش قفل دوردست
+    cb(true);
+  } catch (e) {
+    cb(false);
+  }
+}
+
 // ─── یکی‌کردن دو دستگاهی که جداگانه رمزنگاری فعال کرده‌اند ───────────────
 async function tryRepairMerge(env) {
   if (!sec.isUnlocked()) {

@@ -547,6 +547,16 @@ export async function submitLockPin() {
       if (window.__capLog) window.__capLog('lock:remoteRetry', e);
     }
     setBusy(false);
+    // اگر نسخهٔ گوگل با کلید/رمز دیگری در انتظار یکی‌شدن است، همین‌جا مسیرش را باز کن
+    // تا کاربر به‌جای «رمز اشتباه» تکراری، مستقیم وارد روند یکی‌کردن دستگاه‌ها شود
+    try {
+      const sync2 = await import('./sync.js');
+      if (sync2.hasPendingRemote && sync2.hasPendingRemote()) {
+        setBusy(false);
+        sync2.openRemotePassModalNow && sync2.openRemotePassModalNow();
+        return;
+      }
+    } catch (e) {}
     pinFailCount++;
     toast(retried ? tr('رمز عبور اشتباه است') : tr('رمز عبور اشتباه است') + (pinFailCount >= 2 ? (' — ' + tr('اگر تازه روی دستگاه دیگر عوضش کرده‌ای، چند ثانیه صبر کن و دوباره بزن')) : ''));
     if (inp) {
@@ -745,6 +755,29 @@ export function encryptStep3() {
 export async function encryptFinish() {
   const pin = null;
   try {
+    // جلوگیری از تولد «کلید انشعابی»: اگر روی گوگل از قبل پاکت رمزشده هست،
+    // همان پذیرفته شود؛ ساخت کلید جدید در این نقطه یعنی از دست‌رفتنِ رمز/پین/اثر انگشتِ این دستگاه در سینک بعدی
+    try {
+      const sync = await import('./sync.js');
+      if (sync.isGoogleLinked()) {
+        await new Promise((res) => sync.requestAccessToken(() => res(), false));
+        const adopted = await new Promise((res) => {
+          let done = false;
+          const t = setTimeout(() => {
+            if (!done) { done = true; res(false); }
+          }, 8000);
+          sync.adoptRemoteEncryptionIfAny((ok) => {
+            if (!done) { done = true; clearTimeout(t); res(ok); }
+          });
+        });
+        if (adopted) {
+          wizPass = '';
+          wizPhrase = '';
+          closeModal();
+          return; // پاکت دوردست آمد و قفلش نمایان است؛ با رمز همان وارد می‌شوی
+        }
+      }
+    } catch (e) { /* آفلاین یا بدون گوگل → فعال‌سازی محلی معمول */ }
     await (delete state.encOff, sec.enableEncryption)(state, wizPass, wizPhrase, pin);
     store.set(LEGACY_DATA_KEY, '');
     store.set(PIN_KEY, '');
