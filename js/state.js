@@ -350,6 +350,13 @@ export function isTransfer(t) {
   return t.type === 'transferIn' || t.type === 'transferOut';
 }
 
+// نمایشِ کاربر: هر انتقال فقط یک ردیف — طرف مقصد و تراکنش کارمزدِ متصل (nobal) در آن گرد می‌آیند
+export function displayTxs(list) {
+  const pairWithOut = new Set();
+  for (const t of list) if (t.pair && t.type === 'transferOut') pairWithOut.add(t.pair);
+  return list.filter((t) => !(t.pair && pairWithOut.has(t.pair) && t.type !== 'transferOut'));
+}
+
 export function isInvoice(t) {
   return !!(t && t.kind === 'invoice' && t.lines && t.lines.length);
 }
@@ -363,6 +370,7 @@ export function accountCurrent(a) {
   let b = a.initial || 0;
   for (const t of state.transactions) {
     if (t.accountId !== a.id) continue;
+    if (t.nobal) continue; // کارمزد انتقال: فقط در هزینه‌های جیب شمرده می‌شود، نه موجودی حساب
     b += t.type === 'in' || t.type === 'transferIn' ? t.amount : -t.amount;
   }
   return b;
@@ -416,7 +424,7 @@ export function runningBalanceByTxId() {
   const after = {};
   const chrono = sortTxs(state.transactions).reverse();
   for (const t of chrono) {
-    if (!t.accountId) continue;
+    if (!t.accountId || t.nobal) continue;
     if (bal[t.accountId] == null) bal[t.accountId] = 0;
     bal[t.accountId] += txDelta(t);
     after[t.id] = bal[t.accountId];

@@ -31,6 +31,7 @@ import {
   state,
   accountGroups, activeAccounts, archivedAccounts,
   accountOptGroups,
+  displayTxs,
   institutionOf, baseCur, rateOf, incomeIn } from './state.js';
 import { t as tr } from './i18n.js';
 import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor, subLabel, subTotals } from './subs.js';
@@ -202,6 +203,11 @@ export function openTxForm(tx, opts) {
   txTouched = [];
   txReturnTo = (opts && opts.back) || '';
   if (tx && isTransfer(tx)) {
+    openTransferForm(tx);
+    return;
+  }
+  // کارمزدِ انتقال جدا ویرایش نمی‌شود؛ از فرمِ خودِ انتقال مدیریت می‌شود
+  if (tx && tx.nobal && tx.pair) {
     openTransferForm(tx);
     return;
   }
@@ -1903,7 +1909,7 @@ export function openAccountLedger(id) {
   if (!a) return;
   rememberAccount(id);
   const bal = accountCurrent(a);
-  const txs = sortTxs(state.transactions.filter((t) => t.accountId === id));
+  const txs = sortTxs(displayTxs(state.transactions.filter((t) => t.accountId === id)));
   const after = runningBalanceByTxId();
   const rows =
     txs.length === 0
@@ -2299,12 +2305,16 @@ export function openTransferForm(tx) {
     if (fa && out.fromRate) transferStoredRates[fa.currency] = out.fromRate;
     if (ta && out.toRate) transferStoredRates[ta.currency] = out.toRate;
   }
+  const fa2 = accountById(fromId);
+  const ta2 = accountById(toId);
+  const sameCurInit = !!(fa2 && ta2 && fa2.currency === ta2.currency);
   const opts = accountOptGroups('');
   openModal(`<button class="x" onclick="closeModal()" aria-label="${tr('بستن')}">${icon('x')}</button>
     <h2 style="display:flex;align-items:center">${pair ? tr('ویرایش انتقال') : tr('انتقال بین حساب‌ها')}${infoTip(tr('انتقال هزینه یا درآمد نیست و در گزارش‌ها حساب نمی‌شود.'), 'lg')}</h2>
     <div class="field"><label>${tr('از حساب')}</label><select class="input" id="trFrom" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>${tr('به حساب')}</label><select class="input" id="trTo" onchange="transferAccountsChanged()">${opts}</select></div>
     <div class="field"><label>${tr('مبلغ از حساب مبدأ')}</label><input class="input" id="trAmount" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('مبلغ به واحد حساب مبدأ')}" value="${out ? out.amount : ''}" oninput="updateTransferPreview()"></div>
+    <div class="field" id="trAmountToWrap" style="display:${sameCurInit ? '' : 'none'}"><label>${tr('مبلغ واریز به مقصد (اختیاری)')}</label><input class="input" id="trAmountTo" type="number" step="any" inputmode="decimal" min="0" placeholder="${tr('خالی = برابر با مبلغ برداشت')}" value="${inn && sameCurInit ? inn.amount : ''}" oninput="updateTransferPreview()"></div>
     <div id="trBalance" class="small muted" style="margin:-8px 0 12px"></div>
     <div id="trRates"></div>
     <div id="trPreview" class="hint" style="margin-bottom:12px;display:none"></div>
@@ -2354,6 +2364,10 @@ function renderTransferRates() {
   if (!wrap || !fromEl || !toEl) return;
   const from = accountById(fromEl.value);
   const to = accountById(toEl.value);
+
+  // فیلد «واریز به مقصد» فقط برای انتقال‌های هم‌ارز (کارمزد در راه)
+  const toWrap = document.getElementById('trAmountToWrap');
+  if (toWrap) toWrap.style.display = from && to && from.currency === to.currency ? '' : 'none';
 
   // مقادیری که کاربر همین الان در فرم وارد کرده را بر اساس ارز نگه می‌داریم
   const typed = {};
@@ -2423,6 +2437,17 @@ export function updateTransferPreview() {
     return;
   }
   if (from.currency === to.currency) {
+    const toInp = document.getElementById('trAmountTo');
+    const raw = toInp ? String(toInp.value).trim() : '';
+    const dest = raw ? parseFloat(raw) : NaN;
+    if (dest > 0 && dest < amount) {
+      box.innerHTML = `${tr('واریز به مقصد:')} <b>${fmt(dest)} ${esc(curName(to.currency))}</b><br><span style="color:var(--orange)">${tr('کارمزد:')} <b>${fmt(amount - dest)}</b> — ${tr('خودکار هزینه (ضایعات) ثبت می‌شود')}</span>`;
+      return;
+    }
+    if (dest > amount) {
+      box.innerHTML = `${tr('واریز به مقصد:')} <b>${fmt(dest)} ${esc(curName(to.currency))}</b> <span class="small muted">${tr('(بیش از برداشت؛ کارمزدی ثبت نمی‌شود)')}</span>`;
+      return;
+    }
     box.innerHTML = `${tr('واریز به مقصد:')} <b>${fmt(amount)} ${esc(curName(to.currency))}</b> ${tr('(بدون تبدیل)')}`;
     return;
   }
@@ -2434,6 +2459,30 @@ export function updateTransferPreview() {
   const toman = amount * fromRate;
   const dest = toman / toRate;
   box.innerHTML = `${tr('ارزش انتقال:')} <b>${fmt(toman)} ${curName(baseCur())}</b><br>${tr('واریز به مقصد:')} <b>${fmt(dest)} ${esc(curName(to.currency))}</b><br><span class="small muted">${tr('نرخ این انتقال —')} ${esc(from.currency)}: ${fmt(fromRate)} ${baseCur()} · ${esc(curName(to.currency))}: ${fmt(toRate)} ${baseCur()}</span>`;
+}
+
+// کارمزد انتقال: تراکنش هزینهٔ متصل به pair (در موجودی حساب لحاظ نمی‌شود؛ در جیب ضایعات شمرده می‌شود)
+function syncTransferFee(pair, ctx) {
+  let feeTx = state.transactions.find((t) => t.pair === pair && t.type === 'out' && t.nobal);
+  if (ctx.fee > 1e-9) {
+    if (!feeTx) {
+      feeTx = { id: uid(), pair, type: 'out' };
+      state.transactions.push(feeTx);
+    }
+    Object.assign(feeTx, {
+      amount: ctx.fee,
+      accountId: ctx.from,
+      cat: 'waste',
+      reflect: 'fee', // زیردستهٔ «کارمزد و جریمهٔ قابل‌اجتناب»
+      nobal: true,
+      note: tr('کارمزد انتقال'),
+      dateISO: ctx.dateISO,
+      month: ctx.month,
+      updatedAt: ctx.stamp,
+    });
+  } else if (feeTx) {
+    state.transactions = state.transactions.filter((t) => t !== feeTx);
+  }
 }
 
 export function saveTransfer() {
@@ -2467,7 +2516,24 @@ export function saveTransfer() {
       return;
     }
   }
-  const destinationAmount = sameCurrency ? amount : (amount * fromRate) / toRate;
+  let destinationAmount;
+  if (sameCurrency) {
+    const toInp = document.getElementById('trAmountTo');
+    const raw = toInp ? String(toInp.value).trim() : '';
+    if (raw) {
+      destinationAmount = parseFloat(raw);
+      if (!isFinite(destinationAmount) || destinationAmount <= 0) {
+        toast(tr('مبلغ واریز معتبر وارد کن'));
+        return;
+      }
+    } else {
+      destinationAmount = amount; // کادر خالی = برابر با برداشت
+    }
+  } else {
+    destinationAmount = (amount * fromRate) / toRate;
+  }
+  // کارمزد در راه: فقط انتقال هم‌ارز و وقتی واریز کمتر از برداشت است
+  const fee = sameCurrency ? Math.max(0, amount - destinationAmount) : 0;
   const dateISO = document.getElementById('trDate').value || todayISO();
   const month = monthOfISO(dateISO);
   const note = document.getElementById('trNote').value.trim();
@@ -2497,6 +2563,7 @@ export function saveTransfer() {
       fromRate,
       toRate,
     });
+    syncTransferFee(editingTransferPair, { fee, from, dateISO, month, stamp });
     toast((tr('انتقال ویرایش شد') + ' ✓'));
   } else {
     const pair = uid();
@@ -2528,6 +2595,7 @@ export function saveTransfer() {
       fromRate,
       toRate,
     });
+    syncTransferFee(pair, { fee, from, dateISO, month, stamp });
     toast((tr('انتقال با موفقیت ثبت شد') + ' ✓'));
   }
   editingTransferPair = null;

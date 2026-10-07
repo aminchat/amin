@@ -19,6 +19,7 @@ import {
   catById,
   computeMonths,
   curStats,
+  displayTxs,
   hasLocalData,
   investProfit,
   investTotal,
@@ -176,6 +177,14 @@ function txRow(t, opts = {}) {
   const inv = isInvoice(t);
   const cat = t.type === 'out' && !inv ? catById(t.cat) : null;
   const transfer = isTransfer(t);
+  // ردیف نمایندهٔ انتقال: مقصد و کارمزدِ متصل را هم کنارش نشان بده
+  let transferTail = '';
+  if (transfer && t.type === 'transferOut' && t.pair) {
+    const inn = state.transactions.find((x) => x.pair === t.pair && x.type === 'transferIn');
+    const feeT = state.transactions.find((x) => x.pair === t.pair && x.nobal);
+    const ta = inn ? accountById(inn.accountId) : null;
+    transferTail = (ta ? ' → ' + esc(ta.name) : '') + (feeT ? ' · ' + tr('کارمزد {x}', { x: fmt(feeT.amount) }) : '');
+  }
   const icName = transfer ? 'swap' : inv ? 'receipt' : t.type === 'in' ? (t.cat === 'loan' ? 'cat_loan' : 'arrowIn') : cat ? 'cat_' + cat.id : 'arrowOut';
   const color = transfer ? 'var(--purple)' : inv ? 'var(--orange)' : t.type === 'in' ? 'var(--green)' : cat ? cat.color : 'var(--muted)';
   const title = t.note
@@ -205,7 +214,7 @@ function txRow(t, opts = {}) {
       <div class="ic" style="background:${color.startsWith('var') ? color.replace(')', '-soft)') : color + '22'};color:${color}">${icon(icName)}</div>
       <div class="mid">
         <div class="t1">${title}</div>
-        <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}${unitHint ? ' · ' + unitHint : ''} ${badges}</div>
+        <div class="t2">${fmtDate(t.dateISO)} · ${a ? esc(a.name) : '—'}${transferTail}${unitHint ? ' · ' + unitHint : ''} ${badges}</div>
       </div>
       <div class="amt-col"><div class="amt ${amtClass}">${sign}${fmt(t.amount)}</div>${balTxt}</div>
     </div>`;
@@ -266,7 +275,7 @@ export function renderHome() {
   </div>`;
 
   // آخرین تراکنش‌ها
-  const recent = sortTxs(state.transactions.slice()).slice(0, 3);
+  const recent = sortTxs(displayTxs(state.transactions.slice())).slice(0, 3);
   if (recent.length) {
     html += `<div class="card">
       <div class="card-head"><h3>${icon('list')} ${tr('home.recent')}</h3><button type="button" class="link" onclick="switchTab('tx')">${tr('act.all')}</button></div>
@@ -316,7 +325,7 @@ function txListHtml(txs, after, filtered) {
     </div>`;
     // گروه‌بندی بر اساس روز
     let lastDay = '';
-    for (const t of txs) {
+    for (const t of displayTxs(txs)) { // هر انتقال یک ردیف؛ واریز و کارمزدِ متصل در همان گرد می‌آیند
       const day = fmtDate(t.dateISO);
       if (day !== lastDay) {
         html += `<div class="small muted" style="margin:var(--sp-3) 4px var(--sp-2);font-weight:700">${day}</div>`;
