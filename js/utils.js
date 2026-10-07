@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.38.9';
+export const APP_VERSION = '2.38.10';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -577,23 +577,34 @@ if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') 
   }).observe(document.documentElement, { childList: true, subtree: true });
 }
 
-/* ═══ لذت‌های بصری v2.38.9 ═══ */
+/* ═══ لذت‌های بصری v2.38.10 ═══ */
 
 // شمارشِ نرمِ اعداد: از مقدار قبلی به مقدار جدید (المنت‌هایی با data-count)
+// حافظهٔ آخرینِ مقدارِ نمایش‌یافتهٔ هر عدد — برای این‌که در رندرهای پشت‌سرهم،
+// انیمیشن از صفر دوباره شروع نشود (منشأ چشمک‌زدن)
+const numStore = new Map();
+
 export function animateNums(root, fmtFn) {
   const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (rm) return;
   (root || document).querySelectorAll('[data-count]').forEach((el) => {
     const target = Number(el.dataset.count) || 0;
-    const from = Number(el.dataset.shown) || 0;
-    el.dataset.shown = String(target);
-    if (from === target) return;
-    const dur = 420;
+    const key = el.dataset.ckey || '';
+    const from = numStore.has(key) ? numStore.get(key) : 0;
+    numStore.set(key, target);
+    if (from === target) { return; } // مقدار عوض نشده؛ همان متن نهایی بماند
+    const finalText = fmtFn(target);
+    if (fmtFn(from) === finalText) { el.textContent = finalText; return; } // مثلاً حالت مخفی‌کردن اعداد
+    // قفلِ عرض جعبه تا در میانهٔ شمارش، متن نپرد و چیدمان نجهد
+    const w = (el.getBoundingClientRect && el.getBoundingClientRect().width) || el.offsetWidth || 0;
+    if (w) el.style.minWidth = Math.ceil(w) + 'px';
+    el.style.display = el.dataset.ckey === 'hero' ? 'block' : 'inline-block';
+    const dur = 700;
     const t0 = performance.now();
     const step = (now) => {
       const k = Math.min(1, (now - t0) / dur);
-      const e = 1 - Math.pow(1 - k, 3);
-      el.textContent = fmtFn(Math.round(from + (target - from) * e));
+      const e = 1 - Math.pow(1 - k, 4); // توقفی نرم در انتها
+      el.textContent = Math.round(from + (target - from) * e) === target ? finalText : fmtFn(Math.round(from + (target - from) * e));
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);

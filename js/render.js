@@ -152,7 +152,7 @@ function homePockets(mk) {
     return `<button type="button" class="pk ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')">
       ${pkRingHTML(c, Math.min(1.25, width / 100), over, c.id === 'charity' && spent > 0)}
       <span class="n">${c.label}</span>
-      <span class="a" data-count="${spent}">${fmtShort(spent)}</span>
+      <span class="a" data-count="${spent}" data-ckey="pk:${c.id}">${fmtShort(spent)}</span>
       <span class="s">${sub}</span>
       <span class="bar"><div style="width:${width}%;background:${over ? 'var(--red)' : c.color}"></div></span>
     </button>`;
@@ -271,7 +271,7 @@ export function renderHome() {
   html += `<div class="hero ${moodCls}">
     <div style="min-width:0">
       <div class="lbl">${icon('wallet')} ${tr('home.spendable', { month: monthLabel(mk) })}</div>
-      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}" data-count="${s.remaining}">${fmtShort(s.remaining)}</div>
+      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}" data-count="${s.remaining}" data-ckey="hero">${fmtShort(s.remaining)}</div>
       <div class="sub">${
         !hasBudget
           ? tr('home.noBudget')
