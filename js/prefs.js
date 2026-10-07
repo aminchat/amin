@@ -212,14 +212,26 @@ export function clearBioRecord() {
   store.set(BIO_KEY, '');
 }
 
+// تعویض کلید در جریان یکی‌کردن داده‌ها: رکورد را نگه می‌داریم اما «مرده» علامت می‌زنیم
+// تا با اولین ورود موفقِ رمز عبور، خودکار با کلید جدید ترمیم شود (دوباره ثبت لازم نیست)
+export function strikeBioRecord() {
+  const rec = readBioRecord();
+  if (!rec || !rec.id || rec.dead) return;
+  try {
+    store.set(BIO_KEY, JSON.stringify(Object.assign({}, rec, { dead: true })));
+  } catch (e) {}
+}
+
 export function hasBiometric() {
-  return !!readBioRecord();
+  const rec = readBioRecord();
+  return !!(rec && !rec.dead);
 }
 
 // نتیجه: {ok} در حالت قدیمی؛ {ok, state} در حالت رمزشده
 export async function tryBiometric() {
   const rec = readBioRecord();
   if (!rec || !bioAvailable()) return { ok: false };
+  if (rec.dead) return { ok: true, stale: true }; // نشان‌دار شده؛ با ورود رمز عبور ترمیم می‌شود
   try {
     const publicKey = {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -264,8 +276,9 @@ export async function tryBiometric() {
           return { ok: true, state: await sec.unlockWithKey(key) };
         } catch (e) {
           if (window.__capLog) window.__capLog('tryBiometric:ds', e);
-          // رکورد با کلید قدیمی (بعد از بازیابی/ادغام) — دیگر باز نمی‌کند؛ پاکش می‌کنیم
-          store.set(BIO_KEY, '');
+          // رکورد با کلید قدیمی (بعد از بازیابی/ادغام) — پاکش نمی‌کنیم؛ با اولین ورود
+          // موفق رمز عبور خودش با کلید جدید ترمیم می‌شود
+          strikeBioRecord();
           return { ok: true, stale: true };
         }
       }
@@ -471,7 +484,26 @@ function finalizeUnlock(st) {
   render();
   unlockApp();
   upgradeBioRecord();
+  healBioRecord();
   document.dispatchEvent(new CustomEvent('cap:unlocked'));
+}
+
+// ترمیم خودکار اثر انگشت بعد از ورود با رمز عبور: اگر رکورد «مرده» مانده (کلید داده
+// هنگام یکی‌کردن دستگاه‌ها عوض شده بود)، با کلید فعلی دوباره می‌پیچیم تا همان اثر انگشت
+// دفعهٔ بعد کار کند — بدون نیاز به ثبت دوباره در تنظیمات
+async function healBioRecord() {
+  try {
+    const rec = readBioRecord();
+    if (!rec || !rec.dead || !rec.id) return;
+    if (!sec.isEncrypted() || !sec.isUnlocked()) return;
+    const ds = randBytes(32);
+    const kek = await importKekFromRaw(ds);
+    const dsWrap = await wrapDataKeyWithKek(sec.getDataKey(), kek);
+    store.set(BIO_KEY, JSON.stringify({ v: 3, id: rec.id, dsWrap, ds: b64(ds) }));
+    toast((tr('اثر انگشت دوباره فعال شد') + ' ✓'));
+  } catch (e) {
+    if (window.__capLog) window.__capLog('healBioRecord', e);
+  }
 }
 
 export async function submitLockPin() {

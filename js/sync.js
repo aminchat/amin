@@ -10,7 +10,7 @@ import {
   state,
 } from './state.js';
 import * as sec from './securestore.js';
-import { showLockForRemote, unlockApp, clearBioRecord } from './prefs.js';
+import { showLockForRemote, unlockApp, clearBioRecord, strikeBioRecord } from './prefs.js';
 import { t as tr } from './i18n.js';
 
 export const GOOGLE_CLIENT_ID = '802769209005-a06b9ksp00sbm22hslhdbsumk8j6hmhm.apps.googleusercontent.com';
@@ -1135,16 +1135,17 @@ export async function submitRemotePass() {
 async function applyRemoteMerge(env, got) {
   pendingRemoteEnv = null;
   const merged = mergeStates(state, got.state);
-  // پاکت گوگل (کلید و رمزهایش) معتبر می‌شود؛ پین و اثر انگشت قدیمی این دستگاه
-  // با کلید قبلی پیچیده شده بودند و دیگر باز نمی‌کنند → پاک می‌شوند
+  // پاکت گوگل (کلید و رمزهایش) معتبر می‌شود؛ پین قدیمی این دستگاه با کلید قبلی
+  // پیچیده شده بود و دیگر باز نمی‌کند → پاک می‌شود. اثر انگشت «مرده» علامت می‌خورد تا
+  // با اولین ورود موفق رمز عبور خودش ترمیم شود (بدون ثبت دوباره)
   sec.adoptRemoteEnvelope(env, { dropPin: true });
   sec.setSessionKey(got.dk);
-  clearBioRecord();
+  strikeBioRecord();
   replaceState(merged);
   if (document.body.classList.contains('locked')) unlockApp();
   render();
   pendingLocalSave = true;
-  toast((tr('داده‌ها یکی شد') + ' ✓ ' + tr('از این پس با این رمز باز می‌شود')));
+  toast((tr('داده‌ها یکی شد') + ' ✓ ' + tr('از این پس با این رمز باز می‌شود') + ' — ' + tr('پین این دستگاه پاک شد (از تنظیمات دوباره بساز)؛ اثر انگشت با اولین ورودِ رمز عبور خودش ترمیم می‌شود')));
   pushToDrive(false);
 }
 
