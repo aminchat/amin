@@ -1,5 +1,5 @@
 export const FA = '۰۱۲۳۴۵۶۷۸۹';
-export const APP_VERSION = '2.38.8';
+export const APP_VERSION = '2.38.9';
 
 let faDigits = true;
 export function setFaDigits(on) {
@@ -575,4 +575,52 @@ if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') 
   new MutationObserver((muts) => {
     for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) enhanceMoneyInputs(n.matches('input') ? n.parentNode : n);
   }).observe(document.documentElement, { childList: true, subtree: true });
+}
+
+/* ═══ لذت‌های بصری v2.38.9 ═══ */
+
+// شمارشِ نرمِ اعداد: از مقدار قبلی به مقدار جدید (المنت‌هایی با data-count)
+export function animateNums(root, fmtFn) {
+  const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (rm) return;
+  (root || document).querySelectorAll('[data-count]').forEach((el) => {
+    const target = Number(el.dataset.count) || 0;
+    const from = Number(el.dataset.shown) || 0;
+    el.dataset.shown = String(target);
+    if (from === target) return;
+    const dur = 420;
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - k, 3);
+      el.textContent = fmtFn(Math.round(from + (target - from) * e));
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+// انفجارِ کوچکِ ذرات رنگی — مبدأ: وسط دکمهٔ + (یا هر نقطه‌ای که داده شود)
+export function celebrate(x, y) {
+  const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (rm) return;
+  const fab = document.getElementById('fab');
+  const r = fab && fab.getBoundingClientRect ? fab.getBoundingClientRect() : null;
+  const cx = typeof x === 'number' ? x : r ? r.left + r.width / 2 : window.innerWidth / 2;
+  const cy = typeof y === 'number' ? y : r ? r.top + r.height / 2 : window.innerHeight - 90;
+  const box = document.createElement('div');
+  box.className = 'burst';
+  box.style.left = cx + 'px';
+  box.style.top = cy + 'px';
+  for (let i = 0; i < 12; i++) {
+    const s = document.createElement('span');
+    const a = Math.random() * Math.PI * 2;
+    const d = 36 + Math.random() * 44;
+    s.style.setProperty('--dx', (Math.cos(a) * d).toFixed(1) + 'px');
+    s.style.setProperty('--dy', (Math.sin(a) * d - 28).toFixed(1) + 'px');
+    s.style.background = i % 3 === 0 ? 'var(--accent)' : i % 3 === 1 ? 'var(--green)' : 'var(--orange)';
+    box.appendChild(s);
+  }
+  (document.body || document.documentElement).appendChild(box);
+  setTimeout(() => box.remove(), 800);
 }

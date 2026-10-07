@@ -1,4 +1,4 @@
-import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign } from './utils.js';
+import { esc, fmt, fmtT, fmtShort, toFa, store, infoTip, pctSign, animateNums } from './utils.js';
 import { lightsHtml } from './health.js';
 import { t as tr } from './i18n.js';
 import { icon, accountIcon, institutionIconName } from './icons.js';
@@ -107,6 +107,29 @@ function ringSVG(pct, cls) {
   </div>`;
 }
 
+// آیکون پاکت با حلقهٔ پیشرفت دورش — نیکوکاری، قلبش می‌تپد
+function pkRingHTML(c, frac, over, beats) {
+  const R = 12.5;
+  const C2 = 2 * Math.PI * R;
+  const p2 = Math.max(0, Math.min(1, frac));
+  return `<span class="pk-ring ${beats ? 'beats' : ''}" style="color:${c.color}">
+    <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="${R}" style="stroke:${c.color}26"/><circle class="prg" cx="16" cy="16" r="${R}" style="stroke:${over ? 'var(--red)' : c.color}" stroke-dasharray="${C2.toFixed(1)}" stroke-dashoffset="${(C2 * (1 - p2)).toFixed(1)}"/></svg>
+    ${icon('cat_' + c.id)}
+  </span>`;
+}
+
+// حالت خالی: تصویر کیف + درخشش
+function emptyArt() {
+  return `<svg class="emptyArt" viewBox="0 0 96 72" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="14" y="24" width="68" height="38" rx="10"/>
+    <path d="M14 34h68"/>
+    <rect x="54" y="42" width="28" height="16" rx="8"/>
+    <circle cx="60" cy="50" r="2.5" fill="currentColor" stroke="none"/>
+    <path d="M24 18l4 6" opacity=".7"/><path d="M36 16v7" opacity=".7"/>
+    <path d="M76 6l1.8 4.7 4.7 1.8-4.7 1.8L76 19l-1.8-4.7-4.7-1.8 4.7-1.8z" fill="currentColor" stroke="none"/>
+  </svg>`;
+}
+
 function homePockets(mk) {
   return `<div class="pk-scroll">${CATS.map((c) => {
     if (c.loan) {
@@ -127,9 +150,9 @@ function homePockets(mk) {
     const left = ceil - spent;
     const sub = c.target === 0 ? (spent > 0 ? tr('pk.wish') : tr('pk.none')) : ceil > 0 ? (left >= 0 ? tr('pk.left', { amt: fmtShort(left) }) : tr('pk.over', { amt: fmtShort(-left) })) : tr('pk.noCeil');
     return `<button type="button" class="pk ${over ? 'over' : ''}" onclick="openPocketLedger('${c.id}','${mk}')">
-      <span class="ib sm" style="background:${c.color}22;color:${c.color}">${icon('cat_' + c.id)}</span>
+      ${pkRingHTML(c, Math.min(1.25, width / 100), over, c.id === 'charity' && spent > 0)}
       <span class="n">${c.label}</span>
-      <span class="a">${fmtShort(spent)}</span>
+      <span class="a" data-count="${spent}">${fmtShort(spent)}</span>
       <span class="s">${sub}</span>
       <span class="bar"><div style="width:${width}%;background:${over ? 'var(--red)' : c.color}"></div></span>
     </button>`;
@@ -244,10 +267,11 @@ export function renderHome() {
 
   // کارت قهرمان
   const ringCls = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : '';
-  html += `<div class="hero">
+  const moodCls = !hasBudget ? 'calm' : pct >= 100 ? 'tense' : pct >= 80 ? 'warm' : 'calm';
+  html += `<div class="hero ${moodCls}">
     <div style="min-width:0">
       <div class="lbl">${icon('wallet')} ${tr('home.spendable', { month: monthLabel(mk) })}</div>
-      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}">${fmtShort(s.remaining)}</div>
+      <div class="hero-num ${s.remaining < 0 ? 'val red' : ''}" data-count="${s.remaining}">${fmtShort(s.remaining)}</div>
       <div class="sub">${
         !hasBudget
           ? tr('home.noBudget')
@@ -284,6 +308,7 @@ export function renderHome() {
   }
 
   document.getElementById('homeContent').innerHTML = html;
+  animateNums(document.getElementById('homeContent'), fmtShort);
 }
 
 txf.onChange((o) => renderTx(o));
@@ -315,7 +340,7 @@ function txListHtml(txs, after, filtered) {
   if (txs.length === 0 && filtered) {
     html += `<div class="empty"><span class="ib lg muted">${icon('search')}</span>${tr('با این فیلتر تراکنشی نیست')}<button type="button" class="btn sm" onclick="txfClear()">${tr('پاک کردن فیلترها')}</button></div>`;
   } else if (txs.length === 0) {
-    html += `<div class="empty"><span class="ib lg muted">${icon('list')}</span>${tr('tx.empty')}${state.accounts.length ? `<button type="button" class="btn sm primary" onclick="openQuickTx()">${icon('plus')} ${tr('ثبت تراکنش')}</button>` : `<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button>`}</div>`;
+    html += `<div class="empty">${emptyArt()}${tr('tx.empty')}${state.accounts.length ? `<button type="button" class="btn sm primary" onclick="openQuickTx()">${icon('plus')} ${tr('ثبت تراکنش')}</button>` : `<button type="button" class="btn sm primary" onclick="openAccountForm()">${icon('plus')} ${tr('ساخت حساب')}</button>`}</div>`;
   } else {
     const sumOut = txs.filter((t) => t.type === 'out' && !isTransfer(t) && t.cat !== 'loan').reduce((x, t) => x + (isInvoice(t) ? t.lines.reduce((y, l) => y + (l.cat === 'loan' ? 0 : l.amount || 0), 0) : t.amount || 0), 0);
     const sumIn = txs.filter((t) => t.type === 'in' && !isTransfer(t)).reduce((x, t) => x + (t.cat === 'loan' ? Math.min(t.interest > 0 ? t.interest : 0, t.amount || 0) : t.amount || 0), 0);

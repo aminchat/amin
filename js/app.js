@@ -263,11 +263,26 @@ function switchTab(id) {
   const tab = TABS.find((t) => t.id === id);
   if (title && tab) title.textContent = tab.lbl;
   document.querySelectorAll('#bottomNav .bn').forEach((b) => b.classList.toggle('on', b.dataset.tab === id));
+  moveBnPill();
   paintAssetView();
   render();
   syncOnPageChange();
   window.scrollTo({ top: 0 });
 }
+
+// حبابِ کشویی زیر تب فعال
+function moveBnPill() {
+  const nav = document.getElementById('bottomNav');
+  const pill = document.getElementById('bnPill');
+  if (!nav || !pill) return;
+  const on = nav.querySelector('.bn.on');
+  if (!on) { pill.style.opacity = '0'; return; }
+  pill.style.left = on.offsetLeft + 'px';
+  pill.style.width = on.offsetWidth + 'px';
+  pill.style.opacity = '1';
+}
+window.addEventListener('resize', moveBnPill);
+addEventListener('load', () => setTimeout(moveBnPill, 80));
 
 function paintShellIcons() {
   document.querySelectorAll('#bottomNav .bn[data-ic]').forEach((b) => {

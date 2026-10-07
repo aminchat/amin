@@ -1,4 +1,4 @@
-import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval, nowHM } from './utils.js';
+import { esc, fmt, fmtShort, store, toast, uid, todayISO, haptic, toFa, infoTip, amountWords, pctSign, decSep, calcEval, nowHM, celebrate } from './utils.js';
 import { icon } from './icons.js';
 import { hasGeminiKey, readInvoiceImage, readPaperTxImage, readAnyImage, lastJpegB64 } from './scan.js';
 import { rememberScan, listScans, loadScan, deleteScan } from './scanhist.js';
@@ -1373,6 +1373,7 @@ export function saveTx() {
   } else {
     state.transactions.push(Object.assign({ id: uid() }, payload));
     toast(invoice ? (tr('فاکتور ثبت شد') + ' ✓') : (tr('ثبت شد') + ' ✓'));
+  celebrate();
   }
   haptic(10);
   save();
@@ -1682,6 +1683,7 @@ export function qaSave() {
   closeModal();
   render();
   toast((tr('ثبت شد') + ' ✓'));
+  celebrate();
 }
 
 function pairTransactions(idOrPair) {

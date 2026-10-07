@@ -42,6 +42,7 @@ const LEGACY_DATA_KEY = 'capital_app_v1';
 
 export const THEMES = [
   { id: 'night', name: tr('شب'), c1: '#0b0f17', c2: '#3d8bfd' },
+  { id: 'black', name: tr('شب مطلق'), c1: '#000000', c2: '#4d94ff' },
   { id: 'light', name: tr('روشن'), c1: '#f4f6fb', c2: '#2563eb' },
   { id: 'ocean', name: tr('اقیانوس'), c1: '#07151c', c2: '#22d3ee' },
   { id: 'forest', name: tr('جنگل'), c1: '#0c1410', c2: '#34d399' },
@@ -54,11 +55,19 @@ export function currentTheme() {
 
 export function applyTheme(id) {
   const t = THEMES.find((x) => x.id === id) ? id : 'light';
+  const prev = document.documentElement.getAttribute('data-theme');
   document.documentElement.setAttribute('data-theme', t);
   store.set(THEME_KEY, t);
   const meta = document.querySelector('meta[name="theme-color"]');
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
   if (meta && bg) meta.setAttribute('content', bg);
+  // گذرِ ملایم هنگام عوض‌شدن تم (نه بار اول)
+  const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prev && prev !== t && !rm) {
+    document.documentElement.classList.add('theme-fade');
+    clearTimeout(applyTheme._t);
+    applyTheme._t = setTimeout(() => document.documentElement.classList.remove('theme-fade'), 420);
+  }
 }
 
 export function togglePrivacy() {
