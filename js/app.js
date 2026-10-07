@@ -688,7 +688,7 @@ if (!allowSW) {
     if (document.visibilityState === 'visible') window.__checkUpdate();
   });
 }
-if ('serviceWorker' in navigator && store.persisted && allowSW) {
+if ('serviceWorker' in navigator && allowSW) {
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloading) return;
