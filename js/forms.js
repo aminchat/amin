@@ -32,7 +32,6 @@ import {
   accountGroups, activeAccounts, archivedAccounts,
   accountOptGroups,
   displayTxs,
-  CATS,
   institutionOf, baseCur, rateOf, incomeIn } from './state.js';
 import { t as tr } from './i18n.js';
 import { titleChipsHtml, subChipsHtml, lookupTitle, learnTitle, subsFor, subLabel, subTotals } from './subs.js';
