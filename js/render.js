@@ -773,7 +773,6 @@ export function renderAssetsOverview() {
   const rec = debts.filter((d) => d.kind === 'in').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || baseCur()), 0);
   const pay = debts.filter((d) => d.kind === 'out').reduce((s, d) => s + debtRemaining(d) * rateOf((accountById(d.accountId) || {}).currency || baseCur()), 0);
   const inst = totalRemaining();
-  const oblig = pay + inst;
   const lateDebts = overdueCount() - overdueInstallments();
   const lateInst = overdueInstallments();
   const plans = (state.installments || []).length;
@@ -807,13 +806,7 @@ export function renderAssetsOverview() {
       ${entry('debts', 'handshake', 'purple', tr('nav.debts'), debts.length, debtSub, `<span style="color:var(--green)">+${fmtShort(rec)}</span> <span class="small muted">/</span> <span style="color:var(--red)">−${fmtShort(pay)}</span>`, lateDebts > 0)}
       ${entry('installments', 'calendar', 'orange', tr('nav.installments'), plans, instSub, plans ? fmtShort(inst) : '—', lateInst > 0)}
     </div>
-    ${oblig > 0 ? `<div class="card oblig">
-      <div class="oblig-head"><span class="ib red">${icon('alert')}</span><span class="t1" style="flex:1">${tr('as.oblig')}${infoTip(tr('as.obligTip'))}</span><span class="amt out">${fmtShort(oblig)}</span></div>
-      <div class="oblig-rows">
-        ${pay > 0 ? `<div class="oblig-row"><span>${tr('as.debtOthers')}</span><b>${fmtShort(pay)}</b></div>` : ''}
-        ${inst > 0 ? `<div class="oblig-row"><span>${tr('as.instLeft')}</span><b>${fmtShort(inst)}</b></div>` : ''}
-      </div>
-    </div>` : ''}`;
+`;
 }
 
 export function renderAll() {
