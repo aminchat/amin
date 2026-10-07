@@ -990,3 +990,85 @@ a.btn.block{display:flex}
 .sic .cur-ic{width:100%;height:100%;margin:0}
 .ex-ic{width:100%;height:100%;border-radius:10px}
 .bank-ib.ex{padding:0;background:transparent;box-shadow:none;overflow:hidden}
+
+/* ═══ بستهٔ زیباسازی v2.38.9 ═══ */
+
+/* تم شبِ مطلق (AMOLED) */
+html[data-theme="black"]{
+  --bg:#000; --bg2:#060606; --card:#0c0c0e; --card2:#151518;
+  --border:#232328; --border-soft:rgba(255,255,255,.07);
+  --text:#f2f5fa; --muted:#9aa4b3; --faint:#5f6a79;
+  --accent:#4d94ff; --accent-ink:#fff; --accent-soft:rgba(77,148,255,.16);
+  --green:#2dd470; --green-soft:rgba(45,212,112,.16);
+  --red:#f75050; --red-soft:rgba(247,80,80,.16);
+  --orange:#f5a623; --orange-soft:rgba(245,166,35,.16);
+  --purple:#b28ffa; --purple-soft:rgba(178,143,250,.16);
+  --blue:#4d94ff;
+  --header:rgba(0,0,0,.82); --nav:rgba(12,12,14,.82);
+  --shadow-1:0 1px 2px rgba(0,0,0,.5);
+  --shadow-2:0 10px 28px rgba(0,0,0,.6);
+  --press:rgba(255,255,255,.06);
+  --skeleton:linear-gradient(90deg,var(--card2) 25%,#1d1d22 50%,var(--card2) 75%);
+  color-scheme:dark;
+}
+
+/* گذرِ ملایم هنگام عوض‌شدن تم */
+html.theme-fade, html.theme-fade *{
+  transition:background-color .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease !important;
+}
+
+/* هوای مالیِ کارت قهرمان */
+.hero{position:relative;overflow:hidden}
+.hero::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(120% 150% at 85% -20%, var(--green-soft), transparent 60%);
+  animation:heroDrift 14s ease-in-out infinite alternate;
+}
+.hero.warm::before{background:radial-gradient(120% 150% at 85% -20%, var(--orange-soft), transparent 62%)}
+.hero.tense::before{background:radial-gradient(130% 160% at 85% -20%, var(--red-soft), transparent 66%)}
+.hero.calm::before{background:radial-gradient(120% 150% at 85% -20%, var(--green-soft), transparent 60%)}
+.hero>*{position:relative;z-index:1}
+@keyframes heroDrift{from{transform:translate(0,0) scale(1)}to{transform:translate(-4%,6%) scale(1.1)}}
+
+/* حلقهٔ پیشرفت دور آیکون پاکت‌ها */
+.pk-ring{position:relative;width:36px;height:36px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+.pk-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.pk-ring circle{fill:none;stroke-width:2.6;stroke-linecap:round}
+.pk-ring .prg{transition:stroke-dashoffset .7s var(--ease)}
+.pk-ring .i{width:16px;height:16px}
+.pk-ring.beats .i{animation:beat 1.7s ease-in-out infinite}
+@keyframes beat{0%,100%{transform:scale(1)}10%{transform:scale(1.22)}20%{transform:scale(1)}30%{transform:scale(1.14)}40%{transform:scale(1)}}
+
+/* حباب کشوییِ نویگیشن پایین */
+.bn-pill{
+  position:absolute;top:6px;bottom:6px;left:0;width:0;z-index:0;opacity:0;
+  background:var(--accent-soft);border-radius:var(--r-md);
+  transition:left .32s var(--ease), width .32s var(--ease), opacity .2s;
+  pointer-events:none;
+}
+#bottomNav .bn{z-index:1}
+#bottomNav .bn.on::after{display:none}
+#bottomNav .bn.on .i{animation:bnPop .38s var(--ease);color:var(--accent)}
+@keyframes bnPop{0%{transform:scale(1)}40%{transform:scale(1.25) translateY(-3px)}100%{transform:scale(1) translateY(-1px)}}
+
+/* شیشهٔ هدر و شیت */
+header{backdrop-filter:blur(14px) saturate(1.35);-webkit-backdrop-filter:blur(14px) saturate(1.35)}
+.overlay{backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+
+/* انفجارِ ذرات هنگام ثبت */
+.burst{position:fixed;width:0;height:0;pointer-events:none;z-index:999}
+.burst span{position:absolute;width:7px;height:7px;border-radius:2px;animation:burstFly .72s cubic-bezier(.15,.7,.3,1) forwards}
+@keyframes burstFly{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(.15) rotate(160deg);opacity:0}}
+
+/* حالت خالیِ با شخصیت */
+.emptyArt{width:84px;height:64px;display:block;margin:4px auto 10px;color:var(--faint)}
+.empty .emptyArt+.mut{color:var(--muted)}
+
+/* ارقام جدولی برای ستون‌های مرتب */
+.hero-num,.pk .a,.val,.stat .val,.txn .amt{font-variant-numeric:tabular-nums}
+
+/* حرکتِ کمتر برای حساسان */
+@media (prefers-reduced-motion: reduce){
+  .hero::before,.pk-ring.beats .i,#bottomNav .bn.on .i,.burst span{animation:none !important}
+  .bn-pill,.pk-ring .prg,html.theme-fade *{transition:none !important}
+}

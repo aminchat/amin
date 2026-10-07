@@ -10,10 +10,10 @@ import {
   state,
 } from './state.js';
 import * as sec from './securestore.js';
-import { showLockForRemote, unlockApp, clearBioRecord } from './prefs.js';
+import { showLockForRemote, unlockApp, clearBioRecord, strikeBioRecord } from './prefs.js';
 import { t as tr } from './i18n.js';
 
-export const GOOGLE_CLIENT_ID = '802769209005-v1jiuetctp8u8lr5su697fafdqhe80oc.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID = '802769209005-a06b9ksp00sbm22hslhdbsumk8j6hmhm.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILENAME = 'capital-app-data.json';
 const DRIVE_FILE_KEY = 'capital_app_drive_file_id';
@@ -22,6 +22,13 @@ const TOKEN_SESSION = 'capital_app_g_token';
 // ورود از طریق Worker (refresh token رمزشده روی همین دستگاه؛ تمدید بی‌صدا بدون کوکی/iframe)
 const SYNC_WORKER = 'https://taraz-sync.taraz.workers.dev';
 const SEALED_KEY = 'capital_app_g_sealed';
+// مسیرهای سرویس ورود/تمدید (افزونگی): اگر یکی فیلتر/قطع بود، خودکار سراغ مسیر بعدی می‌رویم
+const SYNC_ROUTES = [
+  { id: 'cf', base: SYNC_WORKER, p: { ping: '/health', start: '/start', refresh: '/refresh', revoke: '/revoke' } },
+  { id: 'vercel', base: 'https://taraz-api.vercel.app', p: { ping: '/ping', start: '/auth/start', refresh: '/token/refresh', revoke: '/token/revoke' } },
+];
+const ROUTE_KEY = 'capital_app_sync_route';
+const routeHealthy = {}; // سلامت مسیرها در همین نشست
 
 export let gUser = null;
 const LASTSYNC_KEY = (SEALED_KEY.indexOf('t_') === 0 ? 't_' : '') + 'capital_app_g_lastsync';
@@ -220,7 +227,7 @@ export function requestAccessToken(cb, interactive) {
       return;
     }
     lastRefreshTry = Date.now();
-    fetch(SYNC_WORKER + '/refresh', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ sealed }) })
+    routeFetch('refresh', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ sealed }) })
       .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })))
       .then(({ status, j }) => {
         if (j && j.access_token) {
@@ -242,8 +249,8 @@ export function requestAccessToken(cb, interactive) {
       .catch((e) => {
         lastTokenError = 'network';
         lastNetDetail = String((e && e.message) || e || '');
-        // تشخیص: آیا خودِ سرور در دسترس است؟ (اگر بله، مشکل از پاسخ /refresh است نه اینترنت)
-        fetch(SYNC_WORKER + '/health', { cache: 'no-store' }).then((r) => { workerReachable = r.ok; }).catch(() => { workerReachable = false; }).finally(() => finish(false));
+        // تشخیص: آیا حداقل یکی از مسیرهای ورود در دسترس است؟ (برای راهنمایی دقیق‌تر خطا)
+        pingSyncRoutes(() => finish(false));
       });
     return;
   }
@@ -339,7 +346,7 @@ function tokenErrorHint() {
     case 'network':
       return workerReachable
         ? tr('سرور همگام‌سازی جواب نمی‌دهد ({d})؛ چند دقیقه بعد دوباره بزن.', { d: lastNetDetail || '—' })
-        : tr('به سرور همگام‌سازی نرسیدم؛ اینترنت یا فیلتر شبکه (DNS/آنتی‌ویروس) را چک کن.') + ' ' + tr('آزمایش: {u}', { u: SYNC_WORKER + '/health' });
+        : tr('به سرور همگام‌سازی نرسیدم؛ اینترنت یا فیلتر شبکه (DNS/آنتی‌ویروس) را چک کن.') + ' ' + tr('آزمایش: {u}', { u: 'taraz-sync.taraz.workers.dev/health , ' + 'taraz-api.vercel.app/ping' });
     case 'google_down':
     case 'bad_response':
       return tr('گوگل موقتاً جواب نمی‌دهد؛ چند دقیقه بعد دوباره امتحان کن.');
@@ -365,16 +372,127 @@ function tokenErrorHint() {
 
 // ── ورود از طریق Worker ──
 const NONCE_KEY = (SEALED_KEY.indexOf('t_') === 0 ? 't_' : '') + 'capital_app_g_nonce';
+
+// ── لایهٔ چندمسیره: انتخاب سالم‌ترین سرور ──
+function savedRoute() {
+  const id = String(store.get(ROUTE_KEY) || '');
+  return SYNC_ROUTES.find((r) => r.id === id) || SYNC_ROUTES[0];
+}
+function saveRoute(id) {
+  try { store.set(ROUTE_KEY, id); } catch (e) {}
+}
+function fetchTimeout(url, opts, ms) {
+  return new Promise((resolve, reject) => {
+    let ctl = null;
+    try { ctl = typeof AbortController !== 'undefined' ? new AbortController() : null; } catch (e) {}
+    const t = setTimeout(() => {
+      try { if (ctl) ctl.abort(); } catch (e) {}
+      reject(new Error('timeout'));
+    }, ms || 4500);
+    fetch(url, Object.assign({}, opts || {}, ctl ? { signal: ctl.signal } : {}))
+      .then((r) => { clearTimeout(t); resolve(r); })
+      .catch((e) => { clearTimeout(t); reject(e); });
+  });
+}
+function routeOrder() {
+  const cur = savedRoute();
+  return [cur].concat(SYNC_ROUTES.filter((r) => r.id !== cur.id));
+}
+// fetch چندمسیره: خطای شبکه یا پاسخ 5xx → مسیر بعدی (4xx یعنی سرور جواب داده؛ رد منطقی، نه قطعی مسیر)
+function routeFetch(kind, opts, ms) {
+  const order = routeOrder();
+  let lastErr = null;
+  return (function tryNext(i) {
+    if (i >= order.length) return Promise.reject(lastErr || new Error('network'));
+    const r = order[i];
+    return fetchTimeout(r.base + r.p[kind], opts, ms).then((resp) => {
+      if (resp.status >= 500) {
+        routeHealthy[r.id] = false;
+        lastErr = new Error('http ' + resp.status);
+        return tryNext(i + 1);
+      }
+      routeHealthy[r.id] = true;
+      saveRoute(r.id);
+      return resp;
+    }, (e) => {
+      routeHealthy[r.id] = false;
+      lastErr = e;
+      return tryNext(i + 1);
+    });
+  })(0);
+}
+// ping موازی روی همهٔ مسیرها: آخرین مسیر سالم به‌خاطر سپرده می‌شود
+function pingSyncRoutes(done) {
+  let left = SYNC_ROUTES.length;
+  const healthyIds = [];
+  SYNC_ROUTES.forEach((r) => {
+    fetchTimeout(r.base + r.p.ping, { cache: 'no-store' }, 4500)
+      .then((resp) => {
+        routeHealthy[r.id] = resp.ok;
+        if (resp.ok) healthyIds.push(r.id);
+      })
+      .catch(() => { routeHealthy[r.id] = false; })
+      .finally(() => {
+        left -= 1;
+        if (left === 0) {
+          const cur = savedRoute();
+          const firstHealthy = SYNC_ROUTES.find((r) => healthyIds.includes(r.id));
+          if (firstHealthy && !healthyIds.includes(cur.id)) saveRoute(firstHealthy.id);
+          workerReachable = healthyIds.length > 0;
+          if (done) done(workerReachable);
+        }
+      });
+  });
+}
+// انتخاب مسیر برای ناوبری ورود (ناوبری ری‌ترای ندارد؛ اول مسیر سالم را پیدا می‌کنیم)
+function pickSyncRoute(cb) {
+  const cur = savedRoute();
+  if (routeHealthy[cur.id]) return cb(cur);
+  const known = SYNC_ROUTES.find((r) => routeHealthy[r.id]);
+  if (known) { saveRoute(known.id); return cb(known); }
+  let doneFlag = false;
+  let pending = SYNC_ROUTES.length;
+  const finish = (r) => {
+    if (doneFlag) return;
+    doneFlag = true;
+    if (r) saveRoute(r.id);
+    cb(r);
+  };
+  SYNC_ROUTES.forEach((r) => {
+    fetchTimeout(r.base + r.p.ping, { cache: 'no-store' }, 4000)
+      .then((resp) => {
+        routeHealthy[r.id] = resp.ok;
+        if (resp.ok) finish(r);
+      })
+      .catch(() => { routeHealthy[r.id] = false; })
+      .finally(() => {
+        pending -= 1;
+        if (pending === 0 && !doneFlag) {
+          const g = SYNC_ROUTES.find((x) => routeHealthy[x.id]);
+          if (!g) workerReachable = false;
+          finish(g || null);
+        }
+      });
+  });
+}
 function startWorkerLogin() {
-  const app = location.origin + location.pathname;
+  const app = location.origin; // مبدأ اپ — Worker فقط همین را با مقدار مجاز مقایسه می‌کند
   let n = '';
   try {
     const a = crypto.getRandomValues(new Uint8Array(12));
     n = Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
     store.set(NONCE_KEY, n + ':' + Date.now());
   } catch (e) {}
-  const u = SYNC_WORKER + '/start?app=' + encodeURIComponent(app) + '&n=' + n + (gUser && gUser.email ? '&login_hint=' + encodeURIComponent(gUser.email) : '');
-  location.href = u;
+  // اول مسیر سالم را انتخاب کن (ورود ناوبری دارد و ری‌ترای ندارد)
+  pickSyncRoute((route) => {
+    if (!route) {
+      lastTokenError = 'network';
+      toast(tr('ورود انجام نشد.') + ' ' + tokenErrorHint());
+      return;
+    }
+    const u = route.base + route.p.start + '?app=' + encodeURIComponent(app) + '&n=' + n + (gUser && gUser.email ? '&login_hint=' + encodeURIComponent(gUser.email) : '');
+    location.href = u;
+  });
 }
 // بعد از برگشت از گوگل: توکن‌ها در #fragment هستند
 // اگر نام/عکس در بازگشت نیامد، مستقیم از گوگل بگیر
@@ -546,7 +664,7 @@ export function googleRevokeAllDo() {
     toast(tr('دسترسی از همهٔ دستگاه‌ها قطع شد'));
   };
   if (!sealed) return done();
-  fetch(SYNC_WORKER + '/revoke', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ sealed }) })
+  routeFetch('revoke', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ sealed }) })
     .then((r) => r.json().catch(() => ({})))
     .then((j) => {
       if (j && j.ok) return done();
@@ -958,6 +1076,36 @@ async function handleRemoteEnvelope(env, fileId) {
   }
 }
 
+// آیا نسخهٔ گوگل با کلید/رمز دیگری در انتظار یکی‌شدن است؟ (برای هدایت ورود از قفل)
+export function hasPendingRemote() {
+  return !!pendingRemoteEnv;
+}
+export function openRemotePassModalNow() {
+  if (pendingRemoteEnv) openRemotePassModal();
+}
+
+// اگر روی درایو پاکت رمزشده‌ای هست و این دستگاه هنوز رمزنگاری ندارد: همان را بپذیر
+// تا کلید انشعابی تازه ساخته نشود. اگر چیزی نبود یا خطا بود → cb(false)
+export async function adoptRemoteEncryptionIfAny(cb) {
+  try {
+    if (sec.isEncrypted()) return cb(false);
+    const f = await driveFindFile();
+    if (!f) return cb(false);
+    const text = await driveRead(f.id);
+    let remote;
+    try {
+      remote = JSON.parse(text);
+    } catch (e) {
+      return cb(false);
+    }
+    if (!(remote && remote.v === 2 && remote.wraps && remote.data)) return cb(false);
+    await handleRemoteEnvelope(remote, f.id); // مسیر بدون رمزنگاری محلی: پذیرش پاکت + نمایش قفل دوردست
+    cb(true);
+  } catch (e) {
+    cb(false);
+  }
+}
+
 // ─── یکی‌کردن دو دستگاهی که جداگانه رمزنگاری فعال کرده‌اند ───────────────
 async function tryRepairMerge(env) {
   if (!sec.isUnlocked()) {
@@ -1017,16 +1165,17 @@ export async function submitRemotePass() {
 async function applyRemoteMerge(env, got) {
   pendingRemoteEnv = null;
   const merged = mergeStates(state, got.state);
-  // پاکت گوگل (کلید و رمزهایش) معتبر می‌شود؛ پین و اثر انگشت قدیمی این دستگاه
-  // با کلید قبلی پیچیده شده بودند و دیگر باز نمی‌کنند → پاک می‌شوند
+  // پاکت گوگل (کلید و رمزهایش) معتبر می‌شود؛ پین قدیمی این دستگاه با کلید قبلی
+  // پیچیده شده بود و دیگر باز نمی‌کند → پاک می‌شود. اثر انگشت «مرده» علامت می‌خورد تا
+  // با اولین ورود موفق رمز عبور خودش ترمیم شود (بدون ثبت دوباره)
   sec.adoptRemoteEnvelope(env, { dropPin: true });
   sec.setSessionKey(got.dk);
-  clearBioRecord();
+  strikeBioRecord();
   replaceState(merged);
   if (document.body.classList.contains('locked')) unlockApp();
   render();
   pendingLocalSave = true;
-  toast((tr('داده‌ها یکی شد') + ' ✓ ' + tr('از این پس با این رمز باز می‌شود')));
+  toast((tr('داده‌ها یکی شد') + ' ✓ ' + tr('از این پس با این رمز باز می‌شود') + ' — ' + tr('پین این دستگاه پاک شد (از تنظیمات دوباره بساز)؛ اثر انگشت با اولین ورودِ رمز عبور خودش ترمیم می‌شود')));
   pushToDrive(false);
 }
 
@@ -1202,6 +1351,7 @@ export function initGoogleOnLoad() {
   if (initDone) return;
   initDone = true;
   setTimeout(updateAvatar, 0);
+  pingSyncRoutes(); // سنجش موازی مسیرها و به‌خاطر سپردن مسیر سالم
   const u = store.get('g_user');
   if (u) {
     try {

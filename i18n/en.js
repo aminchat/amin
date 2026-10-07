@@ -238,4 +238,18 @@ export default {
   'set.cal.jalali': 'Solar Hijri (Jalali)',
   'set.cal.greg': 'Gregorian',
   'set.langNote': 'Your own data (account names, notes) stays as you typed it.',
+
+  // transfer fee (two-amount transfer)
+  'مبلغ واریز به مقصد (اختیاری)': 'Credit amount (optional)',
+  'خالی = برابر با مبلغ برداشت': 'Empty = same as debit',
+  'کارمزد انتقال': 'Transfer fee',
+  'کارمزد {x}': 'fee {x}',
+  'کارمزد:': 'Fee:',
+  'خودکار هزینه ({x}) ثبت می‌شود': 'auto-recorded as an expense ({x})',
+  'کیف کارمزد (اگر واریز کمتر از برداشت باشد)': 'Fee pocket (when credit is less than debit)',
+  '(بیش از برداشت؛ کارمزدی ثبت نمی‌شود)': '(more than debit; no fee recorded)',
+  'مبلغ واریز معتبر وارد کن': 'Enter a valid credit amount',
+  'واریز به مقصد:': 'Credit to destination:',
+  'اثر انگشت دوباره فعال شد': 'Biometric sign-in re-enabled',
+  'پین این دستگاه پاک شد (از تنظیمات دوباره بساز)؛ اثر انگشت با اولین ورودِ رمز عبور خودش ترمیم می‌شود': 'this device’s PIN was cleared (re-create it in Settings); biometrics self-repair on your first password sign-in',
 };

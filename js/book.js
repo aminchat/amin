@@ -108,6 +108,7 @@ function accountCurrentIn(src, a) {
   let b = a.initial || 0;
   for (const t of src.transactions) {
     if (t.accountId !== a.id) continue;
+    if (t.nobal) continue; // کارمزد انتقال در موجودی لحاظ نمی‌شود
     b += t.type === 'in' || t.type === 'transferIn' ? t.amount : -t.amount;
   }
   return b;
