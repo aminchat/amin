@@ -1036,8 +1036,13 @@ html.theme-fade, html.theme-fade *{
 .pk-ring circle{fill:none;stroke-width:2.6;stroke-linecap:round}
 .pk-ring .prg{transition:stroke-dashoffset .7s var(--ease)}
 .pk-ring .i{width:16px;height:16px}
-.pk-ring.beats .i{animation:beat 1.7s ease-in-out infinite}
-@keyframes beat{0%,100%{transform:scale(1)}10%{transform:scale(1.22)}20%{transform:scale(1)}30%{transform:scale(1.14)}40%{transform:scale(1)}}
+.pk-ring.beats .i{animation:beat 2.6s ease-in-out infinite}
+@keyframes beat{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.07);opacity:.85}}
+
+/* ورودِ نرمِ اعداد (به‌جای شمارش رقمی) */
+@keyframes numRise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.num-rise{display:inline-block;animation:numRise .5s var(--ease) both}
+.hero-num.num-rise{display:block}
 
 /* حباب کشوییِ نویگیشن پایین */
 .bn-pill{
